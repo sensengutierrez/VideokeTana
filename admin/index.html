@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Videoke — Admin</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- AUTH -->
+  <div id="authView" class="auth card" style="display:none">
+    <h2 style="text-align:center">🛠️ Videoke Admin</h2>
+    <input id="email" class="field" type="email" placeholder="Email" autocomplete="email">
+    <input id="pass" class="field" type="password" placeholder="Password (min 6)" autocomplete="current-password">
+    <button class="btn primary" style="width:100%" id="loginBtn">Login</button>
+    <button class="btn" style="width:100%;margin-top:8px" id="signupBtn">Gumawa ng account</button>
+    <p class="muted" style="font-size:13px;margin-bottom:0">Ang <b>unang account</b> na gagawin ang magiging admin. Pagkatapos mag-sign up, i-confirm ang email (check inbox/spam), tapos mag-login.</p>
+  </div>
+
+  <!-- MAIN -->
+  <div id="mainView" style="display:none">
+    <header>
+      <h1>🛠️ Videoke Admin</h1>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a class="btn small" href="../">🏠</a>
+        <button class="btn small" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <div id="notAdmin" class="card" style="display:none">
+      <b style="color:var(--red)">Hindi admin ang account na ito.</b>
+      <p class="muted">Ang unang account na nag-sign up lang ang may permiso mag-upload.</p>
+    </div>
+
+    <div id="adminArea" style="display:none">
+      <div class="card">
+        <h2>⬆️ Mag-upload ng kanta</h2>
+        <div class="drop" id="drop">
+          <b>Pumili o i-drop ang mga file dito</b>
+          <span class="muted" style="font-size:13px">Video: MP4/WebM · Audio: MP3/M4A + .LRC (lyrics) · Max <span id="maxMb"></span>MB bawat file<br>
+          Tip: pangalanan ang file na <b>"Artist - Title.mp3"</b> para auto-fill. Ang .lrc na kapareho ng pangalan ay auto-pair.</span>
+        </div>
+        <input type="file" id="fileIn" multiple accept="video/mp4,video/webm,audio/*,.mp3,.m4a,.mp4,.webm,.ogg,.wav,.lrc" style="display:none">
+        <div class="up" id="upList"></div>
+        <div id="upActions" style="display:none;margin-top:12px;gap:8px">
+          <button class="btn primary" id="upAll">⬆️ I-upload lahat</button>
+          <button class="btn" id="upClear">Linisin</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 style="display:flex;justify-content:space-between;align-items:center">📚 Library <span class="muted" style="font-size:13px;font-weight:400" id="libStats"></span></h2>
+        <div class="bar"><div id="storeBar"></div></div>
+        <input id="libQ" class="field" style="margin-top:12px" placeholder="Hanapin (title, artist, code)...">
+        <div class="lib" id="libList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<input type="file" id="lrcIn" accept=".lrc,text/plain" style="display:none">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0716">
+<title>Videoke — Remote</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/remote.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- JOIN SCREEN -->
+  <div id="joinView" class="join" style="display:none">
+    <h1 class="neon">🎤</h1>
+    <h2 style="margin:0">Sumali sa Videoke</h2>
+    <p class="muted">I-scan ang QR sa TV gamit ang camera, o i-type ang room code.</p>
+    <input id="joinRoom" class="field" maxlength="8" placeholder="ROOM" autocomplete="off">
+    <input id="joinName" class="field" style="font-size:16px;letter-spacing:0;font-family:inherit;text-transform:none;margin-top:0" maxlength="40" placeholder="Pangalan mo (opsyonal)">
+    <button class="btn primary reserve" id="joinBtn">Sumali</button>
+  </div>
+
+  <!-- MAIN -->
+  <div id="mainView" style="display:none">
+    <header>
+      <div class="logo"><span class="conn" id="conn"></span>🎤 Videoke</div>
+      <div style="display:flex;gap:6px">
+        <button class="namechip" id="nameChip">🙂 Pangalan</button>
+        <button class="roomchip" id="roomChip">----</button>
+      </div>
+    </header>
+
+    <div class="now">
+      <div class="lbl"><span>Kinakanta ngayon</span><span id="volLbl">🔊 --</span></div>
+      <div class="ttl" id="nowTtl"><span class="muted">Walang tumutugtog</span></div>
+      <div class="sub" id="nowSub"></div>
+      <div class="ctrls">
+        <button data-cmd="restart" title="Ulitin">⏮</button>
+        <button data-cmd="voldown" title="Hinaan">🔉</button>
+        <button data-cmd="toggle" class="big" id="btnToggle" title="Play/Pause">⏯</button>
+        <button data-cmd="volup" title="Lakasan">🔊</button>
+        <button data-cmd="skip" title="Skip">⏭</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button data-tab="code" class="on">🔢 Code</button>
+      <button data-tab="search">🔍 Hanap</button>
+      <button data-tab="yt">▶ YouTube</button>
+      <button data-tab="queue">📋 Pila<span class="badge" id="qBadge" style="display:none"></span></button>
+    </div>
+
+    <!-- CODE -->
+    <div class="pane on" id="pane-code">
+      <div class="display" id="codeDisp">_____</div>
+      <div class="preview" id="codePrev"><span class="muted">I-type ang 5-digit song number</span></div>
+      <div class="pad" id="pad">
+        <button>1</button><button>2</button><button>3</button>
+        <button>4</button><button>5</button><button>6</button>
+        <button>7</button><button>8</button><button>9</button>
+        <button class="fn" data-k="clr">C</button><button>0</button><button class="fn" data-k="del">⌫</button>
+      </div>
+      <button class="btn primary reserve" id="codeReserve" disabled>🎤 RESERVE</button>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="pane" id="pane-search">
+      <input id="searchQ" class="field" placeholder="Title o artist..." autocomplete="off">
+      <div class="list" id="searchList"></div>
+    </div>
+
+    <!-- YOUTUBE -->
+    <div class="pane" id="pane-yt">
+      <div id="ytSearchBox" style="display:none">
+        <div style="display:flex;gap:8px">
+          <input id="ytQ" class="field" placeholder="Hanapin sa YouTube (karaoke)..." autocomplete="off">
+          <button class="btn cyan" id="ytGo">🔍</button>
+        </div>
+        <div class="list" id="ytList"></div>
+        <div class="note" style="margin:14px 0 6px">O i-paste ang link:</div>
+      </div>
+      <input id="ytLink" class="field" placeholder="I-paste ang YouTube link dito" autocomplete="off">
+      <button class="btn primary reserve" id="ytReserve">🎤 RESERVE YouTube</button>
+      <div class="note">Tip: sa YouTube app, pindutin ang Share → Copy link, tapos i-paste dito. Hanapin ang may "karaoke" para may lyrics.</div>
+    </div>
+
+    <!-- QUEUE -->
+    <div class="pane" id="pane-queue">
+      <div class="list" id="queueList"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/remote.js"></script>
+</body>
+</html>

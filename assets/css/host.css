@@ -1,0 +1,70 @@
+html, body { height: 100%; overflow: hidden; background: #000; }
+#stage { position: fixed; inset: 0; background: #000; }
+#vid, #ytWrap { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+#vid { object-fit: contain; background: #000; }
+#ytWrap iframe { width: 100%; height: 100%; border: 0; }
+
+/* Audio + lyrics mode */
+#audioStage { position: absolute; inset: 0; display: none; overflow: hidden;
+  background: linear-gradient(135deg, #2a0a4a, #0b1a4a, #4a0a3a); background-size: 400% 400%; animation: bgmove 18s ease infinite; }
+@keyframes bgmove { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+#audioStage .orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .5; animation: float 14s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translate(0,0)} 50%{transform:translate(60px,-40px)} }
+#aTitle { position: absolute; top: 8vh; left: 0; right: 0; text-align: center; }
+#aTitle .t { font-size: 4.2vw; font-weight: 800; }
+#aTitle .a { font-size: 2.2vw; color: var(--muted); margin-top: .5vh; }
+#lyrics { position: absolute; left: 4vw; right: 4vw; bottom: 16vh; text-align: center; }
+#lyCur { font-size: 5.2vw; font-weight: 800; line-height: 1.25; min-height: 1.3em;
+  background-image: linear-gradient(to right, var(--gold) var(--p, 0%), #fff var(--p, 0%));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: none; filter: drop-shadow(0 3px 0 rgba(0,0,0,.6)); }
+#lyNext { font-size: 3.4vw; font-weight: 700; color: rgba(255,255,255,.55); margin-top: 2vh; min-height: 1.3em; }
+#noLrc { position: absolute; left: 0; right: 0; bottom: 20vh; text-align: center; font-size: 2.6vw; color: var(--muted); display: none; }
+
+/* Idle */
+#idle { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6vw;
+  background: radial-gradient(ellipse at center, #2b1250 0%, #07040f 70%); }
+#idle .left { text-align: left; max-width: 46vw; }
+#idle h1 { font-size: 6vw; margin: 0; }
+#idle .room { font-size: 2.4vw; margin-top: 2vh; }
+#idle .room b { font-family: ui-monospace, Menlo, monospace; font-size: 5vw; color: var(--gold); letter-spacing: .4vw; display: block; }
+#idle .hint { font-size: 1.6vw; color: var(--muted); margin-top: 2vh; }
+#idle .url { font-size: 1.2vw; color: var(--muted); margin-top: 1vh; word-break: break-all; }
+#qrBig { background: #fff; padding: 1.4vw; border-radius: 1.6vw; width: 30vw; max-width: 60vh; aspect-ratio: 1; }
+#qrBig svg, #qrSmall svg { width: 100%; height: 100%; display: block; }
+
+/* Splash (song number) */
+#splash { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(5, 2, 12, .92); z-index: 20; text-align: center; padding: 4vw; }
+#splash .num { font-family: ui-monospace, Menlo, monospace; font-size: 15vw; font-weight: 900; color: var(--gold);
+  text-shadow: 0 0 30px rgba(255,213,74,.6); line-height: 1; animation: pop .5s ease; }
+#splash .t { font-size: 4vw; font-weight: 800; margin-top: 3vh; }
+#splash .a { font-size: 2.3vw; color: var(--muted); margin-top: 1vh; }
+#splash .s { font-size: 2.2vw; margin-top: 3vh; color: var(--cyan); }
+@keyframes pop { from { transform: scale(.6); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+
+/* Overlays during play */
+#nextBar { position: absolute; left: 1.5vw; bottom: 1.5vw; z-index: 10; background: rgba(10,5,25,.78); border: 1px solid var(--line);
+  border-radius: 1vw; padding: .8vw 1.2vw; font-size: 1.3vw; max-width: 60vw; display: none; backdrop-filter: blur(6px); }
+#nextBar b { color: var(--cyan); margin-right: .6vw; }
+#cornerQr { position: absolute; right: 1.5vw; bottom: 1.5vw; z-index: 10; display: none; align-items: center; gap: .8vw;
+  background: rgba(10,5,25,.78); border: 1px solid var(--line); border-radius: 1vw; padding: .6vw; backdrop-filter: blur(6px); }
+#qrSmall { width: 7vw; height: 7vw; background: #fff; padding: .4vw; border-radius: .6vw; }
+#cornerQr .rc { font-family: ui-monospace, Menlo, monospace; font-size: 1.6vw; font-weight: 800; color: var(--gold); padding-right: .4vw; }
+#nowTag { position: absolute; left: 1.5vw; top: 1.5vw; z-index: 10; background: rgba(10,5,25,.7); border-radius: 1vw;
+  padding: .6vw 1vw; font-size: 1.2vw; display: none; max-width: 60vw; }
+
+#pauseBadge { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; z-index: 15; pointer-events: none; }
+#pauseBadge div { background: rgba(0,0,0,.65); padding: 2vw 4vw; border-radius: 2vw; font-size: 4vw; font-weight: 800; }
+#volBadge { position: absolute; top: 1.5vw; right: 1.5vw; z-index: 16; background: rgba(0,0,0,.7); padding: .8vw 1.4vw;
+  border-radius: 1vw; font-size: 1.8vw; font-weight: 700; display: none; }
+
+#topBtns { position: absolute; top: 1vw; right: 1vw; z-index: 30; display: flex; gap: .6vw; opacity: 0; transition: opacity .3s; }
+body:hover #topBtns { opacity: 1; }
+
+/* Start gate */
+#gate { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, #2b1250 0%, #07040f 70%); text-align: center; gap: 3vh; cursor: pointer; }
+#gate h1 { font-size: 7vw; margin: 0; }
+#gate .tap { font-size: 2.4vw; padding: 1.6vh 4vw; border-radius: 999px; }
+#gate .muted { font-size: 1.5vw; }

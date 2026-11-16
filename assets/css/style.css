@@ -1,0 +1,51 @@
+:root {
+  --bg: #0b0716;
+  --bg2: #160d2b;
+  --card: #1d1236;
+  --line: #34245c;
+  --text: #f3eefe;
+  --muted: #a99bc9;
+  --pink: #ff3d9a;
+  --cyan: #29e0ff;
+  --gold: #ffd54a;
+  --green: #3ddc84;
+  --red: #ff5470;
+  --radius: 16px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; }
+input { font: inherit; color: var(--text); }
+a { color: var(--cyan); }
+
+.btn {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 16px; font-weight: 600; transition: transform .08s, background .2s;
+}
+.btn:active { transform: scale(.96); }
+.btn.primary { background: linear-gradient(135deg, var(--pink), #b23cff); border-color: transparent; color: #fff; }
+.btn.cyan { background: linear-gradient(135deg, #12a8d6, var(--cyan)); border-color: transparent; color: #04121a; }
+.btn.danger { background: transparent; border-color: var(--red); color: var(--red); }
+.btn.small { padding: 7px 11px; font-size: 13px; border-radius: 10px; }
+.btn:disabled { opacity: .45; pointer-events: none; }
+
+.field {
+  width: 100%; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 14px; outline: none;
+}
+.field:focus { border-color: var(--cyan); }
+
+.neon { color: #fff; text-shadow: 0 0 8px var(--pink), 0 0 22px var(--pink); }
+.muted { color: var(--muted); }
+.code-badge {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 800; letter-spacing: 1px;
+  color: var(--gold); background: rgba(255, 213, 74, .1); border: 1px solid rgba(255, 213, 74, .35);
+  padding: 2px 8px; border-radius: 8px; font-size: 13px; white-space: nowrap;
+}
+.code-badge.yt { color: #ff6b6b; background: rgba(255, 80, 80, .1); border-color: rgba(255, 80, 80, .35); }
+
+#toastWrap { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.toast { background: #2a1c4d; border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.5); transition: opacity .35s, transform .35s; font-weight: 600; max-width: 90vw; }
+.toast.ok { border-color: var(--green); }
+.toast.err { border-color: var(--red); }
+.toast.out { opacity: 0; transform: translateY(10px); }

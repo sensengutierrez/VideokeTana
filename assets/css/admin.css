@@ -1,0 +1,27 @@
+.app { max-width: 900px; margin: 0 auto; padding: 18px 14px 60px; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+h1 { margin: 0; font-size: 24px; }
+h2 { font-size: 18px; margin: 0 0 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.auth { max-width: 380px; margin: 10vh auto 0; }
+.auth .field { margin-bottom: 10px; }
+.drop { border: 2px dashed var(--line); border-radius: var(--radius); padding: 26px 14px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
+.drop.over { border-color: var(--cyan); background: rgba(41,224,255,.06); }
+.drop b { display: block; font-size: 17px; margin-bottom: 4px; }
+.up { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.uprow { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+.uprow .meta { grid-column: 1 / -1; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.uprow .field { padding: 9px 10px; font-size: 14px; }
+.st-ok { color: var(--green); font-weight: 700; }
+.st-err { color: var(--red); font-weight: 700; }
+.st-run { color: var(--cyan); font-weight: 700; }
+.bar { height: 8px; background: var(--bg2); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.bar div { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--pink)); width: 0; transition: width .3s; }
+.lib { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.lrow { display: flex; align-items: center; gap: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 9px 10px; }
+.lrow .info { flex: 1; min-width: 0; }
+.lrow .t { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lrow .a { font-size: 12px; color: var(--muted); }
+.lrow .acts { display: flex; gap: 5px; flex-shrink: 0; }
+.tag { font-size: 11px; padding: 1px 6px; border-radius: 6px; background: rgba(255,255,255,.08); margin-left: 4px; }
+@media (max-width: 600px) { .uprow { grid-template-columns: 1fr; } }

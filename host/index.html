@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Videoke — Host</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/host.css">
+</head>
+<body>
+<div id="gate">
+  <h1 class="neon">🎤 VIDEOKE</h1>
+  <button class="btn primary tap" id="gateBtn">▶ Tap para simulan</button>
+  <div class="muted">Kailangan ng isang tap para payagan ng browser ang tunog.<br>Tip: pindutin ang F para fullscreen.</div>
+</div>
+
+<div id="stage">
+  <video id="vid" playsinline preload="auto"></video>
+  <div id="ytWrap"><div id="ytPlayer"></div></div>
+
+  <div id="audioStage">
+    <div class="orb" style="width:40vw;height:40vw;background:#ff3d9a;left:-10vw;top:-10vw"></div>
+    <div class="orb" style="width:35vw;height:35vw;background:#29e0ff;right:-8vw;bottom:-12vw;animation-delay:-5s"></div>
+    <div id="aTitle"><div class="t" id="aT"></div><div class="a" id="aA"></div></div>
+    <div id="lyrics"><div id="lyCur"></div><div id="lyNext"></div></div>
+    <div id="noLrc">♪ Walang lyrics file para sa kantang ito ♪</div>
+    <audio id="aud" preload="auto"></audio>
+  </div>
+
+  <div id="idle">
+    <div class="left">
+      <h1 class="neon">🎤 VIDEOKE</h1>
+      <div class="room">Room code<b id="roomCode">----</b></div>
+      <div class="hint" id="idleHint">I-scan ang QR gamit ang phone camera para mag-reserve ng kanta.</div>
+      <div class="url" id="remoteUrl"></div>
+    </div>
+    <div id="qrBig"></div>
+  </div>
+
+  <div id="splash"><div class="num" id="spNum"></div><div class="t" id="spT"></div><div class="a" id="spA"></div><div class="s" id="spS"></div></div>
+  <div id="nowTag"></div>
+  <div id="nextBar"></div>
+  <div id="cornerQr"><div id="qrSmall"></div><div class="rc" id="roomSmall"></div></div>
+  <div id="pauseBadge"><div>⏸ NAKA-PAUSE</div></div>
+  <div id="volBadge"></div>
+
+  <div id="topBtns">
+    <button class="btn small" id="btnSkip" title="Skip (N)">⏭ Skip</button>
+    <button class="btn small" id="btnNewRoom" title="Bagong room code">🔄 Room</button>
+    <button class="btn small" id="btnFs" title="Fullscreen (F)">⛶</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/host.js"></script>
+</body>
+</html>
