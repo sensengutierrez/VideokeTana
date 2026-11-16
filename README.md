@@ -2,6 +2,8 @@
 
 Pambahay na videoke — host sa laptop/tablet (naka-HDMI/Type-C sa TV), remote sa phone, song library sa Supabase.
 
+Basahin ang [docs/BRAIN.md](docs/BRAIN.md) para sa mga nagawa, bakit at paano.
+
 ## Pages
 | URL | Para saan |
 |---|---|

@@ -3,6 +3,7 @@
 // Halo: bawat mic -> highpass -> clarity (presence EQ) -> gain -> bus -> dry + echo + reverb -> master -> speaker
 (function () {
   const ICE = [{ urls: 'stun:stun.l.google.com:19302' }];
+  let pAn = null, pBuf = null;
   let ac = null, master, bus, dry, echoDelay, echoFb, echoWet, conv, revWet;
   const peers = new Map();           // id -> { pc, name, an, buf, gain, presence, level, muted, ... }
   let sendFn = () => {}, onChange = () => {};
@@ -19,6 +20,7 @@
     bus.connect(echoDelay); echoDelay.connect(echoFb).connect(echoDelay); echoDelay.connect(echoWet).connect(master);
     conv = ac.createConvolver(); conv.buffer = impulse(2.2); revWet = ac.createGain();
     bus.connect(conv).connect(revWet).connect(master);
+    pAn = ac.createAnalyser(); pAn.fftSize = 2048; pBuf = new Float32Array(pAn.fftSize); bus.connect(pAn);   // para sa pitch bar
     apply();
     return ac;
   }
@@ -150,7 +152,37 @@
     return out;
   }
 
+  // Tono ng kumakanta (Hz), 0 kapag walang malinaw na tono. Autocorrelation sa 80 hanggang 1000 Hz.
+  function pitch() {
+    if (!pAn || !peers.size) return 0;
+    pAn.getFloatTimeDomainData(pBuf);
+    const b = pBuf, N = b.length, sr = ac.sampleRate;
+    let rms = 0; for (let i = 0; i < N; i++) rms += b[i] * b[i];
+    rms = Math.sqrt(rms / N);
+    if (rms < 0.012) return 0;
+    const minL = Math.floor(sr / 1000), maxL = Math.min(Math.floor(sr / 80), N >> 1), W = N - maxL;
+    let e0 = 0; for (let i = 0; i < W; i++) e0 += b[i] * b[i];
+    const c = new Float32Array(maxL + 2);
+    let best = -1, bestL = 0;
+    for (let L = minL; L <= maxL + 1; L++) {
+      let s = 0, e1 = 0;
+      for (let i = 0; i < W; i++) { s += b[i] * b[i + L]; e1 += b[i + L] * b[i + L]; }
+      c[L] = s / Math.sqrt(e0 * e1 + 1e-9);
+    }
+    // unang malakas na tuktok (iwas sa octave error)
+    let top = 0; for (let L = minL; L <= maxL; L++) top = Math.max(top, c[L]);
+    if (top < 0.75) return 0;
+    for (let L = minL + 1; L <= maxL; L++) {
+      if (c[L] > 0.9 * top && c[L] >= c[L - 1] && c[L] >= c[L + 1]) { best = c[L]; bestL = L; break; }
+    }
+    if (!bestL) return 0;
+    const a = c[bestL - 1], m = c[bestL], z = c[bestL + 1], d = a - 2 * m + z;
+    const sh = d ? 0.5 * (a - z) / d : 0;
+    return sr / (bestL + sh);
+  }
+
   window.VKMicHost = {
+    pitch,
     init(send, change, feedback) {
       sendFn = send; onChange = change || onChange; onFeedback = feedback || onFeedback;
       window.addEventListener('vkprefs', apply);

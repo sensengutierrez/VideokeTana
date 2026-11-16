@@ -110,7 +110,7 @@ async function startNext() {
   await showSplash(next);
   starting = false;
   if (current !== next) { startNext(); return; } // na-skip habang splash
-  resetMicStat();
+  resetMicStat(); VKPitch.clear();
   try { await playItem(next); }
   catch (e) {
     console.error(e);
@@ -160,7 +160,7 @@ function showScore(item) {
     const fromMic = prS.scoreMode === 'mic' ? micScore() : null;
     const n = fromMic !== null ? fromMic : pickScore(), el = $('scoreScreen');
     $('scNote').textContent = prS.scoreMode === 'mic'
-      ? (fromMic !== null ? 'Batay sa pagkanta habang may lyrics' : 'Walang mic na nakakonekta, kaya random ang score')
+      ? (fromMic !== null ? (VKPitch.accuracy() !== null ? 'Batay sa tono at pagkanta habang may lyrics' : 'Batay sa pagkanta habang may lyrics') : 'Walang mic na nakakonekta, kaya random ang score')
       : '';
     $('scNum').textContent = '0';
     $('scMsg').textContent = '';
@@ -204,6 +204,7 @@ function stopMedia() {
   try { aud.pause(); aud.removeAttribute('src'); aud.load(); } catch (e) {}
   try { if (ytPlayer && ytReady) ytPlayer.stopVideo(); } catch (e) {}
   lyrics = [];
+  document.body.classList.remove('has-pitch');   // ang stats ay nililinis sa simula ng susunod na kanta (kailangan pa sa score)
 }
 
 async function playItem(item) {
@@ -229,6 +230,7 @@ async function playItem(item) {
       } catch (e) { console.warn('LRC load failed', e); }
     }
     $('noLrc').style.display = lyrics.length ? 'none' : 'block';
+    loadMelody(item.song);
     aud.src = mediaUrl(item.song.media_path);
     await aud.play();
   } else if (item.yt_id || (item.song && item.song.kind === 'youtube')) {
@@ -287,6 +289,31 @@ function parseLrc(text) {
   });
   lyrics = out.sort((a, b) => a.t - b.t);
 }
+
+// ---- Pitch bar: melody ng kanta (demo .mel.json ngayon; MIDI sa susunod) ----
+const songTime = () => aud.currentTime + lyricOffset + (VK_PREFS.get().lyricDelay || 0) / 1000;
+async function loadMelody(song) {
+  VKPitch.clear(); document.body.classList.remove('has-pitch');
+  if (VK_PREFS.get().pitchBar === 'off') return;
+  const path = song.mel_path || (song.media_path || '').replace(/\.(mp3|m4a|ogg|wav)$/i, '.mel.json');
+  if (!/\.mel\.json$/.test(path)) return;
+  try {
+    const r = await fetch(mediaUrl(path));
+    if (!r.ok) return;
+    const j = await r.json();
+    if (VKPitch.load(j.notes)) document.body.classList.add('has-pitch');
+  } catch (e) { /* walang melody: walang pitch bar */ }
+}
+VKPitch.init($('pitchBar'));
+requestAnimationFrame(pitchTick);
+function pitchTick() {
+  requestAnimationFrame(pitchTick);
+  if (mode === 'audio' && VKPitch.has()) VKPitch.draw(songTime());
+}
+setInterval(() => {
+  if (mode !== 'audio' || paused || scoring || !VKPitch.has()) return;
+  VKPitch.sample(songTime(), VKMicHost.pitch());
+}, 50);
 
 function lyricTick() {
   requestAnimationFrame(lyricTick);
@@ -555,7 +582,9 @@ let micStat = null;
 function resetMicStat() { micStat = { inLine: 0, voiced: 0, mics: 0 }; }
 function micScore() {
   if (!micStat || micStat.mics === 0 || micStat.inLine < 50) return null;
-  const r = Math.min(1, micStat.voiced / micStat.inLine * 1.1);
+  let r = Math.min(1, micStat.voiced / micStat.inLine * 1.1);
+  const acc = VKPitch.accuracy();                 // kapag may pitch bar, kasama na ang tono
+  if (acc !== null) r = 0.35 * r + 0.65 * Math.min(1, acc * 1.25);
   const lvl = VK_PREFS.get().scoreLevel;
   const n = lvl === 'easy' ? 62 + 38 * r : lvl === 'hard' ? 40 + 60 * Math.pow(r, 1.4) : 52 + 48 * r;
   return Math.max(40, Math.min(100, Math.round(n)));
