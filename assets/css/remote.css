@@ -46,7 +46,7 @@ body { min-height: 100vh; }
 .preview b { font-size: 17px; }
 .preview .err { color: var(--danger); }
 .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.pad button { height: 60px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line);
+.pad button { height: 54px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line);
   font-size: 26px; font-weight: 600; box-shadow: 0 1px 0 var(--line); transition: background .1s, transform .08s; }
 .pad button:active { transform: scale(.96); background: var(--surface-2); }
 .pad .fn { font-size: 18px; color: var(--muted); display: grid; place-items: center; }
@@ -78,3 +78,23 @@ body { min-height: 100vh; }
 .join .field { margin-bottom: 16px; }
 .room-in { font-family: var(--font-dot); font-weight: 800; font-size: 30px; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); }
 .room-in::placeholder { color: var(--muted); opacity: .35; }
+
+/* Reserve laging kita habang nagta-type ng numero */
+#codeReserve { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 4;
+  box-shadow: 0 -12px 24px var(--bg), 0 6px 20px rgba(0,0,0,.25); }
+#codeReserve:not(:disabled) { animation: ready .35s ease; }
+#codeReserve .dot { color: inherit; text-shadow: none; margin-left: 6px; }
+@keyframes ready { 50% { transform: scale(1.03); } }
+
+/* join: scan */
+.scan-btn { margin-top: 0; margin-bottom: 18px; }
+.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+.scanner { position: fixed; inset: 0; z-index: 200; background: #000; display: flex; align-items: center; justify-content: center; }
+.scanner[hidden] { display: none; }
+.scanner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scan-frame { position: relative; width: min(70vw, 300px); aspect-ratio: 1; border-radius: 24px;
+  box-shadow: 0 0 0 100vmax rgba(0,0,0,.55); border: 2px solid rgba(255,255,255,.85); }
+.scan-msg { position: absolute; left: 20px; right: 20px; bottom: max(40px, env(safe-area-inset-bottom)); text-align: center; color: #fff; font-weight: 600; margin: 0; }
+.scan-close { position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px; background: rgba(0,0,0,.5); border-color: rgba(255,255,255,.3); color: #fff; }

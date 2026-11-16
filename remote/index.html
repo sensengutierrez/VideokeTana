@@ -25,14 +25,24 @@
     <div class="join-body">
       <span class="wordmark"><i data-i="mic"></i>videoke</span>
       <h1>Sumali sa kantahan</h1>
-      <p class="muted">I-scan ang QR code sa TV gamit ang camera ng phone mo. O kaya, i-type ang room code na nakalagay doon.</p>
+      <p class="muted">I-scan ang QR code na nasa TV, o i-type ang room code na nakalagay doon.</p>
+      <button class="btn primary wide scan-btn" id="scanBtn" type="button"><i data-i="qr"></i>I-scan ang QR code</button>
+      <div class="or"><span>o i-type ang room code</span></div>
       <label class="lbl" for="joinRoom">Room code</label>
       <input id="joinRoom" class="field room-in" maxlength="8" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
       <label class="lbl" for="joinName">Pangalan mo</label>
       <input id="joinName" class="field" maxlength="40" placeholder="Lalabas sa TV kapag ikaw na ang kakanta" autocomplete="nickname">
-      <button class="btn primary wide" id="joinBtn">Sumali</button>
+      <button class="btn wide" id="joinBtn">Sumali</button>
     </div>
   </section>
+
+  <!-- QR SCANNER -->
+  <div id="scanner" class="scanner" hidden>
+    <video id="scanVid" playsinline muted></video>
+    <div class="scan-frame"></div>
+    <p class="scan-msg" id="scanMsg">Binubuksan ang camera</p>
+    <button class="close-x scan-close" id="scanClose" type="button" aria-label="Isara ang scanner"></button>
+  </div>
 
   <!-- MAIN -->
   <section id="mainView" style="display:none">

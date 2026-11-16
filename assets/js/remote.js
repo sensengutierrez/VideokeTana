@@ -16,18 +16,107 @@ function showJoin() {
   $('joinRoom').value = ROOM_RE.test(ROOM) ? ROOM : '';
   $('joinName').value = NAME;
 }
-$('joinBtn').onclick = () => {
-  const r = cleanRoom($('joinRoom').value);
-  if (!ROOM_RE.test(r)) { toast('Mali ang room code', 'err'); return; }
-  NAME = $('joinName').value.trim().slice(0, 40);
+function joinRoom(r) {
+  NAME = $('joinName').value.trim().slice(0, 40) || NAME;
   localStorage.setItem('vk_name', NAME);
   ROOM = r;
   history.replaceState(null, '', '?room=' + ROOM);
   start();
+}
+$('joinBtn').onclick = () => {
+  const r = cleanRoom($('joinRoom').value);
+  if (!ROOM_RE.test(r)) { toast('Ilagay ang 4 na letra o numero na room code na nasa TV', 'err'); $('joinRoom').focus(); return; }
+  joinRoom(r);
 };
+$('joinRoom').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinName').focus(); });
+$('joinName').addEventListener('keydown', e => { if (e.key === 'Enter') $('joinBtn').click(); });
 
+// ================= QR SCANNER =================
+let scanStream = null, scanTimer = null, detector = null;
+const scanCanvas = document.createElement('canvas');
+const scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+
+function roomFromText(t) {
+  try { const r = cleanRoom(new URL(t).searchParams.get('room')); if (ROOM_RE.test(r)) return r; } catch (e) {}
+  const r = cleanRoom(t);
+  return ROOM_RE.test(r) ? r : null;
+}
+function loadJsQR() {
+  return new Promise(res => {
+    if (window.jsQR) return res();
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    sc.onload = res; sc.onerror = res;
+    document.head.appendChild(sc);
+  });
+}
+async function startScan() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast('Walang access sa camera ang browser na ito. I-type na lang ang room code.', 'err', 4500); return;
+  }
+  $('scanMsg').textContent = 'Binubuksan ang camera';
+  $('scanner').hidden = false;
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+  } catch (e) {
+    stopScan();
+    toast(e.name === 'NotAllowedError'
+      ? 'Hindi pinayagan ang camera. Payagan ito sa settings ng browser, o i-type ang room code.'
+      : 'Hindi mabuksan ang camera. I-type na lang ang room code.', 'err', 5000);
+    return;
+  }
+  const v = $('scanVid');
+  v.srcObject = scanStream;
+  try { await v.play(); } catch (e) {}
+  if ('BarcodeDetector' in window) {
+    try { detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { detector = null; }
+  }
+  if (!detector) await loadJsQR();
+  $('scanMsg').textContent = 'Itapat ang camera sa QR code na nasa TV';
+  scanLoop();
+}
+async function scanLoop() {
+  if (!scanStream) return;
+  const v = $('scanVid');
+  let text = null;
+  if (v.readyState >= 2) {
+    try {
+      if (detector) {
+        const codes = await detector.detect(v);
+        if (codes.length) text = codes[0].rawValue;
+      } else if (window.jsQR) {
+        const k = Math.min(1, 640 / v.videoWidth);
+        scanCanvas.width = v.videoWidth * k; scanCanvas.height = v.videoHeight * k;
+        scanCtx.drawImage(v, 0, 0, scanCanvas.width, scanCanvas.height);
+        const img = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+        const r = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+        if (r) text = r.data;
+      }
+    } catch (e) {}
+  }
+  if (text) {
+    const r = roomFromText(text);
+    if (r) { buzz(); stopScan(); toast('Nakasali sa room ' + r, 'ok'); joinRoom(r); return; }
+    $('scanMsg').textContent = 'Hindi ito ang QR code ng videoke. Itapat sa QR na nasa TV.';
+  }
+  scanTimer = setTimeout(scanLoop, 180);
+}
+function stopScan() {
+  clearTimeout(scanTimer);
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  $('scanVid').srcObject = null;
+  $('scanner').hidden = true;
+}
+$('scanBtn').onclick = startScan;
+$('scanClose').onclick = stopScan;
+document.addEventListener('visibilitychange', () => { if (document.hidden && scanStream) stopScan(); });
+
+let hostSeen = false, hostTimer = null;
 function start() {
   localStorage.setItem('vk_last_room', ROOM);
+  hostSeen = false; state = null; renderNow();
+  clearTimeout(hostTimer);
+  hostTimer = setTimeout(() => { if (!hostSeen) renderNow(); }, 4000);
   $('joinView').style.display = 'none';
   $('mainView').style.display = 'block';
   $('roomChip').textContent = ROOM;
@@ -54,7 +143,7 @@ $('roomChip').onclick = () => { if (confirm('Lumipat ng room?')) showJoin(); };
 function connect() {
   if (channel) sb.removeChannel(channel);
   channel = sb.channel('room-' + ROOM, { config: { broadcast: { self: false } } })
-    .on('broadcast', { event: 'state' }, ({ payload }) => { state = payload; renderNow(); renderQueue(); })
+    .on('broadcast', { event: 'state' }, ({ payload }) => { state = payload; hostSeen = true; renderNow(); renderQueue(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'queue' }, () => loadQueueSoon())
     .subscribe(status => {
       $('conn').classList.toggle('ok', status === 'SUBSCRIBED');
@@ -71,6 +160,10 @@ document.addEventListener('visibilitychange', () => {
 function sendCmd(action, value) {
   if (!channel) return;
   buzz();
+  if (!hostSeen) { toast(`Hindi makita ang TV sa room ${ROOM}. Buksan ang Host at pindutin ang Simulan.`, 'err', 4500); return; }
+  if (['toggle', 'skip', 'restart'].includes(action) && !(state && state.now)) {
+    toast('Walang tumutugtog. Mag-reserve muna ng kanta.', 'err'); return;
+  }
   channel.send({ type: 'broadcast', event: 'cmd', payload: { action, value } });
 }
 document.querySelectorAll('.ctrls button').forEach(b => b.onclick = () => {
@@ -83,7 +176,8 @@ function renderNow() {
   const n = state && state.now;
   if (!n) {
     $('nowTtl').innerHTML = '<span class="idle">Walang tumutugtog</span>';
-    $('nowSub').textContent = '';
+    $('nowSub').textContent = hostSeen ? 'Mag-reserve ng kanta para magsimula.'
+      : `Hinahanap ang TV sa room ${ROOM}. Siguraduhing bukas ang Host at napindot ang Simulan.`;
   } else {
     $('nowTtl').innerHTML = (n.source === 'youtube' ? '<span class="yt">YouTube</span>' : `<span class="dot">${esc(n.code)}</span>`) + `<span class="t">${esc(n.title)}</span>`;
     $('nowSub').textContent = [n.artist, n.singer ? 'Kumakanta: ' + n.singer : ''].filter(Boolean).join(', ');
@@ -141,13 +235,21 @@ $('queueList').addEventListener('click', async e => {
   }
 });
 
+let reserving = false;
 async function reserve(row) {
+  if (reserving) return false;
+  reserving = true;
   buzz();
+  try { return await doReserve(row); } finally { reserving = false; }
+}
+async function doReserve(row) {
   const { error } = await sb.from('queue').insert({ room: ROOM, singer: NAME || null, ...row });
   if (error) { toast('Hindi na-reserve: ' + error.message, 'err'); return false; }
   await loadQueue();
   const n = queue.filter(q => q.status === 'waiting').length;
-  toast(n === 1 ? 'Naka-reserve. Ikaw ang susunod.' : `Naka-reserve. Pang-${n} ka sa pila.`, 'ok');
+  const playing = queue.some(q => q.status === 'playing');
+  toast(!playing && n <= 1 ? 'Naka-reserve. Magsisimula na sa TV.' : `Naka-reserve. Pang-${n} ka sa pila.`, 'ok');
+  if (!hostSeen) toast(`Naka-pila na, pero hindi pa makita ang TV sa room ${ROOM}.`, 'err', 4500);
   return true;
 }
 
@@ -161,6 +263,7 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
 
 // ================= CODE KEYPAD =================
 function renderCode() {
+  $('codeReserve').innerHTML = codeSong ? `Reserve <span class="dot">${codeSong.code}</span>` : 'Reserve';
   $('codeDisp').innerHTML = esc(code) + `<span class="ghost">${'8'.repeat(5 - code.length)}</span>`;
   $('codeReserve').disabled = !codeSong;
 }
