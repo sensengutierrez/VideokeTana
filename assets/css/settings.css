@@ -56,3 +56,12 @@ button.set:hover { background: var(--surface-2); }
   .set .seg { width: 100%; }
   .set .seg button { flex: 1; padding: 9px 4px; }
 }
+
+.wall-row { display: flex; gap: 14px; align-items: center; }
+.wall-thumb { width: 120px; aspect-ratio: 16 / 10; border-radius: 12px; border: 1px dashed var(--line); background: center / cover no-repeat var(--surface-2);
+  display: grid; place-items: center; flex-shrink: 0; }
+.wall-thumb span { font-size: 12px; color: var(--muted); text-align: center; padding: 6px; }
+.wall-thumb.has { border-style: solid; }
+.wall-thumb.has span { display: none; }
+.wall-acts { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.wall-acts .btn { width: 100%; }

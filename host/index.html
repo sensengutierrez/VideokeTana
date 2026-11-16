@@ -7,6 +7,7 @@
 <script src="../assets/js/icons.js"></script>
 <script src="../assets/js/theme.js"></script>
 <script src="../assets/js/prefs.js"></script>
+<script src="../assets/js/wallpaper.js"></script>
 <title>Videoke</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
@@ -29,6 +30,7 @@
 <div id="stage">
   <canvas id="scene" aria-hidden="true"></canvas>
   <video id="bgv" muted loop playsinline preload="auto" aria-hidden="true"></video>
+  <div id="wallImg" aria-hidden="true"></div>
   <video id="vid" playsinline preload="auto"></video>
   <div id="ytWrap"><div id="ytPlayer"></div></div>
 
@@ -81,6 +83,55 @@
   <div id="cornerQr"><div id="qrSmall"></div><div class="dot rc" id="roomSmall"></div></div>
   <div id="pauseBadge"><div><i data-i="pause"></i>Naka-pause</div></div>
   <div id="volBadge"></div>
+
+  <!-- ISANG DEVICE LANG: pumili ng kanta sa mismong screen -->
+  <button id="soloBtn" class="solo-btn" type="button"><i data-i="hash"></i><span>Pumili ng kanta</span></button>
+  <div id="codeEntry" aria-live="polite">
+    <span class="ce-lbl">Song no.</span>
+    <div class="dot ce-num" id="ceNum"></div>
+    <div class="ce-title" id="ceTitle"></div>
+    <div class="ce-hint">Enter para i-reserve, Esc para kanselahin</div>
+  </div>
+  <aside id="solo" class="solo" aria-label="Pumili ng kanta" hidden>
+    <header class="solo-head">
+      <b>Pumili ng kanta</b>
+      <button class="close-x" id="soloClose" type="button" aria-label="Isara"></button>
+    </header>
+    <div class="solo-ctrls">
+      <button data-cmd="restart" aria-label="Ulitin" title="Ulitin"><i data-i="restart"></i></button>
+      <button data-cmd="voldown" aria-label="Hinaan" title="Hinaan"><i data-i="voldown"></i></button>
+      <button data-cmd="toggle" class="main" aria-label="Play o pause" title="Play o pause"><i data-i="playpause"></i></button>
+      <button data-cmd="volup" aria-label="Lakasan" title="Lakasan"><i data-i="volup"></i></button>
+      <button data-cmd="skip" aria-label="Laktawan" title="Laktawan"><i data-i="next"></i></button>
+    </div>
+    <nav class="solo-tabs">
+      <button data-st="code" class="on">Numero</button><button data-st="search">Hanap</button>
+      <button data-st="queue">Pila</button><button data-st="mic">Mic</button>
+    </nav>
+    <div class="solo-pane on" id="sp-code">
+      <div class="display solo-lcd"><div class="dot" id="sCode"><span class="ghost">88888</span></div></div>
+      <div class="solo-prev" id="sPrev">I-type ang song number</div>
+      <div class="solo-pad" id="sPad">
+        <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button>
+        <button>7</button><button>8</button><button>9</button><button data-k="clr">C</button><button>0</button><button data-k="del" aria-label="Burahin"><i data-i="del"></i></button>
+      </div>
+      <button class="btn primary solo-res" id="sRes" disabled>Reserve</button>
+    </div>
+    <div class="solo-pane" id="sp-search">
+      <input class="field" id="sQ" placeholder="Hanapin ang title, artist o numero" type="search" autocomplete="off">
+      <div class="solo-list" id="sList"></div>
+    </div>
+    <div class="solo-pane" id="sp-queue"><div class="solo-list" id="sQueue"></div></div>
+    <div class="solo-pane" id="sp-mic">
+      <div class="solo-mic">
+        <button class="mic-btn" id="sMicBtn" type="button" aria-label="Mic ng device na ito"><i data-i="mic"></i></button>
+        <b id="sMicStatus">Gamitin ang mic ng device na ito</b>
+        <p>Para sa isang device lang. Gumamit ng earphones na may mic o external na mic para hindi umugong ang speaker.</p>
+        <div class="mic-meter"><b id="sMicMeter"></b></div>
+        <button class="btn" id="sMicMute" type="button" hidden>I-mute</button>
+      </div>
+    </div>
+  </aside>
 
   <div id="topBtns">
     <button class="tb" id="btnSkip" title="Laktawan (N)"><i data-i="next"></i><span>Laktawan</span></button>

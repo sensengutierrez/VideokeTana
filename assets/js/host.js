@@ -43,6 +43,7 @@ function show(m) {
   $('audioStage').style.display = m === 'audio' ? 'block' : 'none';
   $('idle').style.display = m === 'idle' ? 'flex' : 'none';
   const playing = m !== 'idle';
+  document.body.classList.toggle('playing', playing);
   $('cornerQr').style.display = playing ? 'flex' : 'none';
   $('nowTag').style.display = (m === 'video' || m === 'youtube') ? 'block' : 'none'; // sa audio, nasa screen na ang title
   // ang background ay tumatakbo lang kapag hindi natatakpan ng video
@@ -86,6 +87,7 @@ async function loadQueue() {
     current = null;
   }
   renderNextBar();
+  renderSoloQueue();
   if (started && !current) startNext();
 }
 
@@ -429,7 +431,7 @@ $('btnNewRoom').onclick = () => {
   renderQr(); show('idle'); connect();
 };
 document.addEventListener('keydown', e => {
-  if (!started) return;
+  if (!started || e.target.closest('input, textarea, select')) return;
   if (e.key === ' ') { e.preventDefault(); handleCmd('toggle'); }
   else if (e.key === 'n' || e.key === 'N' || e.key === 'ArrowRight') handleCmd('skip');
   else if (e.key === 'ArrowUp') handleCmd('volup');
@@ -594,6 +596,17 @@ async function loadBgList() {
 async function applyBg(change) {
   const p = VK_PREFS.get();
   const covered = mode === 'video' || mode === 'youtube';
+  const wall = $('wallImg');
+  if (p.bgMode === 'image' && window.VKWall && VKWall.url()) {
+    if (window.VKScenes) VKScenes.pause();
+    bgv.pause(); bgv.style.display = 'none';
+    $('scene').style.visibility = 'hidden';
+    document.body.classList.remove('bg-plain');
+    wall.style.backgroundImage = `url("${VKWall.url()}")`;
+    wall.style.display = 'block';
+    return;
+  }
+  wall.style.display = 'none';
   if (p.bgMode === 'videos') {
     if (!bgList) await loadBgList();
     if (bgList.length) {
@@ -632,11 +645,155 @@ function nextScene() {
   if (p.scene !== 'auto') VK_PREFS.set('scene', VKScenes.current());
 }
 $('btnScene').onclick = nextScene;
+window.addEventListener('vkwall', () => { if (started) applyBg(false); });
 window.addEventListener('vkprefs', () => {
   const sc = VK_PREFS.get().scene;
   if (window.VKScenes && sc !== 'auto' && sc !== VKScenes.current()) VKScenes.set(sc);
   tickClock();
 });
+
+// ================= ISANG DEVICE LANG (solo mode) =================
+const HOST_NAME = () => localStorage.getItem('vk_name') || null;
+async function hostReserve(songId) {
+  const { error } = await sb.from('queue').insert({ room: ROOM, song_id: songId, singer: HOST_NAME() });
+  if (error) { toast('Hindi na-reserve: ' + error.message, 'err'); return false; }
+  toast(current ? 'Naka-reserve' : 'Naka-reserve. Magsisimula na.', 'ok');
+  loadQueue();
+  return true;
+}
+async function findSong(code) {
+  const { data } = await sb.from('songs').select('id, code, title, artist').eq('code', code).maybeSingle();
+  return data;
+}
+
+// --- panel ---
+function openSolo(tab) {
+  $('solo').hidden = false;
+  document.body.classList.add('solo-open');
+  if (tab) soloTab(tab);
+  renderSoloQueue();
+}
+function closeSolo() { $('solo').hidden = true; document.body.classList.remove('solo-open'); }
+function soloTab(t) {
+  document.querySelectorAll('.solo-tabs button').forEach(b => b.classList.toggle('on', b.dataset.st === t));
+  document.querySelectorAll('.solo-pane').forEach(p => p.classList.toggle('on', p.id === 'sp-' + t));
+  if (t === 'search' && !$('sList').innerHTML) soloSearch();
+  if (t === 'queue') renderSoloQueue();
+}
+$('soloBtn').onclick = () => openSolo('code');
+$('soloClose').onclick = closeSolo;
+document.querySelectorAll('.solo-tabs button').forEach(b => b.onclick = () => soloTab(b.dataset.st));
+document.querySelectorAll('.solo-ctrls button').forEach(b => b.onclick = () => handleCmd(b.dataset.cmd));
+
+// keypad sa panel
+let sCode = '', sSong = null;
+function renderSCode() {
+  $('sCode').innerHTML = esc(sCode) + `<span class="ghost">${'8'.repeat(5 - sCode.length)}</span>`;
+  $('sRes').disabled = !sSong;
+  $('sRes').innerHTML = sSong ? `Reserve <span class="dot">${sSong.code}</span>` : 'Reserve';
+}
+$('sPad').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const k = b.dataset.k;
+  if (k === 'clr') sCode = ''; else if (k === 'del') sCode = sCode.slice(0, -1); else if (sCode.length < 5) sCode += b.textContent;
+  sSong = null; renderSCode();
+  $('sPrev').textContent = 'I-type ang song number';
+  if (sCode.length === 5) {
+    const typed = sCode, s = await findSong(parseInt(sCode, 10));
+    if (typed !== sCode) return;
+    sSong = s;
+    $('sPrev').innerHTML = s ? `<b>${esc(s.title)}</b> ${esc(s.artist || '')}` : '<span class="err">Walang kanta sa numerong ito</span>';
+    renderSCode();
+  }
+});
+$('sRes').onclick = async () => { if (sSong && await hostReserve(sSong.id)) { sCode = ''; sSong = null; renderSCode(); $('sPrev').textContent = 'I-type ang song number'; } };
+
+// hanap
+let sqT = null;
+$('sQ').addEventListener('input', () => { clearTimeout(sqT); sqT = setTimeout(soloSearch, 300); });
+async function soloSearch() {
+  const q = $('sQ').value.trim().replace(/[,%()*\\]/g, ' ').trim();
+  let req = sb.from('songs').select('id, code, title, artist, category').order('title').limit(100);
+  if (q) req = /^\d{1,5}$/.test(q) ? req.or(`title.ilike.%${q}%,artist.ilike.%${q}%,code.eq.${parseInt(q, 10)}`) : req.or(`title.ilike.%${q}%,artist.ilike.%${q}%`);
+  const { data } = await req;
+  $('sList').innerHTML = (data || []).map(s => `<div class="s-row"><span class="dot">${s.code}</span><div><b>${esc(s.title)}</b><small>${esc(s.artist || '')}${s.category ? ', ' + esc(s.category) : ''}</small></div><button class="btn small" data-sid="${s.id}">Reserve</button></div>`).join('')
+    || '<p class="s-empty">Walang nahanap.</p>';
+}
+$('sList').addEventListener('click', e => { const b = e.target.closest('[data-sid]'); if (b) hostReserve(b.dataset.sid); });
+
+// pila
+function renderSoloQueue() {
+  if ($('solo').hidden) return;
+  const rows = queue.map((q, k) => {
+    const i = itemInfo(q), playing = q.status === 'playing';
+    return `<div class="s-row ${playing ? 'playing' : ''}"><span class="dot">${esc(i.code)}</span><div><b>${esc(i.title)}</b><small>${playing ? 'Kinakanta' : (q.singer ? esc(q.singer) : '')}</small></div>
+      ${playing ? '' : `<button class="btn small icon" data-sup="${q.id}" aria-label="Unahin">${ICON('up')}</button><button class="btn small icon danger" data-sdel="${q.id}" aria-label="Alisin">${ICON('x')}</button>`}</div>`;
+  });
+  $('sQueue').innerHTML = rows.join('') || '<p class="s-empty">Walang nakapila.</p>';
+}
+$('sQueue').addEventListener('click', async e => {
+  const up = e.target.closest('[data-sup]'), del = e.target.closest('[data-sdel]');
+  if (up) {
+    const min = Math.min(...queue.filter(q => q.status === 'waiting').map(q => q.sort_order));
+    await sb.from('queue').update({ sort_order: min - 1 }).eq('id', up.dataset.sup); loadQueue();
+  }
+  if (del) { await sb.from('queue').delete().eq('id', del.dataset.sdel).eq('status', 'waiting'); loadQueue(); }
+});
+
+// mic ng device na ito
+let sMicRAF = 0;
+$('sMicBtn').onclick = async () => {
+  if (VKMicHost.hasLocal()) {
+    VKMicHost.removeLocal(); cancelAnimationFrame(sMicRAF);
+    $('sMicBtn').classList.remove('on'); $('sMicStatus').textContent = 'Gamitin ang mic ng device na ito'; $('sMicMute').hidden = true; $('sMicMeter').style.width = '0';
+    return;
+  }
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
+    VKMicHost.addLocal(st, HOST_NAME() || 'Mic');
+    $('sMicBtn').classList.add('on'); $('sMicStatus').textContent = 'Naka-on ang mic. Pindutin ulit para patayin.'; $('sMicMute').hidden = false;
+    (function loop() { sMicRAF = requestAnimationFrame(loop); const l = VKMicHost.levels().find(m => m.id === 'local'); $('sMicMeter').style.width = Math.min(100, (l ? l.level : 0) * 450) + '%'; })();
+  } catch (e) {
+    toast(e.name === 'NotAllowedError' ? 'Hindi pinayagan ang mic. Payagan ito sa settings ng browser.' : 'Walang mic na nakita sa device na ito.', 'err', 4500);
+  }
+};
+$('sMicMute').onclick = () => {
+  const m = $('sMicMute').textContent === 'I-mute';
+  VKMicHost.setLocalMuted(m); $('sMicMute').textContent = m ? 'I-unmute' : 'I-mute';
+};
+
+// --- direktang pag-type ng numero gamit ang keyboard (laptop) ---
+let ceCode = '', ceSong = null, ceT = null;
+function showCE() {
+  $('codeEntry').classList.toggle('on', ceCode.length > 0);
+  $('ceNum').innerHTML = esc(ceCode) + `<span class="ghost">${'8'.repeat(5 - ceCode.length)}</span>`;
+  clearTimeout(ceT);
+  ceT = setTimeout(() => { ceCode = ''; ceSong = null; showCE(); }, 8000);
+}
+async function ceKey(e) {
+  if (!started || e.target.closest('input, textarea, select')) return false;
+  if (/^[0-9]$/.test(e.key)) {
+    if (ceCode.length >= 5) ceCode = '';
+    ceCode += e.key; ceSong = null; $('ceTitle').textContent = '';
+    showCE();
+    if (ceCode.length === 5) {
+      const typed = ceCode, s = await findSong(parseInt(ceCode, 10));
+      if (typed !== ceCode) return true;
+      ceSong = s;
+      $('ceTitle').textContent = s ? `${s.title}${s.artist ? ', ' + s.artist : ''}` : 'Walang kanta sa numerong ito';
+    }
+    return true;
+  }
+  if (!ceCode) return false;
+  if (e.key === 'Backspace') { ceCode = ceCode.slice(0, -1); ceSong = null; $('ceTitle').textContent = ''; showCE(); return true; }
+  if (e.key === 'Escape') { ceCode = ''; ceSong = null; showCE(); return true; }
+  if (e.key === 'Enter') {
+    if (ceSong && await hostReserve(ceSong.id)) { ceCode = ''; ceSong = null; showCE(); }
+    return true;
+  }
+  return false;
+}
+document.addEventListener('keydown', async e => { if (await ceKey(e)) e.preventDefault(); }, true);
 
 // ================= INIT =================
 renderQr();

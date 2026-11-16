@@ -7,6 +7,7 @@
 <script src="assets/js/icons.js"></script>
 <script src="assets/js/theme.js"></script>
 <script src="assets/js/prefs.js"></script>
+<script src="assets/js/wallpaper.js"></script>
 <title>Videoke</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
@@ -69,7 +70,8 @@
   try {
     const { data, count } = await sb.from('songs').select('code, title, artist', { count: 'exact' }).limit(200);
     if (!data || !data.length) return;
-    document.getElementById('libCount').textContent = count + (count === 1 ? ' kanta' : ' na kanta');
+    const n = count ?? data.length;
+    document.getElementById('libCount').textContent = n + (n === 1 ? ' kanta' : ' na kanta');
     let i = Math.floor(Math.random() * data.length);
     const show = () => {
       const s = data[i % data.length]; i++;

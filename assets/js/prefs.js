@@ -34,7 +34,12 @@
     micVolume: 100,          // 0-150
     micEcho: 30,             // 0-100
     micReverb: 20,           // 0-100
-    micClarity: 30           // 0-100
+    micClarity: 30,          // 0-100
+    // wallpaper + transparency
+    wallpaper: 'none',       // none | image (naka-save sa IndexedDB)
+    wallDim: 45,             // dilim ng wallpaper 0-80
+    glass: 0,                // transparency ng mga box 0-80
+    glassBlur: true          // blur sa likod ng box
   };
   function read() {
     try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); }

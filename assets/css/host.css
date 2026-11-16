@@ -167,3 +167,77 @@ body.has-marquee #lyrics { bottom: calc(12vh + 3.6vw); }
 .mic-chip.muted { opacity: .5; }
 .mic-chip.muted .ic { color: #ff8a8a; }
 .sc-note { font-size: 1.2vw; color: #7d8593; margin-top: .8vw; }
+
+/* wallpaper bilang background ng TV, dahan-dahang gumagalaw */
+#wallImg { position: absolute; inset: -4%; display: none; background: center / cover no-repeat; animation: kenburns 40s ease-in-out infinite alternate; }
+@keyframes kenburns { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.08) translate(-2%, -1.5%); } }
+@media (prefers-reduced-motion: reduce) { #wallImg { animation: none; } }
+/* transparent na mga box sa TV */
+body.glass .rs, body.glass .rs-lbl, body.glass #nowTag, body.glass .mic-chip, body.glass #cornerQr, body.glass #volBadge, body.glass #sfxNote {
+  background: rgba(8, 10, 14, calc(.62 * var(--box-op) / 100%)); backdrop-filter: blur(var(--glass-blur)); }
+
+/* ---------- isang device lang: button + panel ---------- */
+.solo-btn { position: absolute; left: 1.6vw; top: 4.4vw; z-index: 13; display: inline-flex; align-items: center; gap: .6vw;
+  padding: .7vw 1.3vw; border-radius: 999px; font-size: clamp(13px, 1.2vw, 20px); font-weight: 700; color: #062320;
+  background: var(--display-fg); box-shadow: 0 6px 24px rgba(0,0,0,.35); transition: opacity .25s; }
+.solo-btn .ic { width: 1.2em; height: 1.2em; }
+body.playing .solo-btn { opacity: 0; pointer-events: none; }
+body.playing.ui .solo-btn { opacity: 1; pointer-events: auto; }
+body.solo-open .solo-btn { opacity: 0; pointer-events: none; }
+
+.solo { position: absolute; top: 0; right: 0; bottom: 0; z-index: 40; width: min(420px, 92vw); display: flex; flex-direction: column;
+  background: rgba(15, 17, 21, .94); backdrop-filter: blur(14px); border-left: 1px solid rgba(255,255,255,.08);
+  color: #eceef1; padding: 14px 16px 16px; overflow-y: auto; font-size: 15px; animation: soloIn .25s ease; }
+.solo[hidden] { display: none; }
+@keyframes soloIn { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+.solo-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.solo-head b { font-size: 20px; letter-spacing: -.01em; }
+.solo .close-x { background: #1d2027; border-color: #2e333d; color: #eceef1; }
+.solo-ctrls { display: grid; grid-template-columns: 1fr 1fr 1.3fr 1fr 1fr; gap: 8px; }
+.solo-ctrls button { height: 46px; display: grid; place-items: center; border-radius: 12px; background: #1d2027; border: 1px solid #2e333d; color: #eceef1; }
+.solo-ctrls button.main { background: var(--display-fg); color: #062320; border-color: transparent; }
+.solo-ctrls .ic { width: 22px; height: 22px; }
+.solo-tabs { display: grid; grid-template-columns: repeat(4, 1fr); margin: 14px 0 12px; border-bottom: 1px solid #2e333d; }
+.solo-tabs button { padding: 10px 0 9px; font-weight: 600; font-size: 14px; color: #949baa; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.solo-tabs button.on { color: #eceef1; border-bottom-color: var(--display-fg); }
+.solo-pane { display: none; }
+.solo-pane.on { display: block; }
+.solo-lcd { padding: 10px; text-align: center; }
+.solo-lcd .dot { font-size: 46px; letter-spacing: .14em; line-height: 1; }
+.solo-prev { text-align: center; min-height: 42px; margin: 8px 0; color: #949baa; display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.solo-prev b { color: #eceef1; }
+.solo-prev .err { color: #ff7a7a; }
+.solo-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.solo-pad button { height: 52px; border-radius: 12px; background: #1d2027; border: 1px solid #2e333d; color: #eceef1; font-size: 24px; font-weight: 600; display: grid; place-items: center; }
+.solo-pad button:active { background: #252932; }
+.solo-pad button[data-k] { font-size: 17px; color: #949baa; }
+.solo-res { width: 100%; height: 52px; margin-top: 10px; font-size: 17px; border-radius: 12px; }
+.solo-res .dot { color: inherit; text-shadow: none; margin-left: 6px; }
+.solo .field { background: #1d2027; border-color: #2e333d; color: #eceef1; }
+.solo-list { margin-top: 8px; }
+.s-row { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid #23272f; }
+.s-row > .dot { font-size: 18px; min-width: 62px; }
+.s-row > div { flex: 1; min-width: 0; }
+.s-row b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-row small { color: #949baa; }
+.s-row.playing { background: rgba(98,227,210,.1); border-radius: 10px; padding: 10px; }
+.s-row .btn { background: #1d2027; border-color: #2e333d; color: #eceef1; }
+.s-row .btn.danger { color: #ff7a7a; }
+.s-empty { color: #949baa; text-align: center; padding: 20px 0; }
+.solo-mic { text-align: center; padding: 10px 0; }
+.solo-mic .mic-btn { width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; margin: 6px auto 14px; background: #1a1d23; border: 2px solid #2e333d; color: #eceef1; }
+.solo-mic .mic-btn .ic { width: 46px; height: 46px; }
+.solo-mic .mic-btn.on { background: var(--display-fg); color: #062320; border-color: transparent; box-shadow: 0 0 30px rgba(98,227,210,.35); }
+.solo-mic p { color: #949baa; font-size: 14px; }
+.solo-mic .mic-meter { height: 8px; border-radius: 999px; background: #23272f; overflow: hidden; margin: 10px 0 14px; }
+.solo-mic .mic-meter b { display: block; height: 100%; width: 0; background: var(--display-fg); }
+.solo-mic .btn { background: #1d2027; border-color: #2e333d; color: #eceef1; }
+
+/* pag-type ng numero gamit ang keyboard */
+#codeEntry { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.96); z-index: 26; opacity: 0; pointer-events: none;
+  background: rgba(10, 12, 15, .92); border: 1px solid #23272f; border-radius: 2vw; padding: 2vw 3.4vw; text-align: center; transition: opacity .15s, transform .15s; color: #eceef1; }
+#codeEntry.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.ce-lbl { font-size: 1.4vw; color: #7d8593; }
+.ce-num { font-size: 10vw; line-height: 1; letter-spacing: .1em; margin: .4vw 0 .8vw; }
+.ce-title { font-size: 2vw; font-weight: 700; min-height: 1.3em; }
+.ce-hint { font-size: 1.1vw; color: #7d8593; margin-top: .8vw; }

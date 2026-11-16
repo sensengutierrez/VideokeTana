@@ -7,6 +7,7 @@
 <script src="../assets/js/icons.js"></script>
 <script src="../assets/js/theme.js"></script>
 <script src="../assets/js/prefs.js"></script>
+<script src="../assets/js/wallpaper.js"></script>
 <title>Videoke Settings</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
@@ -34,6 +35,30 @@
         <div class="set-txt"><b>Tema</b><small>Ang Auto ay sumusunod sa setting ng device mo.</small></div>
         <div class="seg" data-seg="theme"><button data-v="dark">Dark</button><button data-v="light">Light</button><button data-v="auto">Auto</button></div>
       </div>
+      <div class="set col">
+        <div class="set-txt"><b>Wallpaper</b><small>Sariling larawan bilang background ng app sa device na ito. Hindi ito ina-upload kahit saan.</small></div>
+        <div class="wall-row">
+          <div class="wall-thumb" id="wallThumb"><span>Walang wallpaper</span></div>
+          <div class="wall-acts">
+            <button class="btn" id="wallPick" type="button"><i data-i="upload"></i>Pumili ng larawan</button>
+            <button class="btn danger" id="wallClear" type="button">Alisin</button>
+          </div>
+        </div>
+        <input type="file" id="wallIn" accept="image/*" hidden>
+      </div>
+      <div class="set col dep-wall">
+        <div class="set-txt"><b>Dilim ng wallpaper</b><small>Mas madilim, mas madaling basahin ang mga letra.</small></div>
+        <div class="range-row"><span class="muted">Maliwanag</span><input type="range" data-pref="wallDim" min="0" max="80" step="5"><span class="muted">Madilim</span></div>
+      </div>
+      <div class="set col">
+        <div class="set-txt"><b>Transparency ng mga box</b><small>Gawing see-through ang mga box at button para makita ang wallpaper o background.</small></div>
+        <div class="range-row"><span class="muted">Buo</span><input type="range" data-pref="glass" min="0" max="80" step="5"><span class="muted">See-through</span></div>
+        <div class="range-val" data-show="glass"></div>
+      </div>
+      <label class="set dep-glass">
+        <div class="set-txt"><b>Blur sa likod ng box</b><small>Pinalalabo ang nasa likod para mabasa pa rin ang laman ng box.</small></div>
+        <span class="switch"><input type="checkbox" data-pref="glassBlur"><span></span></span>
+      </label>
     </div>
   </section>
 
@@ -129,8 +154,8 @@
     <h2>Background sa TV</h2>
     <div class="group">
       <div class="set">
-        <div class="set-txt"><b>Uri ng background</b><small>Ang "Sariling video" ay ang mga video loop na in-upload mo sa Library.</small></div>
-        <div class="seg" data-pref="bgMode"><button data-v="animated">Animated</button><button data-v="videos">Sariling video</button><button data-v="plain">Plain</button></div>
+        <div class="set-txt"><b>Uri ng background</b><small>Ang "Video" ay ang mga video loop na in-upload mo sa Library. Ang "Wallpaper" ay ang larawang pinili mo sa Itsura, dahan-dahang gumagalaw.</small></div>
+        <div class="seg" data-pref="bgMode"><button data-v="animated">Animated</button><button data-v="videos">Video</button><button data-v="image">Wallpaper</button><button data-v="plain">Plain</button></div>
       </div>
       <div class="set dep-anim">
         <div class="set-txt"><b>Animated na eksena</b></div>

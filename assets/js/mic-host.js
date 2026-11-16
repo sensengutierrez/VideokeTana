@@ -72,10 +72,27 @@
     onChange();
     return peer;
   }
+  // Mic ng mismong device (isang device lang): diretso sa halo, walang WebRTC
+  function addLocal(stream, name) {
+    ensure();
+    if (ac.state === 'suspended') ac.resume().catch(() => {});
+    close('local');
+    const src = ac.createMediaStreamSource(stream);
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 90;
+    const pres = ac.createBiquadFilter(); pres.type = 'peaking'; pres.frequency.value = 3200; pres.Q.value = 0.9;
+    const g = ac.createGain();
+    const an = ac.createAnalyser(); an.fftSize = 1024;
+    src.connect(hp).connect(pres).connect(g).connect(bus);
+    src.connect(an);
+    peers.set('local', { id: 'local', name: name || 'Mic ng device', pc: null, local: stream, src, presence: pres, gain: g, an,
+      buf: new Float32Array(an.fftSize), level: 0, muted: false });
+    apply(); onChange();
+  }
   function close(id) {
     const p = peers.get(id);
     if (!p) return;
-    try { p.pc.close(); } catch (e) {}
+    try { p.pc && p.pc.close(); } catch (e) {}
+    try { p.local && p.local.getTracks().forEach(t => t.stop()); } catch (e) {}
     try { p.src && p.src.disconnect(); p.gain && p.gain.disconnect(); } catch (e) {}
     if (p.el) p.el.srcObject = null;
     peers.delete(id);
@@ -125,7 +142,7 @@
       }
       p.level = p.muted ? 0 : rms;
       if (p.level > 0.45) hot = true;
-      out.push({ id: p.id, name: p.name, level: p.level, state: p.pc.connectionState, muted: p.muted, live: !!p.an });
+      out.push({ id: p.id, name: p.name, level: p.level, state: p.pc ? p.pc.connectionState : 'connected', muted: p.muted, live: !!p.an });
     });
     // tuloy-tuloy na sobrang lakas nang ~2s = malamang feedback -> hinaan muna
     hotCount = hot ? hotCount + 1 : Math.max(0, hotCount - 1);
@@ -139,7 +156,10 @@
       window.addEventListener('vkprefs', apply);
     },
     unlock() { ensure(); if (ac.state === 'suspended') ac.resume().catch(() => {}); },
-    handle, levels,
+    handle, levels, addLocal,
+    removeLocal() { close('local'); },
+    hasLocal: () => peers.has('local'),
+    setLocalMuted(m) { const p = peers.get('local'); if (p) { p.muted = !!m; p.gain.gain.value = m ? 0 : 1; onChange(); } },
     count: () => peers.size,
     list: () => [...peers.values()].map(p => ({ id: p.id, name: p.name, muted: p.muted, live: !!p.an })),
     closeAll() { [...peers.keys()].forEach(close); }

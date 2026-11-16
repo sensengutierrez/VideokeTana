@@ -62,6 +62,8 @@ function render() {
   $('ssGroup').classList.toggle('off', !p.ssEnabled);
   document.querySelectorAll('.dep-score').forEach(e => e.classList.toggle('dim', p.scoreMode === 'off'));
   document.querySelectorAll('.dep-anim').forEach(e => e.classList.toggle('dim', p.bgMode !== 'animated'));
+  document.querySelectorAll('.dep-wall').forEach(e => e.classList.toggle('dim', p.wallpaper !== 'image'));
+  document.querySelectorAll('.dep-glass').forEach(e => e.classList.toggle('dim', !p.glass));
   delayLabel(p.lyricDelay);
   document.querySelectorAll('[data-show]').forEach(e => showVal(e.dataset.show, p[e.dataset.show]));
   lyricPreview(p);
@@ -70,8 +72,25 @@ function render() {
 
 function showVal(key, v) {
   const e = document.querySelector(`[data-show="${key}"]`);
-  if (e) e.textContent = v + '%';
+  if (e) e.textContent = key === 'glass' ? (+v === 0 ? 'Buo (walang transparency)' : v + '% see-through') : v + '%';
 }
+
+// ----- Wallpaper -----
+function wallThumb(url) {
+  const t = $('wallThumb');
+  t.style.backgroundImage = url ? `url("${url}")` : '';
+  t.classList.toggle('has', !!url);
+  $('wallClear').disabled = !url;
+}
+window.addEventListener('vkwall', e => wallThumb(e.detail.url));
+$('wallPick').addEventListener('click', () => $('wallIn').click());
+$('wallIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try { await VKWall.set(f); toast('Naitakda ang wallpaper', 'ok'); render(); }
+  catch (err) { toast('Hindi magamit ang larawang ito. Pumili ng iba.', 'err', 4000); }
+});
+$('wallClear').addEventListener('click', async () => { await VKWall.clear(); toast('Inalis ang wallpaper', 'ok'); render(); });
 function delayLabel(v) {
   v = +v;
   $('lyricDelayVal').textContent = v === 0 ? 'Walang adjust' : `${Math.abs(v / 1000).toFixed(1)} segundo ${v > 0 ? 'mas maaga' : 'mas huli'}`;
