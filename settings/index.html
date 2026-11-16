@@ -19,77 +19,224 @@
     <a class="close-x" href="../" title="Isara"></a>
     <h1>Settings</h1>
   </header>
+  <p class="intro muted">Naka-save ang settings sa device na ito. Ang settings ng TV (lyrics, score, background) ay i-set sa laptop o tablet na naka-konekta sa TV.</p>
 
-  <section>
+  <nav class="jump" aria-label="Mga section">
+    <a href="#s-itsura">Itsura</a><a href="#s-lyrics">Lyrics</a><a href="#s-score">Score</a><a href="#s-tv">TV screen</a>
+    <a href="#s-bg">Background</a><a href="#s-tunog">Tunog</a><a href="#s-saver">Screensaver</a><a href="#s-data">Data</a>
+  </nav>
+
+  <!-- ITSURA -->
+  <section id="s-itsura">
     <h2>Itsura</h2>
     <div class="group">
       <div class="set">
         <div class="set-txt"><b>Tema</b><small>Ang Auto ay sumusunod sa setting ng device mo.</small></div>
-        <div class="seg" id="themeSeg">
-          <button data-v="dark">Dark</button><button data-v="light">Light</button><button data-v="auto">Auto</button>
-        </div>
-      </div>
-      <div class="set">
-        <div class="set-txt"><b>Background sa TV</b><small>Gumagalaw na background habang kumakanta at naghihintay. Ang Palit-palit ay iba bawat kanta.</small></div>
-        <select class="field select" id="sceneSel">
-          <option value="auto">Palit-palit</option><option value="city">Lungsod sa gabi</option>
-          <option value="sea">Dagat sa paglubog ng araw</option><option value="sky">Langit na may bituin</option>
-        </select>
-      </div>
-      <div class="set">
-        <div class="set-txt"><b>Laki ng lyrics sa TV</b><small>Para sa mga kantang may .lrc na lyrics.</small></div>
-        <div class="seg" id="lyrSeg">
-          <button data-v="s">Maliit</button><button data-v="m">Katamtaman</button><button data-v="l">Malaki</button>
-        </div>
+        <div class="seg" data-seg="theme"><button data-v="dark">Dark</button><button data-v="light">Light</button><button data-v="auto">Auto</button></div>
       </div>
     </div>
   </section>
 
-  <section>
+  <!-- LYRICS -->
+  <section id="s-lyrics">
+    <h2>Lyrics sa TV</h2>
+    <div class="display ly-preview" id="lyPreview" aria-hidden="true">
+      <div class="lp-cue" id="lpCue">3</div>
+      <div class="lp-cur" id="lpCur">Ito ang linyang kinakanta</div>
+      <div class="lp-next" id="lpNext"><div>Ito ang susunod na linya</div><div>Pangatlong linya</div><div>Pang-apat na linya</div></div>
+    </div>
+    <div class="group">
+      <div class="set">
+        <div class="set-txt"><b>Laki</b></div>
+        <div class="seg" data-pref="lyricSize"><button data-v="s">Maliit</button><button data-v="m">Katamtaman</button><button data-v="l">Malaki</button><button data-v="xl">Pinakamalaki</button></div>
+      </div>
+      <div class="set">
+        <div class="set-txt"><b>Posisyon</b></div>
+        <div class="seg" data-pref="lyricAlign"><button data-v="center">Gitna</button><button data-v="left">Kaliwa</button></div>
+      </div>
+      <div class="set">
+        <div class="set-txt"><b>Ilang linya ang kita</b><small>Ang 4 na linya ay mas madaling basahin nang maaga.</small></div>
+        <div class="seg" data-pref="lyricLines" data-num><button data-v="2">2 linya</button><button data-v="4">4 na linya</button></div>
+      </div>
+      <div class="set col">
+        <div class="set-txt"><b>Kulay ng highlight</b><small>Ang kulay ng bahaging nakanta na.</small></div>
+        <div class="swatches" data-pref="hlColor"></div>
+      </div>
+      <label class="set">
+        <div class="set-txt"><b>Ibang kulay bawat kanta</b><small>Pipili ng random na kulay ng highlight sa bawat kanta.</small></div>
+        <span class="switch"><input type="checkbox" data-pref="hlRandom"><span></span></span>
+      </label>
+      <div class="set">
+        <div class="set-txt"><b>Outline ng letra</b></div>
+        <div class="seg" data-pref="outline" data-num><button data-v="0">Wala</button><button data-v="1">Manipis</button><button data-v="2">Makapal</button></div>
+      </div>
+      <label class="set">
+        <div class="set-txt"><b>Anino ng letra</b><small>Para mabasa kahit maliwanag ang background.</small></div>
+        <span class="switch"><input type="checkbox" data-pref="lyricShadow"><span></span></span>
+      </label>
+      <div class="set">
+        <div class="set-txt"><b>Countdown bago kumanta</b><small>Lalabas din ang "Interlude" kapag mahaba ang tugtog na walang kanta.</small></div>
+        <div class="seg" data-pref="countdown"><button data-v="num">3 2 1</button><button data-v="dots">Tuldok</button><button data-v="off">Wala</button></div>
+      </div>
+      <div class="set col">
+        <div class="set-txt"><b>Timing ng lyrics</b><small>Kung nauuna o nahuhuli ang lyrics sa kanta sa TV mo, iusog dito.</small></div>
+        <div class="range-row"><span class="muted">Mas huli</span><input type="range" data-pref="lyricDelay" min="-1500" max="1500" step="100"><span class="muted">Mas maaga</span></div>
+        <div class="range-val" id="lyricDelayVal"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCORE -->
+  <section id="s-score">
+    <h2>Score</h2>
+    <div class="group">
+      <div class="set">
+        <div class="set-txt"><b>Score pagkatapos ng kanta</b><small>Pang-aliw lang muna ang Random. Ang score na nakabase sa boses ay darating kasama ang mic feature.</small></div>
+        <div class="seg" data-pref="scoreMode"><button data-v="random">Random</button><button data-v="off">Wala</button></div>
+      </div>
+      <div class="set dep-score">
+        <div class="set-txt"><b>Hirap</b><small>Sa Madali, laging mataas ang score. Sa Mahirap, bihira ang 90 pataas.</small></div>
+        <div class="seg" data-pref="scoreLevel"><button data-v="easy">Madali</button><button data-v="medium">Katamtaman</button><button data-v="hard">Mahirap</button></div>
+      </div>
+      <div class="set dep-score">
+        <div class="set-txt"><b>Palakpak at fanfare</b></div>
+        <div class="seg" data-pref="applause" data-num><button data-v="0">Wala</button><button data-v="1">Mahina</button><button data-v="2">Katamtaman</button><button data-v="3">Malakas</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TV SCREEN -->
+  <section id="s-tv">
+    <h2>TV screen</h2>
+    <div class="group">
+      <div class="set col">
+        <div class="set-txt"><b>Teksto kapag walang kanta</b><small>Lalabas sa itaas ng orasan habang naghihintay ng kanta.</small></div>
+        <input class="field" data-pref="idleText" maxlength="40" placeholder="Pumili ng kanta">
+      </div>
+      <div class="set col">
+        <div class="set-txt"><b>Tumatakbong teksto sa ibaba</b><small>Pang-okasyon, hal. "Happy birthday, Lola!" Iwanang blangko kung ayaw.</small></div>
+        <input class="field" data-pref="bottomText" maxlength="160" placeholder="Hal. Maligayang kaarawan, Lola Nena!">
+      </div>
+      <div class="set col">
+        <div class="set-txt"><b>Kulay ng tumatakbong teksto</b></div>
+        <div class="swatches" data-pref="bottomColor"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BACKGROUND -->
+  <section id="s-bg">
+    <h2>Background sa TV</h2>
+    <div class="group">
+      <div class="set">
+        <div class="set-txt"><b>Uri ng background</b><small>Ang "Sariling video" ay ang mga video loop na in-upload mo sa Library.</small></div>
+        <div class="seg" data-pref="bgMode"><button data-v="animated">Animated</button><button data-v="videos">Sariling video</button><button data-v="plain">Plain</button></div>
+      </div>
+      <div class="set dep-anim">
+        <div class="set-txt"><b>Animated na eksena</b></div>
+        <select class="field select" data-pref="scene">
+          <option value="auto">Palit-palit</option><option value="city">Lungsod sa gabi</option>
+          <option value="sea">Dagat sa paglubog ng araw</option><option value="sky">Langit na may bituin</option>
+        </select>
+      </div>
+      <label class="set">
+        <div class="set-txt"><b>Palitan bawat kanta</b><small>Kapag naka-off, iisang background lang hanggang palitan mo.</small></div>
+        <span class="switch"><input type="checkbox" data-pref="bgChange"><span></span></span>
+      </label>
+    </div>
+  </section>
+
+  <!-- TUNOG -->
+  <section id="s-tunog">
+    <h2>Tunog</h2>
+    <div class="group">
+      <label class="set">
+        <div class="set-txt"><b>Sound effects mula sa phone</b><small>Palakpak, drum roll, busina at ding na pinipindot sa Remote.</small></div>
+        <span class="switch"><input type="checkbox" data-pref="sfxEnabled"><span></span></span>
+      </label>
+      <div class="set col">
+        <div class="set-txt"><b>Lakas ng sound effects at palakpak</b></div>
+        <div class="range-row"><span class="muted">Mahina</span><input type="range" data-pref="sfxVolume" min="10" max="100" step="10"><span class="muted">Malakas</span></div>
+      </div>
+      <div class="set">
+        <div class="set-txt"><b>Beep sa pag-type ng numero</b><small>Sa phone na ginagamit bilang remote.</small></div>
+        <div class="seg" data-pref="keyBeep"><button data-v="off">Wala</button><button data-v="low">Mahina</button><button data-v="mid">Katamtaman</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREENSAVER -->
+  <section id="s-saver">
     <h2>Screensaver</h2>
-    <div class="display preview" id="ssPreview" aria-hidden="true">
+    <div class="display preview" aria-hidden="true">
       <div class="pv-time"><span class="dot" id="pvTime">10:24</span><span class="pv-ampm" id="pvAmpm">PM</span></div>
       <div class="pv-date" id="pvDate"></div>
     </div>
-    <div class="group">
+    <div class="group" id="ssGroup">
       <label class="set">
-        <div class="set-txt"><b>Gamitin ang screensaver</b><small>Lalabas ang orasan sa phone at ibang page kapag walang gumagamit. Sa TV, laging may orasan at background kapag walang kanta.</small></div>
-        <span class="switch"><input type="checkbox" id="ssEnabled"><span></span></span>
+        <div class="set-txt"><b>Gamitin ang screensaver</b><small>Orasan sa phone at ibang page kapag walang gumagamit. Sa TV, laging may orasan at background kapag walang kanta.</small></div>
+        <span class="switch"><input type="checkbox" data-pref="ssEnabled"><span></span></span>
       </label>
       <div class="set dep">
         <div class="set-txt"><b>Lalabas pagkatapos ng</b></div>
-        <select class="field select" id="ssAfter">
+        <select class="field select" data-pref="ssAfter" data-num>
           <option value="1">1 minuto</option><option value="2">2 minuto</option><option value="5">5 minuto</option>
           <option value="10">10 minuto</option><option value="15">15 minuto</option><option value="30">30 minuto</option>
         </select>
       </div>
       <div class="set dep">
         <div class="set-txt"><b>Format ng oras</b></div>
-        <div class="seg" id="fmtSeg"><button data-v="12">12-oras</button><button data-v="24">24-oras</button></div>
+        <div class="seg" data-pref="ss24h" data-bool><button data-v="false">12-oras</button><button data-v="true">24-oras</button></div>
       </div>
       <label class="set dep">
         <div class="set-txt"><b>Ipakita ang segundo</b></div>
-        <span class="switch"><input type="checkbox" id="ssSeconds"><span></span></span>
+        <span class="switch"><input type="checkbox" data-pref="ssSeconds"><span></span></span>
       </label>
       <label class="set dep">
         <div class="set-txt"><b>Ipakita ang petsa</b></div>
-        <span class="switch"><input type="checkbox" id="ssDate"><span></span></span>
+        <span class="switch"><input type="checkbox" data-pref="ssDate"><span></span></span>
       </label>
     </div>
     <button class="btn wide" id="ssTest"><i data-i="play"></i>Subukan ang screensaver</button>
   </section>
 
+  <!-- DATA -->
+  <section id="s-data">
+    <h2>Data at backup</h2>
+    <div class="group">
+      <button class="set act" id="exportCsv">
+        <div class="set-txt"><b>I-export ang listahan ng kanta</b><small>CSV file na nabubuksan sa Excel at Google Sheets.</small></div>
+        <i data-i="upload" class="flip"></i>
+      </button>
+      <button class="set act" id="backupBtn">
+        <div class="set-txt"><b>I-backup ang settings</b><small>Kasama ang Paborito, Kamakailan at pangalan mo sa device na ito.</small></div>
+        <i data-i="upload" class="flip"></i>
+      </button>
+      <button class="set act" id="restoreBtn">
+        <div class="set-txt"><b>I-restore mula sa backup</b><small>Pumili ng .json na backup file.</small></div>
+        <i data-i="upload"></i>
+      </button>
+      <button class="set act danger-row" id="resetBtn">
+        <div class="set-txt"><b>Ibalik sa default</b><small>Ibabalik ang lahat ng settings sa simula. Hindi kasama ang Paborito.</small></div>
+        <i data-i="refresh"></i>
+      </button>
+    </div>
+    <input type="file" id="restoreIn" accept=".json,application/json" hidden>
+  </section>
+
   <section>
     <h2>Tungkol sa app</h2>
     <div class="group about">
-      <div class="set"><div class="set-txt"><b>Videoke</b><small>Bersyon 0.4. Pambahay na videoke para sa TV, laptop, tablet at phone.</small></div></div>
-      <div class="set"><div class="set-txt"><b>Saan naka-save ang settings</b><small>Sa device na ito lang. Kailangang i-set ulit sa ibang phone o TV.</small></div></div>
-      <div class="set"><div class="set-txt"><b>Mga demo song</b><small>Ang mga demo song (10001 hanggang 10004) ay public domain na kanta na may original na arrangement.</small></div></div>
+      <div class="set"><div class="set-txt"><b>Videoke</b><small>Bersyon 0.6. Pambahay na videoke para sa TV, laptop, tablet at phone.</small></div></div>
+      <div class="set"><div class="set-txt"><b>Mga demo song</b><small>Ang 10001 hanggang 10010 ay public domain na kanta na may original na arrangement.</small></div></div>
     </div>
     <p class="foot">© 2026 VideokeTana. Lahat ng karapatan ay nakalaan.</p>
   </section>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/common.js"></script>
 <script src="../assets/js/screensaver.js"></script>
 <script src="../assets/js/settings.js"></script>
 </body>

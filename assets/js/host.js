@@ -46,7 +46,7 @@ function show(m) {
   $('cornerQr').style.display = playing ? 'flex' : 'none';
   $('nowTag').style.display = (m === 'video' || m === 'youtube') ? 'block' : 'none'; // sa audio, nasa screen na ang title
   // ang background ay tumatakbo lang kapag hindi natatakpan ng video
-  if (window.VKScenes) (m === 'video' || m === 'youtube') ? VKScenes.pause() : VKScenes.resume();
+  if (started) applyBg(false);
   renderNextBar();
 }
 
@@ -93,13 +93,14 @@ let loadTimer = null;
 function loadQueueSoon() { clearTimeout(loadTimer); loadTimer = setTimeout(loadQueue, 150); }
 
 async function startNext() {
-  if (starting || current) return;
+  if (starting || current || scoring) return;
   const next = queue.find(q => q.status === 'playing') || queue.find(q => q.status === 'waiting');
   if (!next) { show('idle'); broadcastState(); return; }
   starting = true;
   current = next;
   if (window.vkWake) window.vkWake();
-  if (window.VKScenes && VK_PREFS.get().scene === 'auto') VKScenes.next();
+  if (VK_PREFS.get().bgChange) applyBg(true);
+  pickSongColor();
   if (next.status !== 'playing') {
     await sb.from('queue').update({ status: 'playing' }).eq('id', next.id);
     next.status = 'playing';
@@ -119,10 +120,12 @@ async function startNext() {
 function failCurrent(msg, ms = 1500) {
   const id = current && current.id;
   toast(msg, 'err', 3500);
-  setTimeout(() => { if (current && current.id === id) finishCurrent(); }, ms);
+  setTimeout(() => { if (current && current.id === id) finishCurrent('error'); }, ms);
 }
 
-async function finishCurrent() {
+// reason: 'ended' (natapos ang kanta), 'skip', 'error'
+let scoring = false;
+async function finishCurrent(reason = 'skip') {
   const done = current;
   stopMedia();
   current = null;
@@ -130,9 +133,49 @@ async function finishCurrent() {
   $('pauseBadge').style.display = 'none';
   if (done) {
     queue = queue.filter(q => q.id !== done.id);
-    await sb.from('queue').delete().eq('id', done.id);
+    sb.from('queue').delete().eq('id', done.id);
+    if (reason === 'ended' && VK_PREFS.get().scoreMode !== 'off') await showScore(done);
   }
   startNext();
+}
+
+// ----- Score (pang-aliw; hindi pa sinusukat ang boses) -----
+function pickScore() {
+  // mas mataas ang score sa Madali, mas mahirap makakuha ng mataas sa Mahirap
+  const lvl = VK_PREFS.get().scoreLevel;
+  const [lo, hi, bias] = lvl === 'easy' ? [82, 100, .6] : lvl === 'hard' ? [55, 99, 1.6] : [70, 100, 1];
+  return Math.round(hi - Math.pow(Math.random(), 1 / bias) * (hi - lo));
+}
+function scoreMsg(n) {
+  return n === 100 ? 'Perfect! Pang-concert ang boses!' : n >= 95 ? 'Ang galing! Isa pa!' : n >= 88 ? 'Ang ganda ng boses!'
+    : n >= 80 ? 'Magaling! Palakpakan natin!' : 'Pwede na! Kanta pa ulit!';
+}
+function showScore(item) {
+  return new Promise(res => {
+    scoring = true;
+    const n = pickScore(), el = $('scoreScreen');
+    $('scNum').textContent = '0';
+    $('scMsg').textContent = '';
+    $('scWho').textContent = item.singer ? item.singer : '';
+    el.style.display = 'flex';
+    if (started) applyBg(false);
+    const pr = VK_PREFS.get();
+    VKSfx.setVolume(pr.sfxVolume / 100);
+    if (pr.applause > 0) VKSfx.play('drumroll');
+    const t0 = performance.now(), dur = 1900;
+    (function count(now) {
+      const k = Math.min(1, (now - t0) / dur);
+      $('scNum').textContent = k < 1 ? Math.floor(Math.random() * 100) : n;
+      if (k < 1) return requestAnimationFrame(count);
+      $('scMsg').textContent = scoreMsg(n);
+      if (pr.applause > 0) {
+        VKSfx.play('fanfare');
+        VKSfx.play('applause', { size: [0, .5, 1, 1.5][pr.applause] * (n >= 95 ? 1.2 : n >= 85 ? 1 : .7) });
+      }
+      if (channel) channel.send({ type: 'broadcast', event: 'score', payload: { score: n, singer: item.singer || '', title: itemInfo(item).title } });
+      setTimeout(() => { el.style.display = 'none'; scoring = false; res(); }, 4200);
+    })(t0);
+  });
 }
 
 function showSplash(item) {
@@ -189,8 +232,8 @@ async function playItem(item) {
   }
 }
 
-vid.addEventListener('ended', finishCurrent);
-aud.addEventListener('ended', finishCurrent);
+vid.addEventListener('ended', () => finishCurrent('ended'));
+aud.addEventListener('ended', () => finishCurrent('ended'));
 vid.addEventListener('error', () => { if (current && mode === 'video' && vid.getAttribute('src')) failCurrent('Error sa video file'); });
 aud.addEventListener('error', () => { if (current && mode === 'audio' && aud.getAttribute('src')) failCurrent('Error sa audio file'); });
 
@@ -201,7 +244,7 @@ window.onYouTubeIframeAPIReady = () => {
     playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, fs: 0 },
     events: {
       onReady: () => { ytReady = true; applyVolume(); ytReadyWaiters.forEach(f => f()); ytReadyWaiters = []; },
-      onStateChange: e => { if (e.data === YT.PlayerState.ENDED && mode === 'youtube') finishCurrent(); },
+      onStateChange: e => { if (e.data === YT.PlayerState.ENDED && mode === 'youtube') finishCurrent('ended'); },
       onError: () => {
         if (mode !== 'youtube') return;
         failCurrent('Ayaw ipa-play ng YouTube ang video na ito sa labas ng YouTube. Lilipat sa susunod...', 2500);
@@ -240,26 +283,51 @@ function parseLrc(text) {
 function lyricTick() {
   requestAnimationFrame(lyricTick);
   if (mode !== 'audio' || !lyrics.length) return;
-  const t = aud.currentTime + lyricOffset;
+  const t = aud.currentTime + lyricOffset + (VK_PREFS.get().lyricDelay || 0) / 1000;
   let idx = -1;
   for (let k = 0; k < lyrics.length; k++) { if (lyrics[k].t <= t) idx = k; else break; }
-  const cur = $('lyCur'), nxt = $('lyNext');
+  const cur = $('lyCur'), nxt = $('lyNext'), cue = $('lyCue');
+  // countdown na 3-2-1 bago pumasok ang boses
+  const cd = VK_PREFS.get().countdown;
+  const cueText = (left, label) => {
+    if (cd === 'off') return '';
+    if (left > 3.2) return label;
+    const n = Math.max(1, Math.ceil(left));
+    return cd === 'dots' ? '● '.repeat(n).trim() : String(n);
+  };
   if (idx < 0) {
     const first = lyrics[0];
     const left = first.t - t;
     cur.style.setProperty('--p', '0%');
-    cur.textContent = left <= 4 ? '● '.repeat(Math.max(1, Math.ceil(left))).trim() : '';
-    nxt.textContent = first.text;
+    cur.textContent = '';
+    const c = cd === 'off' ? '' : left <= 3.2 ? cueText(left) : (left > 6 ? `Intro, ${Math.ceil(left)}` : '');
+    if (cue.textContent !== c) cue.textContent = c;
+    setNext(0);
     return;
   }
   const line = lyrics[idx];
   const nextT = idx + 1 < lyrics.length ? lyrics[idx + 1].t : line.t + 5;
   const dur = Math.min(nextT - line.t, Math.max(2, line.text.length * 0.18) + 1);
   const p = Math.max(0, Math.min(1, (t - line.t) / dur));
+  // Interlude: mahabang pagitan na walang kakantahin
+  const gap = nextT - t, sung = t > line.t + dur + 0.8;
+  let c = '';
+  if (cd !== 'off' && idx + 1 < lyrics.length && sung && nextT - line.t - dur > 5) c = gap <= 3.2 ? cueText(gap) : `Interlude, ${Math.ceil(gap)}`;
+  if (cue.textContent !== c) cue.textContent = c;
+  if (!line.text && idx + 1 < lyrics.length && gap > 3.2) { cur.textContent = ''; setNext(idx + 1); return; }
   if (cur.textContent !== (line.text || '♪')) cur.textContent = line.text || '♪';
   cur.style.setProperty('--p', (p * 100).toFixed(1) + '%');
-  const upcoming = lyrics.slice(idx + 1).find(l => l.text);
-  nxt.textContent = upcoming ? upcoming.text : '';
+  setNext(idx + 1);
+}
+// mga susunod na linya (1 o 3, depende sa Settings)
+let lastNextKey = '';
+function setNext(from) {
+  const n = VK_PREFS.get().lyricLines >= 4 ? 3 : 1;
+  const up = lyrics.slice(from).filter(l => l.text).slice(0, n).map(l => l.text);
+  const key = from + '|' + n;
+  if (key === lastNextKey) return;
+  lastNextKey = key;
+  $('lyNext').innerHTML = up.map(t => `<div>${esc(t)}</div>`).join('');
 }
 requestAnimationFrame(lyricTick);
 
@@ -292,7 +360,8 @@ function handleCmd(action, value) {
     case 'toggle': setPaused(!paused); break;
     case 'pause': setPaused(true); break;
     case 'play': setPaused(false); break;
-    case 'skip': if (current) finishCurrent(); break;
+    case 'skip': if (current) finishCurrent('skip'); break;
+    case 'sfx': playSfx(value); return;
     case 'restart': restart(); break;
     case 'volup': volume = Math.min(100, volume + 10); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
     case 'voldown': volume = Math.max(0, volume - 10); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
@@ -373,8 +442,10 @@ $('gate').onclick = () => {
   started = true;
   $('gate').style.display = 'none';
   keepAwake();
+  VKSfx.unlock();
   const sc = VK_PREFS.get().scene;
   VKScenes.start($('scene'), sc === 'auto' ? VKScenes.NAMES[Math.floor(Math.random() * VKScenes.NAMES.length)] : sc);
+  applyBg(false);
   // i-unlock ang audio para sa susunod na autoplay
   [vid, aud].forEach(el => { el.muted = true; el.play().catch(() => {}); el.pause(); el.muted = false; });
   loadYTApi();
@@ -386,10 +457,38 @@ $('gate').onclick = () => {
 // Ang host ay may sariling "attract screen" (background + orasan + QR), kaya hindi na kailangan ang itim na screensaver
 window.vkCanSleep = () => false;
 window.vkSaverExtra = () => `<div class="ss-qr">${$('qrBig').innerHTML}</div><div>I-scan para mag-reserve<br>Room <b>${ROOM}</b></div>`;
-function applyPrefs() {
+const HL_COLORS = ['#62e3d2', '#ffd54a', '#ff7ab6', '#7cc4ff', '#9be15d', '#ffa552', '#c49bff'];
+let songColor = null;
+function pickSongColor() {
   const p = VK_PREFS.get();
-  document.body.classList.remove('lyr-s', 'lyr-m', 'lyr-l');
-  document.body.classList.add('lyr-' + p.lyricSize);
+  songColor = p.hlRandom ? HL_COLORS[Math.floor(Math.random() * HL_COLORS.length)] : null;
+  applyPrefs();
+}
+function applyPrefs() {
+  const p = VK_PREFS.get(), b = document.body;
+  b.classList.remove('lyr-s', 'lyr-m', 'lyr-l', 'lyr-xl');
+  b.classList.add('lyr-' + p.lyricSize);
+  b.classList.toggle('lyr-left', p.lyricAlign === 'left');
+  b.classList.toggle('lyr-4', p.lyricLines >= 4);
+  const ly = $('lyrics');
+  ly.style.setProperty('--hl', songColor || p.hlColor);
+  const o = [0, 2, 4][p.outline] || 0;
+  const f = [];
+  if (o) f.push(`drop-shadow(${o / 2}px 0 0 #000)`, `drop-shadow(-${o / 2}px 0 0 #000)`, `drop-shadow(0 ${o / 2}px 0 #000)`, `drop-shadow(0 -${o / 2}px 0 #000)`);
+  if (p.lyricShadow) f.push('drop-shadow(0 4px 10px rgba(0,0,0,.65))');
+  ly.style.setProperty('--lyFilter', f.length ? f.join(' ') : 'none');
+  lastNextKey = '';
+  // teksto sa TV
+  $('idleTitle').textContent = p.idleText || '';
+  $('idleTitle').style.display = p.idleText ? '' : 'none';
+  const mq = $('marquee'), txt = (p.bottomText || '').trim();
+  b.classList.toggle('has-marquee', !!txt);
+  if (txt && $('marqueeText').textContent !== txt) {
+    $('marqueeText').textContent = txt;
+    $('marqueeText').style.animationDuration = Math.max(12, txt.length * 0.32) + 's';
+  }
+  mq.style.setProperty('--mq', p.bottomColor || '#ffd54a');
+  if (started) applyBg(false);
 }
 window.addEventListener('vkprefs', applyPrefs);
 applyPrefs();
@@ -400,6 +499,22 @@ async function keepAwake() {
   try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => wakeLock = null); } } catch (e) {}
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && started) keepAwake(); });
+
+// ================= SOUND EFFECTS mula sa remote =================
+const SFX_LABEL = { applause: 'Palakpak', drumroll: 'Drum roll', horn: 'Busina', ding: 'Ding' };
+let lastSfx = 0;
+function playSfx(v) {
+  const p = VK_PREFS.get();
+  if (!p.sfxEnabled) return;
+  const o = typeof v === 'object' && v ? v : { name: v };
+  if (!SFX_LABEL[o.name] || Date.now() - lastSfx < 1200) return;
+  lastSfx = Date.now();
+  VKSfx.setVolume(p.sfxVolume / 100);
+  VKSfx.play(o.name, { size: 1 });
+  const n = $('sfxNote');
+  n.textContent = SFX_LABEL[o.name] + (o.from ? ` mula kay ${o.from}` : '');
+  n.classList.remove('show'); void n.offsetWidth; n.classList.add('show');
+}
 
 // ================= ORASAN + BACKGROUND =================
 const DAYS = ['Linggo', 'Lunes', 'Martes', 'Miyerkules', 'Huwebes', 'Biyernes', 'Sabado'];
@@ -415,10 +530,52 @@ function tickClock() {
   $('idleDate').textContent = `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 setInterval(tickClock, 1000); tickClock();
+// ----- Background: animated / sariling video / plain -----
+const bgv = $('bgv');
+let bgList = null, bgPick = null;
+async function loadBgList() {
+  const { data } = await sb.from('backgrounds').select('id, title, path');
+  bgList = data || [];
+}
+async function applyBg(change) {
+  const p = VK_PREFS.get();
+  const covered = mode === 'video' || mode === 'youtube';
+  if (p.bgMode === 'videos') {
+    if (!bgList) await loadBgList();
+    if (bgList.length) {
+      if (window.VKScenes) VKScenes.pause();
+      $('scene').style.visibility = 'hidden';
+      document.body.classList.remove('bg-plain');
+      if (change || !bgPick) {
+        const choices = bgList.length > 1 ? bgList.filter(b => !bgPick || b.id !== bgPick.id) : bgList;
+        bgPick = choices[Math.floor(Math.random() * choices.length)];
+        bgv.src = mediaUrl(bgPick.path);
+      }
+      bgv.style.display = 'block';
+      covered ? bgv.pause() : bgv.play().catch(() => {});
+      return;
+    }
+  }
+  bgv.pause(); bgv.style.display = 'none';
+  if (p.bgMode === 'plain') {
+    if (window.VKScenes) VKScenes.pause();
+    $('scene').style.visibility = 'hidden';
+    document.body.classList.add('bg-plain');
+    return;
+  }
+  document.body.classList.remove('bg-plain');
+  $('scene').style.visibility = 'visible';
+  if (!window.VKScenes) return;
+  if (change && p.scene === 'auto') VKScenes.next();
+  covered ? VKScenes.pause() : VKScenes.resume();
+}
 function nextScene() {
+  const p = VK_PREFS.get();
+  if (p.bgMode === 'videos') { applyBg(true); return; }
+  if (p.bgMode === 'plain') { VK_PREFS.set('bgMode', 'animated'); return; }
   if (!window.VKScenes) return;
   VKScenes.next();
-  if (VK_PREFS.get().scene !== 'auto') VK_PREFS.set('scene', VKScenes.current());
+  if (p.scene !== 'auto') VK_PREFS.set('scene', VKScenes.current());
 }
 $('btnScene').onclick = nextScene;
 window.addEventListener('vkprefs', () => {

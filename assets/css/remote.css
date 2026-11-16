@@ -107,3 +107,27 @@ body { min-height: 100vh; }
 .yt-head { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-weight: 700; font-size: 15px; }
 .yt-head .link { color: var(--accent); font-size: 13px; font-weight: 600; }
 #pane-yt .row-in .btn:not(.icon) { flex-shrink: 0; }
+
+/* sound effects */
+.sfx { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.sfx button { height: 34px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--display-muted);
+  background: transparent; border: 1px solid var(--display-line); transition: background .15s, color .15s; }
+.sfx button:active, .sfx button.hit { background: var(--display-fg); color: #062320; border-color: transparent; }
+.fav { color: var(--muted); }
+.fav.on { color: var(--warn); }
+.fav.on .ic { fill: currentColor; }
+
+/* siksik na layout para kasya ang numpad + Reserve sa karaniwang phone */
+.now { padding: 12px 12px 10px; }
+.ctrls { margin-top: 10px; }
+.ctrls button { height: 44px; }
+.sfx button { height: 30px; font-size: 12px; }
+.namechip { margin-top: 8px; padding: 4px 2px; }
+.tabs { margin: 6px 0 12px; }
+.lcd { padding: 10px 16px; }
+.lcd .dot { font-size: 44px; }
+.preview { min-height: 40px; margin: 6px 0 8px; }
+.pad button { height: 50px; }
+/* puwang sa ibaba para makita ang huling hilera kapag naka-scroll */
+#pane-code { padding-bottom: 8px; }
+#pane-code .pad { margin-bottom: 4px; }

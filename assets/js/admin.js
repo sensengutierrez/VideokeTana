@@ -180,7 +180,7 @@ async function refreshAuth() {
   const { data: isAdmin } = await sb.rpc('is_admin');
   $('adminArea').style.display = isAdmin ? 'block' : 'none';
   $('notAdmin').style.display = isAdmin ? 'none' : 'block';
-  if (isAdmin) loadLib();
+  if (isAdmin) { loadLib(); loadBgs(); }
 }
 $('logoutBtn').onclick = async () => { await sb.auth.signOut(); setMode('login'); refreshAuth(); };
 sb.auth.onAuthStateChange(ev => {
@@ -469,5 +469,44 @@ $('ytList').addEventListener('click', e => {
   openSongModal({ mode: 'yt', head: 'Idagdag mula sa YouTube', ytId: it.id, channel: it.channel, title: m.title, artist: m.artist, category: '' });
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSongModal(); });
+
+// ================= BACKGROUND VIDEOS =================
+let bgs = [];
+async function loadBgs() {
+  const { data, error } = await sb.from('backgrounds').select('*').order('created_at', { ascending: false });
+  if (error) return;
+  bgs = data || [];
+  const used = bgs.reduce((a, b) => a + (b.size_bytes || 0), 0);
+  $('bgStats').textContent = bgs.length ? `${bgs.length} video, ${fmtMB(used)}` : '';
+  $('bgList').innerHTML = bgs.length ? bgs.map(b => `
+    <div class="lrow">
+      <video src="${esc(mediaUrl(b.path))}#t=1" muted preload="metadata" playsinline></video>
+      <div class="info"><div class="t">${esc(b.title)}</div><div class="a">${fmtMB(b.size_bytes || 0)}</div></div>
+      <div class="acts"><button class="btn small icon danger" data-bgdel="${b.id}" aria-label="Burahin" title="Burahin">${ICON('trash')}</button></div>
+    </div>`).join('') : '<div class="empty">Wala pang background video.</div>';
+}
+$('bgAdd').onclick = () => $('bgIn').click();
+$('bgIn').addEventListener('change', async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  for (const f of files) {
+    if (f.size > MAX) { toast(`${f.name}: lagpas ${VK_CONFIG.MAX_FILE_MB}MB`, 'err', 4000); continue; }
+    const ext = extOf(f.name) || 'mp4', path = `bgv/${crypto.randomUUID()}.${ext}`;
+    toast(`Ina-upload ang ${f.name}`, 'ok', 1800);
+    const up = await sb.storage.from('songs').upload(path, f, { contentType: f.type || MIME[ext] || 'video/mp4' });
+    if (up.error) { toast(friendly(up.error), 'err', 4000); continue; }
+    const { error } = await sb.from('backgrounds').insert({ title: baseOf(f.name).slice(0, 80), path, size_bytes: f.size });
+    if (error) { await sb.storage.from('songs').remove([path]); toast(friendly(error), 'err', 4000); continue; }
+  }
+  loadBgs();
+});
+$('bgList').addEventListener('click', async e => {
+  const d = e.target.closest('[data-bgdel]'); if (!d) return;
+  const b = bgs.find(x => x.id === d.dataset.bgdel);
+  if (!b || !confirm(`Burahin ang background na "${b.title}"?`)) return;
+  const { error } = await sb.from('backgrounds').delete().eq('id', b.id);
+  if (error) { toast(friendly(error), 'err'); return; }
+  await sb.storage.from('songs').remove([b.path]);
+  toast('Nabura', 'ok'); loadBgs();
+});
 
 refreshAuth();

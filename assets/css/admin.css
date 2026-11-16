@@ -131,3 +131,5 @@
 .inp .sel option { color: #171a20; }
 .uprow .cat { padding: 9px 8px; font-size: 14px; }
 @media (max-width: 600px) { .row-search { flex-direction: column; } }
+
+.lrow video { width: 76px; height: 43px; object-fit: cover; border-radius: 8px; background: #000; }

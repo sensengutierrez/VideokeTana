@@ -2,13 +2,34 @@
 (function () {
   const KEY = 'vk_prefs';
   const DEFAULTS = {
-    ssEnabled: true,      // screensaver naka-on
-    ssAfter: 5,           // minuto bago lumabas
-    ss24h: false,         // 24-oras na format
-    ssSeconds: false,     // ipakita ang segundo
-    ssDate: true,         // ipakita ang petsa
-    lyricSize: 'm',       // s | m | l (sa TV)
-    scene: 'auto'         // background sa TV: auto | city | sea | sky
+    // screensaver
+    ssEnabled: true, ssAfter: 5, ss24h: false, ssSeconds: false, ssDate: true,
+    // lyrics sa TV
+    lyricSize: 'm',          // s | m | l | xl
+    lyricAlign: 'center',    // center | left
+    lyricLines: 2,           // 2 | 4
+    hlColor: '#62e3d2',      // kulay ng highlight
+    hlRandom: false,         // random na kulay bawat kanta
+    outline: 1,              // 0 wala | 1 manipis | 2 makapal
+    lyricShadow: true,
+    countdown: 'num',        // num | dots | off
+    lyricDelay: 0,           // ms; positibo = mas maaga ang lyrics
+    // score
+    scoreMode: 'random',     // random | off
+    scoreLevel: 'medium',    // easy | medium | hard
+    applause: 2,             // 0 wala | 1 mahina | 2 katamtaman | 3 malakas
+    // TV screen
+    idleText: 'Pumili ng kanta',
+    bottomText: '',
+    bottomColor: '#ffd54a',
+    // background
+    bgMode: 'animated',      // animated | videos | plain
+    scene: 'auto',           // auto | city | sea | sky
+    bgChange: true,          // palitan bawat kanta
+    // tunog
+    sfxEnabled: true,
+    sfxVolume: 80,
+    keyBeep: 'mid'           // off | low | mid
   };
   function read() {
     try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); }

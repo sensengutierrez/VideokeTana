@@ -144,6 +144,10 @@ function connect() {
   if (channel) sb.removeChannel(channel);
   channel = sb.channel('room-' + ROOM, { config: { broadcast: { self: false } } })
     .on('broadcast', { event: 'state' }, ({ payload }) => { state = payload; hostSeen = true; renderNow(); renderQueue(); })
+    .on('broadcast', { event: 'score' }, ({ payload }) => {
+      toast(`Score${payload.singer ? ' ni ' + payload.singer : ''}: ${payload.score}`, 'ok', 4000);
+      try { navigator.vibrate && navigator.vibrate([20, 60, 20]); } catch (e) {}
+    })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'queue' }, () => loadQueueSoon())
     .subscribe(status => {
       $('conn').classList.toggle('ok', status === 'SUBSCRIBED');
@@ -171,6 +175,31 @@ document.querySelectorAll('.ctrls button').forEach(b => b.onclick = () => {
   if (c === 'skip' && state && state.now && !confirm('I-skip ang kanta?')) return;
   sendCmd(c);
 });
+
+// ----- Sound effects sa TV -----
+let sfxAt = 0;
+$('sfxRow').addEventListener('click', e => {
+  const b = e.target.closest('[data-sfx]'); if (!b) return;
+  if (!hostSeen) { toast(`Hindi makita ang TV sa room ${ROOM}.`, 'err'); return; }
+  if (Date.now() - sfxAt < 1200) return;
+  sfxAt = Date.now(); buzz();
+  channel.send({ type: 'broadcast', event: 'cmd', payload: { action: 'sfx', value: { name: b.dataset.sfx, from: NAME || '' } } });
+  b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 400);
+});
+
+// ----- Beep kapag nagta-type ng numero (Settings: Beep sa pag-type) -----
+let beepCtx = null;
+function keyBeep(hi) {
+  const lvl = VK_PREFS.get().keyBeep;
+  if (lvl === 'off') return;
+  try {
+    beepCtx = beepCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = beepCtx.currentTime, o = beepCtx.createOscillator(), g = beepCtx.createGain();
+    o.type = 'square'; o.frequency.value = hi ? 1320 : 990;
+    g.gain.setValueAtTime(lvl === 'low' ? .03 : .07, t); g.gain.exponentialRampToValueAtTime(.0005, t + .07);
+    o.connect(g).connect(beepCtx.destination); o.start(t); o.stop(t + .08);
+  } catch (e) {}
+}
 
 function renderNow() {
   const n = state && state.now;
@@ -245,6 +274,7 @@ async function reserve(row) {
 async function doReserve(row) {
   const { error } = await sb.from('queue').insert({ room: ROOM, singer: NAME || null, ...row });
   if (error) { toast('Hindi na-reserve: ' + error.message, 'err'); return false; }
+  addHistory(row);
   await loadQueue();
   const n = queue.filter(q => q.status === 'waiting').length;
   const playing = queue.some(q => q.status === 'playing');
@@ -272,6 +302,7 @@ $('pad').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
   buzz();
   const k = b.dataset.k;
+  keyBeep(!!k);
   if (k === 'clr') code = '';
   else if (k === 'del') code = code.slice(0, -1);
   else if (code.length < 5) code += b.textContent;
@@ -282,7 +313,7 @@ $('pad').addEventListener('click', async e => {
     const typed = code;
     const { data } = await sb.from('songs').select('id, code, title, artist').eq('code', parseInt(code, 10)).maybeSingle();
     if (typed !== code) return;
-    if (data) { codeSong = data; $('codePrev').innerHTML = `<b>${esc(data.title)}</b><span class="muted">${esc(data.artist || '')}</span>`; }
+    if (data) { codeSong = data; songCache.set(data.id, data); $('codePrev').innerHTML = `<b>${esc(data.title)}</b><span class="muted">${esc(data.artist || '')}</span>`; }
     else $('codePrev').innerHTML = '<span class="err">Walang kanta sa numerong ito</span>';
     renderCode();
   } else {
@@ -303,7 +334,7 @@ $('searchQ').addEventListener('input', () => { clearTimeout(st); st = setTimeout
 async function loadCats() {
   const { data } = await sb.from('songs').select('category').not('category', 'is', null).limit(1000);
   const have = [...new Set((data || []).map(r => r.category))].sort((x, y) => CATEGORIES.indexOf(x) - CATEGORIES.indexOf(y));
-  $('catChips').innerHTML = [['', 'Lahat'], ['__new', 'Bago'], ...have.map(c => [c, c])]
+  $('catChips').innerHTML = [['', 'Lahat'], ['__fav', 'Paborito'], ['__hist', 'Kamakailan'], ['__new', 'Bago'], ...have.map(c => [c, c])]
     .map(([v, l]) => `<button class="chip ${v === cat ? 'on' : ''}" data-cat="${esc(v)}">${esc(l)}</button>`).join('');
 }
 $('catChips').addEventListener('click', e => {
@@ -312,8 +343,49 @@ $('catChips').addEventListener('click', e => {
   document.querySelectorAll('#catChips .chip').forEach(x => x.classList.toggle('on', x === b));
   doSearch();
 });
+// ----- Paborito at Kamakailan (naka-save sa phone na ito) -----
+const LS = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') || d; } catch (e) { return d; } };
+const favs = () => LS('vk_favs', []);
+const hist = () => LS('vk_hist', []);
+function saveLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+const songCache = new Map();
+function addHistory(row) {
+  let h = hist();
+  const s = row.song_id ? songCache.get(row.song_id) : null;
+  const item = row.song_id
+    ? { id: row.song_id, code: s ? s.code : '', title: s ? s.title : 'Kanta', artist: s ? s.artist : '', kind: s ? s.kind : '' }
+    : { yt: row.yt_id, title: row.yt_title || 'YouTube video', artist: 'YouTube' };
+  h = [item, ...h.filter(x => (x.id || x.yt) !== (item.id || item.yt))].slice(0, 40);
+  saveLS('vk_hist', h);
+}
+function toggleFav(s) {
+  let f = favs();
+  const has = f.some(x => x.id === s.id);
+  f = has ? f.filter(x => x.id !== s.id) : [{ id: s.id, code: s.code, title: s.title, artist: s.artist, kind: s.kind }, ...f].slice(0, 100);
+  saveLS('vk_favs', f);
+  toast(has ? 'Inalis sa Paborito' : 'Naidagdag sa Paborito', 'ok');
+  return !has;
+}
+function songRow(s) {
+  const isFav = s.id && favs().some(x => x.id === s.id);
+  return `<div class="row">
+      <span class="num">${s.code || (s.yt ? 'YT' : '')}</span>
+      <div class="info"><div class="t">${esc(s.title)}</div><div class="a">${s.kind === 'youtube' || s.yt ? '<span class="src">YouTube</span>' : ''}${esc(s.yt ? '' : (s.artist || ''))}${s.category ? ', ' + esc(s.category) : ''}</div></div>
+      ${s.id ? `<button class="btn small icon fav ${isFav ? 'on' : ''}" data-fav="${s.id}" aria-label="Paborito" title="Paborito">${ICON('star')}</button>` : ''}
+      ${s.id ? `<button class="btn small" data-song="${s.id}">Reserve</button>` : `<button class="btn small" data-yt="${esc(s.yt)}" data-title="${esc(s.title)}">Reserve</button>`}
+    </div>`;
+}
+
 async function doSearch() {
   const q = $('searchQ').value.trim().replace(/[,%()*\\]/g, ' ').trim();
+  if (cat === '__fav' || cat === '__hist') {
+    const src = cat === '__fav' ? favs() : hist();
+    const ql = q.toLowerCase();
+    const list = src.filter(s => !ql || (s.title || '').toLowerCase().includes(ql) || (s.artist || '').toLowerCase().includes(ql) || String(s.code || '').includes(ql));
+    $('searchList').innerHTML = list.length ? list.map(songRow).join('')
+      : `<div class="empty">${cat === '__fav' ? 'Wala pang Paborito. Pindutin ang bituin sa tabi ng kanta.' : 'Wala ka pang nire-reserve sa phone na ito.'}</div>`;
+    return;
+  }
   let req = sb.from('songs').select('id, code, title, artist, kind, category, created_at');
   req = cat === '__new' ? req.order('created_at', { ascending: false }).limit(30) : req.order('title').limit(150);
   if (cat && cat !== '__new') req = req.eq('category', cat);
@@ -323,15 +395,19 @@ async function doSearch() {
   }
   const { data, error } = await req;
   if (error) { toast(error.message, 'err'); return; }
-  $('searchList').innerHTML = data.length ? data.map(s => `
-    <div class="row">
-      <span class="num">${s.code}</span>
-      <div class="info"><div class="t">${esc(s.title)}</div><div class="a">${s.kind === 'youtube' ? '<span class="src">YouTube</span>' : ''}${esc(s.artist || '')}${s.category ? ', ' + esc(s.category) : ''}</div></div>
-      <button class="btn small" data-song="${s.id}">Reserve</button>
-    </div>`).join('')
+  data.forEach(s => songCache.set(s.id, s));
+  $('searchList').innerHTML = data.length ? data.map(songRow).join('')
     : `<div class="empty">${q ? 'Walang nahanap sa library. Subukan sa YouTube tab.' : 'Wala pang kanta dito.'}</div>`;
 }
 $('searchList').addEventListener('click', e => {
+  const f = e.target.closest('[data-fav]');
+  if (f) {
+    const s = songCache.get(f.dataset.fav) || favs().find(x => x.id === f.dataset.fav) || hist().find(x => x.id === f.dataset.fav);
+    if (s) { const on = toggleFav(s); f.classList.toggle('on', on); if (cat === '__fav' && !on) doSearch(); }
+    return;
+  }
+  const y = e.target.closest('[data-yt]');
+  if (y) { reserve({ yt_id: y.dataset.yt, yt_title: y.dataset.title.slice(0, 200) }); return; }
   const b = e.target.closest('[data-song]');
   if (b) reserve({ song_id: b.dataset.song });
 });

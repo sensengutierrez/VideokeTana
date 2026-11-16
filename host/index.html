@@ -28,6 +28,7 @@
 
 <div id="stage">
   <canvas id="scene" aria-hidden="true"></canvas>
+  <video id="bgv" muted loop playsinline preload="auto" aria-hidden="true"></video>
   <video id="vid" playsinline preload="auto"></video>
   <div id="ytWrap"><div id="ytPlayer"></div></div>
 
@@ -40,7 +41,7 @@
 
   <div id="audioStage">
     <div id="aTitle"><div class="t" id="aT"></div><div class="a" id="aA"></div><div class="s" id="aS"></div></div>
-    <div id="lyrics"><div id="lyCur"></div><div id="lyNext"></div></div>
+    <div id="lyrics"><div id="lyCue"></div><div id="lyCur"></div><div id="lyNext"></div></div>
     <div id="noLrc">Walang lyrics para sa kantang ito</div>
     <audio id="aud" preload="auto"></audio>
   </div>
@@ -48,6 +49,7 @@
   <!-- attract screen kapag walang kanta -->
   <div id="idle">
     <div class="idle-panel">
+      <div class="idle-title" id="idleTitle">Pumili ng kanta</div>
       <div class="idle-time"><span class="dot" id="idleClock"></span><span id="idleAmpm"></span></div>
       <div class="idle-date" id="idleDate"></div>
       <p class="hint" id="idleHint">I-scan ang QR code gamit ang camera ng phone para mag-reserve ng kanta.</p>
@@ -66,6 +68,14 @@
     <div class="sp-a" id="spA"></div>
     <div class="sp-s" id="spS"></div>
   </div>
+  <div id="marquee"><span id="marqueeText"></span></div>
+  <div id="scoreScreen">
+    <span class="sc-lbl">Score</span>
+    <div class="dot sc-num" id="scNum">0</div>
+    <div class="sc-msg" id="scMsg"></div>
+    <div class="sc-who" id="scWho"></div>
+  </div>
+  <div id="sfxNote"></div>
   <div id="cornerQr"><div id="qrSmall"></div><div class="dot rc" id="roomSmall"></div></div>
   <div id="pauseBadge"><div><i data-i="pause"></i>Naka-pause</div></div>
   <div id="volBadge"></div>
@@ -85,6 +95,7 @@
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/common.js"></script>
 <script src="../assets/js/scenes.js"></script>
+<script src="../assets/js/sfx.js"></script>
 <script src="../assets/js/host.js"></script>
 <script src="../assets/js/screensaver.js"></script>
 </body>

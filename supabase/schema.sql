@@ -117,3 +117,19 @@ alter table public.songs alter column media_path drop not null;
 alter table public.songs add constraint songs_media_check check ((kind = 'youtube' and yt_id is not null) or (kind <> 'youtube' and media_path is not null));
 create index if not exists songs_category_idx on public.songs (category);
 create index if not exists songs_created_idx on public.songs (created_at desc);
+
+-- ---------- v0.6: background videos ----------
+create table if not exists public.backgrounds (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  path text not null,
+  size_bytes bigint,
+  created_at timestamptz not null default now()
+);
+alter table public.backgrounds enable row level security;
+create policy "bg read all" on public.backgrounds for select to anon, authenticated using (true);
+create policy "bg insert admin" on public.backgrounds for insert to authenticated with check ((select public.is_admin()));
+create policy "bg update admin" on public.backgrounds for update to authenticated using ((select public.is_admin())) with check ((select public.is_admin()));
+create policy "bg delete admin" on public.backgrounds for delete to authenticated using ((select public.is_admin()));
+grant select on public.backgrounds to anon, authenticated;
+grant insert, update, delete on public.backgrounds to authenticated;
