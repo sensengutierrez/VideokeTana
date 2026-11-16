@@ -322,6 +322,18 @@ function toggleFs() {
   else document.documentElement.requestFullscreen().catch(() => {});
 }
 $('btnFs').onclick = toggleFs;
+$('btnClose').onclick = () => {
+  if (!confirm('Isara ang host? Hihinto ang kanta.')) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  location.href = '../';
+};
+// Ipakita ang mga button kapag gumalaw ang mouse o tinap ang screen, tapos itago ulit
+let uiTimer = null;
+['mousemove', 'touchstart', 'click'].forEach(ev => document.addEventListener(ev, () => {
+  document.body.classList.add('ui');
+  clearTimeout(uiTimer);
+  uiTimer = setTimeout(() => document.body.classList.remove('ui'), 3000);
+}, { passive: true }));
 $('btnSkip').onclick = () => handleCmd('skip');
 $('btnNewRoom').onclick = () => {
   if (!confirm('Gumawa ng bagong room code? Kailangang i-scan ulit ng mga phone ang bagong QR.')) return;

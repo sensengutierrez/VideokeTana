@@ -8,6 +8,7 @@ Pambahay na videoke — host sa laptop/tablet (naka-HDMI/Type-C sa TV), remote s
 | `/` | Landing page |
 | `/host/` | Ang screen sa TV — player, lyrics, pila, QR code |
 | `/remote/?room=XXXX` | Phone remote — song code keypad, search, YouTube, pila, controls |
+| `/songbook/` | Listahan ng lahat ng kanta at song number (search, A–Z, reserve) |
 | `/admin/` | Upload at manage ng song library (admin login) |
 
 ## Folder structure
@@ -15,6 +16,7 @@ Pambahay na videoke — host sa laptop/tablet (naka-HDMI/Type-C sa TV), remote s
 ├── index.html            Landing page
 ├── host/index.html       TV / host screen
 ├── remote/index.html     Phone remote
+├── songbook/index.html   Listahan ng kanta
 ├── admin/index.html      Song library admin
 ├── assets/
 │   ├── css/              style.css (shared) + isang CSS bawat page

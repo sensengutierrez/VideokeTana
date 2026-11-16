@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0716">
+<title>Videoke — Songbook</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/songbook.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="head-left">
+      <a class="close-x" href="../" title="Isara">✕</a>
+      <div>
+        <h1>📖 Songbook</h1>
+        <div class="muted" id="count">Naglo-load...</div>
+      </div>
+    </div>
+    <div id="roomInfo" class="muted" style="font-size:13px"></div>
+  </header>
+
+  <div class="tools">
+    <input id="q" class="field" placeholder="🔍 Hanapin ang title, artist o song number..." autocomplete="off">
+    <div class="row-tools">
+      <div class="seg" id="sortSeg">
+        <button data-sort="code" class="on">#</button>
+        <button data-sort="title">Title</button>
+        <button data-sort="artist">Artist</button>
+      </div>
+      <div class="seg" id="kindSeg">
+        <button data-kind="" class="on">Lahat</button>
+        <button data-kind="video">🎬 Video</button>
+        <button data-kind="audio">🎵 Audio</button>
+      </div>
+    </div>
+    <div class="letters" id="letters"></div>
+  </div>
+
+  <div id="list" class="book"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/common.js"></script>
+<script src="../assets/js/songbook.js"></script>
+</body>
+</html>

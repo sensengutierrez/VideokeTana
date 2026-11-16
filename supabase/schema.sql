@@ -91,6 +91,7 @@ grant select on public.admins to authenticated;
 
 -- ---------- REALTIME ----------
 alter publication supabase_realtime add table public.queue;
+alter publication supabase_realtime add table public.songs;
 
 -- ---------- STORAGE (public read, admin write, 50MB/file) ----------
 insert into storage.buckets (id, name, public, file_size_limit)

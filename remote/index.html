@@ -13,6 +13,7 @@
 
   <!-- JOIN SCREEN -->
   <div id="joinView" class="join" style="display:none">
+    <a class="close-x" href="../" style="position:absolute;top:14px;right:14px" title="Isara">✕</a>
     <h1 class="neon">🎤</h1>
     <h2 style="margin:0">Sumali sa Videoke</h2>
     <p class="muted">I-scan ang QR sa TV gamit ang camera, o i-type ang room code.</p>
@@ -24,7 +25,7 @@
   <!-- MAIN -->
   <div id="mainView" style="display:none">
     <header>
-      <div class="logo"><span class="conn" id="conn"></span>🎤 Videoke</div>
+      <div style="display:flex;align-items:center;gap:10px"><a class="close-x" href="../" title="Isara">✕</a><div class="logo"><span class="conn" id="conn"></span>🎤 Videoke</div></div>
       <div style="display:flex;gap:6px">
         <button class="namechip" id="nameChip">🙂 Pangalan</button>
         <button class="roomchip" id="roomChip">----</button>

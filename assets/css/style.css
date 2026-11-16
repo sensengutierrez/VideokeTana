@@ -49,3 +49,11 @@ a { color: var(--cyan); }
 .toast.ok { border-color: var(--green); }
 .toast.err { border-color: var(--red); }
 .toast.out { opacity: 0; transform: translateY(10px); }
+
+/* ✕ close / back-to-home button */
+.close-x {
+  display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 50%; background: var(--card); border: 1px solid var(--line); color: var(--text);
+  font-size: 20px; font-weight: 700; text-decoration: none; line-height: 1;
+}
+.close-x:hover, .close-x:active { border-color: var(--red); color: var(--red); }

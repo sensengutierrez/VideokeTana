@@ -8,10 +8,10 @@
 <style>
   body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
     background: radial-gradient(ellipse at top, #2b1250 0%, var(--bg) 60%); }
-  .wrap { width: 100%; max-width: 760px; text-align: center; }
+  .wrap { width: 100%; max-width: 900px; text-align: center; }
   h1 { font-size: clamp(42px, 9vw, 76px); margin: 0 0 6px; letter-spacing: 2px; }
   .sub { margin-bottom: 34px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
   .card { display: block; text-decoration: none; color: var(--text); background: var(--card); border: 1px solid var(--line);
     border-radius: 20px; padding: 26px 18px; transition: transform .15s, border-color .2s; }
   .card:hover, .card:active { transform: translateY(-3px); border-color: var(--pink); }
@@ -27,6 +27,7 @@
   <div class="grid">
     <a class="card" href="host/"><div class="ico">📺</div><b>Host</b><span>Buksan sa laptop/tablet na naka-HDMI sa TV</span></a>
     <a class="card" href="remote/"><div class="ico">📱</div><b>Remote</b><span>Mag-reserve ng kanta gamit ang phone</span></a>
+    <a class="card" href="songbook/"><div class="ico">📖</div><b>Songbook</b><span>Listahan ng lahat ng kanta at song number</span></a>
     <a class="card" href="admin/"><div class="ico">🛠️</div><b>Admin</b><span>Mag-upload ng kanta sa library</span></a>
   </div>
 </div>

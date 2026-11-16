@@ -60,7 +60,8 @@ html, body { height: 100%; overflow: hidden; background: #000; }
   border-radius: 1vw; font-size: 1.8vw; font-weight: 700; display: none; }
 
 #topBtns { position: absolute; top: 1vw; right: 1vw; z-index: 30; display: flex; gap: .6vw; opacity: 0; transition: opacity .3s; }
-body:hover #topBtns { opacity: 1; }
+body.ui #topBtns { opacity: 1; }
+#topBtns .btn { font-size: 16px; }
 
 /* Start gate */
 #gate { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;

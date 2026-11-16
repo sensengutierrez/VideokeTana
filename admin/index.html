@@ -11,7 +11,8 @@
 <div class="app">
 
   <!-- AUTH -->
-  <div id="authView" class="auth card" style="display:none">
+  <div id="authView" class="auth card" style="display:none;position:relative">
+    <a class="close-x" href="../" style="position:absolute;top:10px;right:10px" title="Isara">✕</a>
     <h2 style="text-align:center">🛠️ Videoke Admin</h2>
     <input id="email" class="field" type="email" placeholder="Email" autocomplete="email">
     <input id="pass" class="field" type="password" placeholder="Password (min 6)" autocomplete="current-password">
@@ -23,9 +24,9 @@
   <!-- MAIN -->
   <div id="mainView" style="display:none">
     <header>
-      <h1>🛠️ Videoke Admin</h1>
+      <div style="display:flex;align-items:center;gap:10px"><a class="close-x" href="../" title="Isara">✕</a><h1>🛠️ Videoke Admin</h1></div>
       <div style="display:flex;gap:8px;align-items:center">
-        <a class="btn small" href="../">🏠</a>
+        
         <button class="btn small" id="logoutBtn">Logout</button>
       </div>
     </header>
