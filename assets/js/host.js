@@ -221,7 +221,7 @@ async function playItem(item) {
     $('aT').textContent = item.song.title;
     $('aA').textContent = item.song.artist || '';
     $('aS').textContent = item.singer ? 'Kumakanta: ' + item.singer : '';
-    $('lyCur').textContent = ''; $('lyNext').textContent = '';
+    $('lyCur').textContent = ''; lineText = null; $('lyNext').textContent = '';
     lyrics = []; lyricOffset = 0;
     if (item.song.lrc_path) {
       try {
@@ -334,7 +334,7 @@ function lyricTick() {
     const first = lyrics[0];
     const left = first.t - t;
     cur.style.setProperty('--p', '0%');
-    cur.textContent = '';
+    cur.textContent = ''; lineText = null;
     const c = cd === 'off' ? '' : left <= 3.2 ? cueText(left) : (left > 6 ? `Intro, ${Math.ceil(left)}` : '');
     if (cue.textContent !== c) cue.textContent = c;
     setNext(0);
@@ -349,10 +349,44 @@ function lyricTick() {
   let c = '';
   if (cd !== 'off' && idx + 1 < lyrics.length && sung && nextT - line.t - dur > 5) c = gap <= 3.2 ? cueText(gap) : `Interlude, ${Math.ceil(gap)}`;
   if (cue.textContent !== c) cue.textContent = c;
-  if (!line.text && idx + 1 < lyrics.length && gap > 3.2) { cur.textContent = ''; setNext(idx + 1); return; }
-  if (cur.textContent !== (line.text || '♪')) cur.textContent = line.text || '♪';
-  cur.style.setProperty('--p', (p * 100).toFixed(1) + '%');
+  if (!line.text && idx + 1 < lyrics.length && gap > 3.2) { cur.textContent = ''; lineText = null; setNext(idx + 1); return; }
+  setLine(line.text || '♪', p);
   setNext(idx + 1);
+}
+// Paliitin ang font para kasya sa iisang linya (parang videoke); kapag sobrang haba, saka lang hahatiin
+function fitLine(el) {
+  el.style.fontSize = ''; el.style.whiteSpace = 'nowrap';
+  const box = $('lyrics').clientWidth, w = el.scrollWidth;
+  if (!box || !w || w <= box) return;
+  const r = box / w * 0.97;
+  if (r >= 0.45) el.style.fontSize = (parseFloat(getComputedStyle(el).fontSize) * r).toFixed(1) + 'px';
+  else el.style.whiteSpace = '';
+}
+// Linyang kinakanta: hinahati sa salita para sunod-sunod ang highlight kahit maging 2 linya sa screen
+let lineText = null, lineWords = [];
+function setLine(text, p) {
+  const cur = $('lyCur');
+  if (text !== lineText) {
+    lineText = text;
+    const parts = text.split(/(\s+)/).filter(Boolean);
+    let pos = 0;
+    cur.innerHTML = '';
+    lineWords = [];
+    parts.forEach(w => {
+      if (/^\s+$/.test(w)) { cur.appendChild(document.createTextNode(' ')); pos += 1; return; }
+      const s = document.createElement('span'); s.className = 'w'; s.textContent = w;
+      s._a = pos; s._b = pos + w.length; pos += w.length;
+      cur.appendChild(s); lineWords.push(s);
+    });
+    lineWords.total = Math.max(1, pos);
+    fitLine(cur);
+  }
+  const at = p * lineWords.total;
+  for (const s of lineWords) {
+    const v = Math.max(0, Math.min(1, (at - s._a) / (s._b - s._a)));
+    const css = (v * 100).toFixed(1) + '%';
+    if (s._p !== css) { s._p = css; s.style.setProperty('--p', css); }
+  }
 }
 // mga susunod na linya (1 o 3, depende sa Settings)
 let lastNextKey = '';
@@ -363,6 +397,7 @@ function setNext(from) {
   if (key === lastNextKey) return;
   lastNextKey = key;
   $('lyNext').innerHTML = up.map(t => `<div>${esc(t)}</div>`).join('');
+  $('lyNext').querySelectorAll('div').forEach(fitLine);
 }
 requestAnimationFrame(lyricTick);
 

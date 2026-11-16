@@ -76,6 +76,7 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `index.h
 | 0.9 | Pitch bar + score na may tono; responsive na host sa portrait; ang Brain na ito | Ihanda ang pitch bar bago ang MIDI; nagpapatong ang taas ng TV screen sa phone | pitch.js, `.mel.json`, `pitch()` sa mic-host, media query sa host.css |
 | 0.9.1 | YouTube link sa single-device panel (Hanap) at sa Library (walang API key) | Walang paraan magdagdag ng YouTube sa isang device lang habang wala pang API key | `parseYouTubeId` + oEmbed para sa title; `hostReserve(null, {yt_id, yt_title})` |
 | 0.9.2 | `?v=` sa lahat ng CSS/JS link | Lumang CSS ang nakuha ng phone (cache ng browser/GitHub Pages), kaya nagpapatong pa rin sa taas | Palitan ang `?v=` sa lahat ng HTML tuwing may release |
+| 0.9.6 | Highlight ng lyrics bawat salita; kasya sa iisang linya; QR sa kanang itaas; layout para sa nakahigang phone | Sabay na nagha-highlight ang dalawang linya kapag nahati ang mahabang lyric; tinatakpan ng lyrics ang pitch bar | Bawat salita ay may sariling `--p` (`setLine`), `fitLine` na nagpapaliit ng font, media query `max-height: 520px` |
 
 ## Susunod
 
