@@ -256,6 +256,7 @@ function renderPending() {
     <div class="uprow">
       <input class="field" data-i="${i}" data-f="title" value="${esc(p.title)}" placeholder="Title" ${p.status === 'ok' ? 'disabled' : ''}>
       <input class="field" data-i="${i}" data-f="artist" value="${esc(p.artist)}" placeholder="Artist" ${p.status === 'ok' ? 'disabled' : ''}>
+      <select class="field cat" data-i="${i}" data-f="category" ${p.status === 'ok' ? 'disabled' : ''}><option value="">Kategorya</option>${CATEGORIES.map(c => `<option ${p.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select>
       ${p.status === 'wait' || p.status === 'err' ? `<button class="btn small icon danger" data-rm="${i}" aria-label="Alisin">${ICON('x')}</button>` : '<span></span>'}
       <div class="meta">
         <span>${ICON(p.kind === 'video' ? 'film' : 'music')}${esc(p.file.name)}, ${fmtMB(p.file.size)}${p.kind === 'audio' ? (p.lrc ? ', may lyrics' : ', <span class="warn">walang .lrc</span>') : ''}</span>
@@ -264,6 +265,10 @@ function renderPending() {
     </div>`).join('');
 }
 
+$('upList').addEventListener('change', e => {
+  const el = e.target; if (el.dataset.i === undefined) return;
+  pending[el.dataset.i][el.dataset.f] = el.value;
+});
 $('upList').addEventListener('input', e => {
   const el = e.target; if (el.dataset.i === undefined) return;
   pending[el.dataset.i][el.dataset.f] = el.value;
@@ -296,7 +301,8 @@ async function uploadOne(p) {
   }
   const { data, error } = await sb.from('songs').insert({
     title: p.title.trim() || baseOf(p.file.name), artist: p.artist.trim() || null,
-    kind: p.kind, media_path: mediaPath, lrc_path: lrcPath, size_bytes: p.file.size + (p.lrc ? p.lrc.size : 0)
+    kind: p.kind, media_path: mediaPath, lrc_path: lrcPath, size_bytes: p.file.size + (p.lrc ? p.lrc.size : 0),
+    category: p.category || null, license_note: 'Na-upload ng admin. Siguraduhing may karapatan sa kantang ito.'
   }).select('code').single();
   if (error) {
     await sb.storage.from('songs').remove([mediaPath, lrcPath].filter(Boolean));
@@ -332,13 +338,13 @@ async function loadLib() {
 }
 function renderLib() {
   const q = $('libQ').value.trim().toLowerCase();
-  const list = songs.filter(s => !q || String(s.code).includes(q) || s.title.toLowerCase().includes(q) || (s.artist || '').toLowerCase().includes(q));
+  const list = songs.filter(s => !q || String(s.code).includes(q) || s.title.toLowerCase().includes(q) || (s.artist || '').toLowerCase().includes(q) || (s.category || '').toLowerCase().includes(q));
   $('libList').innerHTML = list.length ? list.map(s => `
     <div class="lrow">
       <span class="num">${s.code}</span>
       <div class="info">
         <div class="t">${esc(s.title)}</div>
-        <div class="a">${ICON(s.kind === 'video' ? 'film' : 'music')}<span>${esc(s.artist || 'Walang artist')}</span>${s.kind === 'audio' ? (s.lrc_path ? '<span class="tag">May lyrics</span>' : '<span class="tag warn">Walang lyrics</span>') : ''}${s.license_note ? `<span class="tag" title="${esc(s.license_note)}">${/public domain/i.test(s.license_note) ? 'Public domain' : 'May note'}</span>` : ''}</div>
+        <div class="a">${s.kind === 'youtube' ? '<span class="src">YouTube</span>' : ICON(s.kind === 'video' ? 'film' : 'music')}<span>${esc(s.artist || 'Walang artist')}</span>${s.category ? `<span class="tag">${esc(s.category)}</span>` : ''}${s.kind === 'audio' ? (s.lrc_path ? '<span class="tag">May lyrics</span>' : '<span class="tag warn">Walang lyrics</span>') : ''}${s.license_note && /public domain/i.test(s.license_note) ? `<span class="tag" title="${esc(s.license_note)}">Public domain</span>` : ''}</div>
       </div>
       <div class="acts">
         ${s.kind === 'audio' ? `<button class="btn small icon" data-lrc="${s.id}" title="${s.lrc_path ? 'Palitan' : 'Idagdag'} ang lyrics (.lrc)" aria-label="Lyrics">${ICON('lyrics')}</button>` : ''}
@@ -354,10 +360,7 @@ $('libList').addEventListener('click', async e => {
   const ed = e.target.closest('[data-edit]'), del = e.target.closest('[data-del]'), lr = e.target.closest('[data-lrc]');
   if (ed) {
     const s = songs.find(x => x.id === ed.dataset.edit);
-    const title = prompt('Title:', s.title); if (title === null) return;
-    const artist = prompt('Artist:', s.artist || ''); if (artist === null) return;
-    const { error } = await sb.from('songs').update({ title: title.trim() || s.title, artist: artist.trim() || null }).eq('id', s.id);
-    if (error) toast(error.message, 'err'); else { toast('Na-save', 'ok'); loadLib(); }
+    openSongModal({ mode: 'edit', head: `I-edit ang ${s.code}`, id: s.id, title: s.title, artist: s.artist, category: s.category });
   }
   if (del) {
     const s = songs.find(x => x.id === del.dataset.del);
@@ -390,4 +393,81 @@ $('lrcIn').onchange = async e => {
     setTimeout(() => showErr(/expired|invalid/i.test(desc) ? 'Expired o hindi na valid ang link. Humingi ng bago.' : desc), 300);
   }
 })();
+// ================= SONG MODAL (edit / idagdag mula YouTube) =================
+let smCtx = null;
+$('smCat').innerHTML = '<option value="">Walang kategorya</option>' + CATEGORIES.map(c => `<option>${c}</option>`).join('');
+function openSongModal(ctx) {
+  smCtx = ctx;
+  $('smHead').textContent = ctx.head;
+  $('smTitle').value = ctx.title || '';
+  $('smArtist').value = ctx.artist || '';
+  $('smCat').value = ctx.category || '';
+  $('smSave').textContent = ctx.mode === 'yt' ? 'Idagdag sa library' : 'I-save';
+  showErr('', false, $('smErr'));
+  $('songModal').style.display = 'flex';
+  setTimeout(() => $('smTitle').focus(), 50);
+}
+function closeSongModal() { $('songModal').style.display = 'none'; smCtx = null; }
+$('smCancel').onclick = closeSongModal;
+$('songModal').addEventListener('click', e => { if (e.target.id === 'songModal') closeSongModal(); });
+$('smForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const title = $('smTitle').value.trim(), artist = $('smArtist').value.trim() || null, category = $('smCat').value || null;
+  if (!title) return showErr('Ilagay ang title ng kanta.', false, $('smErr'));
+  $('smSave').disabled = true;
+  let res;
+  if (smCtx.mode === 'edit') {
+    res = await sb.from('songs').update({ title, artist, category }).eq('id', smCtx.id).select('code').single();
+  } else {
+    res = await sb.from('songs').insert({ title, artist, category, kind: 'youtube', yt_id: smCtx.ytId,
+      license_note: `Naka-embed mula sa YouTube (${smCtx.channel || 'YouTube'}). Ang karapatan ay nasa YouTube at sa nag-upload; hindi dina-download.` }).select('code').single();
+  }
+  $('smSave').disabled = false;
+  if (res.error) return showErr(friendly(res.error), false, $('smErr'));
+  closeSongModal();
+  toast(smCtx && smCtx.mode === 'edit' ? 'Na-save' : `Naidagdag. Song no. ${res.data.code}`, 'ok');
+  await loadLib();
+  if (lastYt) renderYt(lastYt);
+});
+
+// ================= MULA SA YOUTUBE =================
+let lastYt = null;
+function cleanYtTitle(t) {
+  let x = t.replace(/[\[(][^\])]*(karaoke|lyrics?|instrumental|version|videoke|minus ?one|official|audio|hd)[^\])]*[\])]/gi, '')
+    .replace(/\b(karaoke|videoke|instrumental|minus ?one)\b/gi, '').replace(/\|.*$/, '').replace(/\s{2,}/g, ' ').trim();
+  const parts = x.split(/\s+[-–]\s+/);
+  return parts.length >= 2 ? { artist: parts[0].trim(), title: parts.slice(1).join(' - ').trim() } : { artist: '', title: x };
+}
+function renderYt(items) {
+  lastYt = items;
+  const have = new Map(songs.filter(s => s.yt_id).map(s => [s.yt_id, s.code]));
+  $('ytList').innerHTML = items.length ? items.map((it, k) => `
+    <div class="lrow">
+      <img src="${esc(it.thumb)}" alt="" loading="lazy">
+      <div class="info"><div class="t">${esc(it.title)}</div><div class="a">${esc(it.channel)}</div></div>
+      <div class="acts">${have.has(it.id) ? `<span class="tag">Nasa library, ${have.get(it.id)}</span>` : `<button class="btn small" data-add="${k}"><i data-i="plus"></i>Idagdag</button>`}</div>
+    </div>`).join('') : '<div class="empty">Walang nahanap. Subukan ang ibang salita.</div>';
+  hydrateIcons($('ytList'));
+}
+async function ytFind(mode) {
+  const q = $('ytQ').value.trim();
+  if (mode === 'search' && !q) { $('ytQ').focus(); return; }
+  $('ytHead').textContent = mode === 'latest' ? 'Bago at sikat ngayon' : `Resulta para sa "${q}"`;
+  $('ytList').innerHTML = '<div class="empty">Hinahanap</div>';
+  try {
+    const j = await ytSearchApi(q, mode);
+    if (j.error) { $('ytList').innerHTML = `<div class="empty">${esc(ytErrorText(j.error))}</div>`; return; }
+    renderYt(j.items || []);
+  } catch (e) { $('ytList').innerHTML = `<div class="empty">${esc(ytErrorText('network'))}</div>`; }
+}
+$('ytGo').onclick = () => ytFind('search');
+$('ytLatest').onclick = () => ytFind('latest');
+$('ytQ').addEventListener('keydown', e => { if (e.key === 'Enter') ytFind('search'); });
+$('ytList').addEventListener('click', e => {
+  const b = e.target.closest('[data-add]'); if (!b) return;
+  const it = lastYt[+b.dataset.add], m = cleanYtTitle(it.title);
+  openSongModal({ mode: 'yt', head: 'Idagdag mula sa YouTube', ytId: it.id, channel: it.channel, title: m.title, artist: m.artist, category: '' });
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSongModal(); });
+
 refreshAuth();

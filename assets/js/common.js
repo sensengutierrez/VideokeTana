@@ -77,9 +77,25 @@ function makeRoomCode() {
   return s;
 }
 
+// YouTube karaoke search (dumaraan sa Supabase Edge Function para nakatago ang API key)
+async function ytSearchApi(q, mode = 'search') {
+  const u = `${VK_CONFIG.SUPABASE_URL}/functions/v1/yt-search?mode=${mode}&q=${encodeURIComponent(q || '')}`;
+  const r = await fetch(u, { headers: { apikey: VK_CONFIG.SUPABASE_KEY } });
+  return r.json();
+}
+function ytErrorText(code) {
+  return ({
+    no_key: 'Hindi pa naka-set ang YouTube search. Pwede pa ring mag-paste ng YouTube link.',
+    quota: 'Naubos na ang libreng YouTube search para ngayong araw. Bukas ulit, o mag-paste ng link.',
+    forbidden_origin: 'Hindi pinapayagan ang site na ito na gumamit ng YouTube search.',
+    network: 'Hindi maabot ang YouTube. Subukan ulit.'
+  })[code] || 'Hindi gumana ang YouTube search. Subukan ulit, o mag-paste ng link.';
+}
+const CATEGORIES = ['OPM', 'Pop', 'Love song', 'Rock', 'Pasko', 'Pambata', 'Gospel', 'Folk', 'Classic', 'Iba pa'];
+
 function queueSelect(room) {
   return sb.from('queue')
-    .select('*, song:songs(id, code, title, artist, kind, media_path, lrc_path)')
+    .select('*, song:songs(id, code, title, artist, kind, media_path, lrc_path, yt_id)')
     .eq('room', room)
     .order('sort_order', { ascending: true });
 }

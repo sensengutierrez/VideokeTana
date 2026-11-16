@@ -180,10 +180,10 @@ async function playItem(item) {
     $('noLrc').style.display = lyrics.length ? 'none' : 'block';
     aud.src = mediaUrl(item.song.media_path);
     await aud.play();
-  } else if (item.yt_id) {
+  } else if (item.yt_id || (item.song && item.song.kind === 'youtube')) {
     show('youtube');
     await ensureYT();
-    ytPlayer.loadVideoById(item.yt_id);
+    ytPlayer.loadVideoById(item.yt_id || item.song.yt_id);
   } else {
     throw new Error('Walang media');
   }

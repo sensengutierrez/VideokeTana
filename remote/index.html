@@ -91,23 +91,27 @@
 
     <!-- SEARCH -->
     <div class="pane" id="pane-search">
-      <input id="searchQ" class="field" placeholder="Hanapin ang title o artist" autocomplete="off" type="search">
+      <input id="searchQ" class="field" placeholder="Hanapin ang title, artist o numero" autocomplete="off" type="search">
+      <div class="chips" id="catChips"></div>
       <div class="list" id="searchList"></div>
     </div>
 
     <!-- YOUTUBE -->
     <div class="pane" id="pane-yt">
-      <div id="ytSearchBox" style="display:none">
+      <div id="ytSearchBox">
         <div class="row-in">
-          <input id="ytQ" class="field" placeholder="Hanapin sa YouTube" autocomplete="off" type="search">
+          <input id="ytQ" class="field" placeholder="Hanapin ang kahit anong kanta" autocomplete="off" type="search">
           <button class="btn primary icon" id="ytGo" aria-label="Hanapin"><i data-i="search"></i></button>
         </div>
+        <div class="yt-head"><span id="ytHead">Bago at sikat ngayon</span><button class="link" id="ytLatest" type="button">Ipakita ang bago</button></div>
         <div class="list" id="ytList"></div>
-        <p class="note">O i-paste ang link:</p>
       </div>
-      <input id="ytLink" class="field" placeholder="I-paste ang YouTube link" autocomplete="off">
-      <button class="btn primary wide" id="ytReserve">Reserve</button>
-      <p class="note">Sa YouTube app: Share, tapos Copy link. Piliin ang may "karaoke" sa title para may lyrics.</p>
+      <p class="note" id="ytNoKey" style="display:none">Hindi pa naka-set ang YouTube search. Pwede pa ring mag-paste ng YouTube link sa ibaba.</p>
+      <p class="note">O i-paste ang YouTube link:</p>
+      <div class="row-in">
+        <input id="ytLink" class="field" placeholder="https://youtu.be/..." autocomplete="off">
+        <button class="btn" id="ytReserve">Reserve</button>
+      </div>
     </div>
 
     <!-- QUEUE -->

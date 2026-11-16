@@ -257,7 +257,8 @@ async function doReserve(row) {
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
-  if (b.dataset.tab === 'search' && !$('searchList').innerHTML) doSearch();
+  if (b.dataset.tab === 'search' && !$('searchList').innerHTML) { loadCats(); doSearch(); }
+  if (b.dataset.tab === 'yt') openYtTab();
   if (b.dataset.tab === 'queue') loadQueue();
 });
 
@@ -297,11 +298,25 @@ $('codeReserve').onclick = async () => {
 };
 
 // ================= LIBRARY SEARCH =================
-let st = null;
+let st = null, cat = '';
 $('searchQ').addEventListener('input', () => { clearTimeout(st); st = setTimeout(doSearch, 300); });
+async function loadCats() {
+  const { data } = await sb.from('songs').select('category').not('category', 'is', null).limit(1000);
+  const have = [...new Set((data || []).map(r => r.category))].sort((x, y) => CATEGORIES.indexOf(x) - CATEGORIES.indexOf(y));
+  $('catChips').innerHTML = [['', 'Lahat'], ['__new', 'Bago'], ...have.map(c => [c, c])]
+    .map(([v, l]) => `<button class="chip ${v === cat ? 'on' : ''}" data-cat="${esc(v)}">${esc(l)}</button>`).join('');
+}
+$('catChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-cat]'); if (!b) return;
+  cat = b.dataset.cat;
+  document.querySelectorAll('#catChips .chip').forEach(x => x.classList.toggle('on', x === b));
+  doSearch();
+});
 async function doSearch() {
   const q = $('searchQ').value.trim().replace(/[,%()*\\]/g, ' ').trim();
-  let req = sb.from('songs').select('id, code, title, artist, kind').order('title').limit(100);
+  let req = sb.from('songs').select('id, code, title, artist, kind, category, created_at');
+  req = cat === '__new' ? req.order('created_at', { ascending: false }).limit(30) : req.order('title').limit(150);
+  if (cat && cat !== '__new') req = req.eq('category', cat);
   if (q) {
     if (/^\d{1,5}$/.test(q)) req = req.or(`title.ilike.%${q}%,artist.ilike.%${q}%,code.eq.${parseInt(q, 10)}`);
     else req = req.or(`title.ilike.%${q}%,artist.ilike.%${q}%`);
@@ -311,10 +326,10 @@ async function doSearch() {
   $('searchList').innerHTML = data.length ? data.map(s => `
     <div class="row">
       <span class="num">${s.code}</span>
-      <div class="info"><div class="t">${esc(s.title)}</div><div class="a">${esc(s.artist || '')}</div></div>
+      <div class="info"><div class="t">${esc(s.title)}</div><div class="a">${s.kind === 'youtube' ? '<span class="src">YouTube</span>' : ''}${esc(s.artist || '')}${s.category ? ', ' + esc(s.category) : ''}</div></div>
       <button class="btn small" data-song="${s.id}">Reserve</button>
     </div>`).join('')
-    : `<div class="empty">${q ? 'Walang nahanap.' : 'Wala pang kanta sa library. Mag-upload sa Admin page.'}</div>`;
+    : `<div class="empty">${q ? 'Walang nahanap sa library. Subukan sa YouTube tab.' : 'Wala pang kanta dito.'}</div>`;
 }
 $('searchList').addEventListener('click', e => {
   const b = e.target.closest('[data-song]');
@@ -322,7 +337,6 @@ $('searchList').addEventListener('click', e => {
 });
 
 // ================= YOUTUBE =================
-if (VK_CONFIG.YT_API_KEY) $('ytSearchBox').style.display = 'block';
 $('ytReserve').onclick = async () => {
   const id = parseYouTubeId($('ytLink').value);
   if (!id) { toast('Hindi valid na YouTube link', 'err'); return; }
@@ -331,31 +345,36 @@ $('ytReserve').onclick = async () => {
   if (await reserve({ yt_id: id, yt_title: title.slice(0, 200) })) $('ytLink').value = '';
   $('ytReserve').disabled = false;
 };
-async function ytSearch() {
-  const q = $('ytQ').value.trim();
-  if (!q) return;
-  $('ytList').innerHTML = '<div class="empty">Hinahanap...</div>';
-  try {
-    const u = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=15'
-      + '&q=' + encodeURIComponent(q + ' karaoke') + '&key=' + VK_CONFIG.YT_API_KEY;
-    const r = await fetch(u); const j = await r.json();
-    if (j.error) throw new Error(j.error.message);
-    $('ytList').innerHTML = (j.items || []).map(it => {
-      const t = it.snippet.title.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
-      return `<div class="row">
-        <img src="${esc(it.snippet.thumbnails.default.url)}" alt="">
-        <div class="info"><div class="t">${esc(t)}</div><div class="a">${esc(it.snippet.channelTitle)}</div></div>
-        <button class="btn small primary" data-yt="${esc(it.id.videoId)}" data-title="${esc(t)}">Reserve</button>
-      </div>`;
-    }).join('') || '<div class="empty">Walang nahanap.</div>';
-  } catch (e) { $('ytList').innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`; }
+let ytLoaded = false;
+function ytRows(items) {
+  return items.map(it => `<div class="row">
+      <img src="${esc(it.thumb)}" alt="" loading="lazy">
+      <div class="info"><div class="t">${esc(it.title)}</div><div class="a">${esc(it.channel)}</div></div>
+      <button class="btn small" data-yt="${esc(it.id)}" data-title="${esc(it.title)}">Reserve</button>
+    </div>`).join('');
 }
-$('ytGo').onclick = ytSearch;
-$('ytQ').addEventListener('keydown', e => { if (e.key === 'Enter') ytSearch(); });
+async function ytSearch(mode) {
+  const q = $('ytQ').value.trim();
+  if (mode !== 'latest' && !q) return;
+  $('ytHead').textContent = mode === 'latest' ? 'Bago at sikat ngayon' : `Resulta para sa "${q}"`;
+  $('ytList').innerHTML = '<div class="empty">Hinahanap</div>';
+  try {
+    const j = await ytSearchApi(q, mode);
+    if (j.error) {
+      if (j.error === 'no_key') { $('ytSearchBox').style.display = 'none'; $('ytNoKey').style.display = 'block'; return; }
+      $('ytList').innerHTML = `<div class="empty">${esc(ytErrorText(j.error))}</div>`; return;
+    }
+    $('ytList').innerHTML = ytRows(j.items || []) || '<div class="empty">Walang nahanap. Subukan ang ibang salita.</div>';
+  } catch (e) { $('ytList').innerHTML = `<div class="empty">${esc(ytErrorText('network'))}</div>`; }
+}
+$('ytGo').onclick = () => ytSearch('search');
+$('ytLatest').onclick = () => { $('ytQ').value = ''; ytSearch('latest'); };
+$('ytQ').addEventListener('keydown', e => { if (e.key === 'Enter') ytSearch('search'); });
 $('ytList').addEventListener('click', e => {
   const b = e.target.closest('[data-yt]');
   if (b) reserve({ yt_id: b.dataset.yt, yt_title: b.dataset.title.slice(0, 200) });
 });
+function openYtTab() { if (!ytLoaded) { ytLoaded = true; ytSearch('latest'); } }
 
 // ================= INIT =================
 if (ROOM_RE.test(ROOM) && new URLSearchParams(location.search).get('room')) start();

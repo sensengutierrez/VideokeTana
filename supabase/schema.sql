@@ -106,3 +106,14 @@ create policy "songs bucket admin update" on storage.objects for update to authe
   using (bucket_id = 'songs' and (select public.is_admin()));
 create policy "songs bucket admin delete" on storage.objects for delete to authenticated
   using (bucket_id = 'songs' and (select public.is_admin()));
+
+-- ---------- v0.5: kategorya + YouTube na kanta sa library ----------
+alter table public.songs add column if not exists license_note text;
+alter table public.songs add column if not exists category text;
+alter table public.songs add column if not exists yt_id text;
+alter table public.songs drop constraint if exists songs_kind_check;
+alter table public.songs add constraint songs_kind_check check (kind in ('video','audio','youtube'));
+alter table public.songs alter column media_path drop not null;
+alter table public.songs add constraint songs_media_check check ((kind = 'youtube' and yt_id is not null) or (kind <> 'youtube' and media_path is not null));
+create index if not exists songs_category_idx on public.songs (category);
+create index if not exists songs_created_idx on public.songs (created_at desc);

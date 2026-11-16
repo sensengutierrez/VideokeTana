@@ -104,6 +104,17 @@
     </section>
 
     <section class="panel">
+      <h2>Magdagdag mula sa YouTube</h2>
+      <p class="hint" style="margin:-6px 0 12px">Para sa mga bago at OPM na kanta. Naka-embed lang ang video mula sa YouTube at hindi dina-download. Bawat idadagdag ay may sariling song number.</p>
+      <div class="row-search">
+        <div class="search"><i data-i="search"></i><input id="ytQ" placeholder="Title o artist ng kanta" type="search"></div>
+        <button class="btn primary" id="ytGo">Hanapin</button>
+      </div>
+      <div class="yt-head"><span id="ytHead"></span><button class="link" id="ytLatest" type="button">Ipakita ang bago at sikat</button></div>
+      <div class="lib" id="ytList"></div>
+    </section>
+
+    <section class="panel">
       <div class="lib-head">
         <h2>Mga kanta</h2>
         <span class="muted" id="libStats"></span>
@@ -126,6 +137,19 @@
     <div class="modal-acts">
       <button type="button" class="btn" id="pwCancel">Kanselahin</button>
       <button type="submit" class="btn primary" id="pwSave">Palitan ang password</button>
+    </div>
+  </form>
+</div>
+<div class="modal" id="songModal" style="display:none">
+  <form class="modal-card" id="smForm" novalidate>
+    <h2 id="smHead">I-edit ang kanta</h2>
+    <label class="fl"><span>Title</span><div class="inp"><input id="smTitle" maxlength="150"></div></label>
+    <label class="fl"><span>Artist</span><div class="inp"><input id="smArtist" maxlength="120"></div></label>
+    <label class="fl"><span>Kategorya</span><div class="inp"><select id="smCat" class="sel"></select></div></label>
+    <div class="auth-err" id="smErr"></div>
+    <div class="modal-acts">
+      <button type="button" class="btn" id="smCancel">Kanselahin</button>
+      <button type="submit" class="btn primary" id="smSave">I-save</button>
     </div>
   </form>
 </div>

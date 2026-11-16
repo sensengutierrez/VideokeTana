@@ -121,3 +121,13 @@
 .modal-card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 22px; box-shadow: var(--shadow); }
 .modal-card h2 { margin: 0 0 18px; font-size: 20px; }
 .modal-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+.row-search { display: flex; gap: 8px; }
+.row-search .search { flex: 1; }
+.yt-head { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-weight: 700; font-size: 14px; min-height: 20px; }
+.lrow img { width: 76px; height: 43px; object-fit: cover; border-radius: 8px; }
+.lrow .src { font-size: 11px; font-weight: 700; color: var(--danger); }
+.inp .sel { flex: 1; border: 0; background: transparent; padding: 13px 11px; font-size: 16px; color: var(--text); outline: none; }
+.inp .sel option { color: #171a20; }
+.uprow .cat { padding: 9px 8px; font-size: 14px; }
+@media (max-width: 600px) { .row-search { flex-direction: column; } }

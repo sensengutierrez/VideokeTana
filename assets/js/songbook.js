@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 
 let songs = [];
 let sortBy = 'code';
-let kind = '';
+let cat = '';
 let letter = '';
 const ROOM = cleanRoom(localStorage.getItem('vk_last_room'));
 const NAME = localStorage.getItem('vk_name') || '';
@@ -14,12 +14,23 @@ const firstLetter = s => {
 };
 
 async function load() {
-  const { data, error } = await sb.from('songs').select('id, code, title, artist, kind').order('code');
+  const { data, error } = await sb.from('songs').select('id, code, title, artist, kind, category, created_at').order('code');
   if (error) { $('count').textContent = 'Error: ' + error.message; return; }
   songs = data || [];
   renderLetters();
+  renderCats();
   render();
 }
+
+function renderCats() {
+  const have = [...new Set(songs.map(s => s.category).filter(Boolean))].sort((x, y) => CATEGORIES.indexOf(x) - CATEGORIES.indexOf(y));
+  $('catChips').innerHTML = [['', 'Lahat'], ['__new', 'Bago'], ...have.map(c => [c, c])]
+    .map(([v, l]) => `<button class="chip ${v === cat ? 'on' : ''}" data-cat="${esc(v)}">${esc(l)}</button>`).join('');
+}
+$('catChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-cat]'); if (!b) return;
+  cat = b.dataset.cat; renderCats(); render();
+});
 
 function sortKey(s) {
   if (sortBy === 'title') return s.title.toLowerCase();
@@ -38,10 +49,11 @@ function renderLetters() {
 function render() {
   const q = $('q').value.trim().toLowerCase();
   let list = songs.filter(s =>
-    (!kind || s.kind === kind) &&
+    (!cat || cat === '__new' || s.category === cat) &&
     (!q || String(s.code).includes(q) || s.title.toLowerCase().includes(q) || (s.artist || '').toLowerCase().includes(q)) &&
     (!letter || sortBy === 'code' || letterOf(s) === letter));
   list.sort((a, b) => { const x = sortKey(a), y = sortKey(b); return x < y ? -1 : x > y ? 1 : 0; });
+  if (cat === '__new') list = list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 30);
 
   $('count').textContent = songs.length ? (list.length === songs.length ? `${songs.length} kanta` : `${list.length} sa ${songs.length} kanta`) : 'Wala pang kanta';
 
@@ -55,7 +67,7 @@ function render() {
   $('list').innerHTML = list.map(s => `
     <div class="song">
       <div class="num">${s.code}</div>
-      <div class="info"><div class="t">${esc(s.title)}</div><div class="a">${ICON(s.kind === 'video' ? 'film' : 'music')}<span>${esc(s.artist || 'Walang artist')}</span></div></div>
+      <div class="info"><div class="t">${esc(s.title)}</div><div class="a">${s.kind === 'youtube' ? '<span class="src">YouTube</span>' : ICON(s.kind === 'video' ? 'film' : 'music')}<span>${esc(s.artist || 'Walang artist')}${s.category ? ', ' + esc(s.category) : ''}</span></div></div>
       ${ROOM_RE.test(ROOM) ? `<button class="btn small" data-res="${s.id}">Reserve</button>` : '<span></span>'}
     </div>`).join('');
 }
@@ -67,12 +79,6 @@ $('sortSeg').addEventListener('click', e => {
   sortBy = b.dataset.sort; letter = '';
   document.querySelectorAll('#sortSeg button').forEach(x => x.classList.toggle('on', x === b));
   renderLetters(); render();
-});
-$('kindSeg').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  kind = b.dataset.kind;
-  document.querySelectorAll('#kindSeg button').forEach(x => x.classList.toggle('on', x === b));
-  render();
 });
 $('letters').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
