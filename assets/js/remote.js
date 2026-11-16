@@ -178,16 +178,29 @@ document.querySelectorAll('.ctrls button').forEach(b => b.onclick = () => {
   sendCmd(c);
 });
 
-// ----- Sound effects sa TV -----
+// ----- Sound effects / soundboard sa TV -----
 let sfxAt = 0;
-$('sfxRow').addEventListener('click', e => {
+const sbPrefs = () => { const p = VK_PREFS.get(); return { vol: p.sbVol == null ? 80 : p.sbVol, solo: p.sbNoOverlap }; };
+$('sbVol').value = sbPrefs().vol;
+$('sbSolo').checked = sbPrefs().solo;
+$('sbVol').addEventListener('change', () => VK_PREFS.set('sbVol', +$('sbVol').value));
+$('sbSolo').addEventListener('change', () => VK_PREFS.set('sbNoOverlap', $('sbSolo').checked));
+$('sbMore').addEventListener('click', () => {
+  const open = $('sb').hidden; $('sb').hidden = !open; $('sbMore').setAttribute('aria-expanded', open);
+  $('sbMore').classList.toggle('on', open);
+});
+function onSfx(e) {
   const b = e.target.closest('[data-sfx]'); if (!b) return;
   if (!hostSeen) { toast(`Hindi makita ang TV sa room ${ROOM}.`, 'err'); return; }
-  if (Date.now() - sfxAt < 1200) return;
+  const name = b.dataset.sfx;
+  if (name !== 'stop' && Date.now() - sfxAt < 400) return;
   sfxAt = Date.now(); buzz();
-  channel.send({ type: 'broadcast', event: 'cmd', payload: { action: 'sfx', value: { name: b.dataset.sfx, from: NAME || '' } } });
+  const sp = sbPrefs();
+  channel.send({ type: 'broadcast', event: 'cmd', payload: { action: 'sfx', value: { name, from: NAME || '', vol: sp.vol / 100, solo: sp.solo } } });
   b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 400);
-});
+}
+$('sfxRow').addEventListener('click', onSfx);
+$('sb').addEventListener('click', onSfx);
 
 // ----- Beep kapag nagta-type ng numero (Settings: Beep sa pag-type) -----
 let beepCtx = null;
@@ -333,6 +346,7 @@ async function doReserve(row) {
   await loadQueue();
   const n = queue.filter(q => q.status === 'waiting').length;
   const playing = queue.some(q => q.status === 'playing');
+  if (window.VKVoice) VKVoice.act('reserved');
   toast(!playing && n <= 1 ? 'Naka-reserve. Magsisimula na sa TV.' : `Naka-reserve. Pang-${n} ka sa pila.`, 'ok');
   if (!hostSeen) toast(`Naka-pila na, pero hindi pa makita ang TV sa room ${ROOM}.`, 'err', 4500);
   return true;
@@ -358,6 +372,7 @@ $('pad').addEventListener('click', async e => {
   buzz();
   const k = b.dataset.k;
   keyBeep(!!k);
+  if (window.VKVoice) VKVoice.key(k || b.textContent.trim());
   if (k === 'clr') code = '';
   else if (k === 'del') code = code.slice(0, -1);
   else if (code.length < 5) code += b.textContent;
@@ -368,6 +383,7 @@ $('pad').addEventListener('click', async e => {
     const typed = code;
     const { data } = await sb.from('songs').select('id, code, title, artist').eq('code', parseInt(code, 10)).maybeSingle();
     if (typed !== code) return;
+    if (window.VKVoice) data ? VKVoice.say(data.title) : VKVoice.act('notfound');
     if (data) { codeSong = data; songCache.set(data.id, data); $('codePrev').innerHTML = `<b>${esc(data.title)}</b><span class="muted">${esc(data.artist || '')}</span>`; }
     else $('codePrev').innerHTML = '<span class="err">Walang kanta sa numerong ito</span>';
     renderCode();

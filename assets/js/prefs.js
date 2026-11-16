@@ -2,6 +2,10 @@
 (function () {
   const KEY = 'vk_prefs';
   const DEFAULTS = {
+    // wika at boses
+    lang: 'fil', ttsVoice: false,
+    // soundboard
+    sbNoOverlap: true, sbVol: 80,
     // screensaver
     ssEnabled: true, ssAfter: 5, ss24h: false, ssSeconds: false, ssDate: true,
     // lyrics sa TV

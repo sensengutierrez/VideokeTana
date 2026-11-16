@@ -176,3 +176,8 @@ $('resetBtn').addEventListener('click', () => {
 });
 
 render();
+
+// palit wika: i-reload para maisalin ang buong page
+document.querySelectorAll('[data-pref="lang"] button').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.v !== window.vkLang) setTimeout(() => location.reload(), 150);
+}));

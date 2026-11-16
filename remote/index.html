@@ -1,12 +1,14 @@
 <!DOCTYPE html>
-<html lang="fil">
+<html lang="fil" translate="no">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#15171c">
 <script src="../assets/js/icons.js"></script>
 <script src="../assets/js/theme.js"></script>
 <script src="../assets/js/prefs.js"></script>
+<script src="../assets/js/i18n.js"></script>
 <script src="../assets/js/wallpaper.js"></script>
 <title>Videoke Remote</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -67,8 +69,19 @@
         <button data-cmd="skip" title="Laktawan" aria-label="Laktawan"><i data-i="next"></i></button>
       </div>
       <div class="sfx" id="sfxRow" aria-label="Sound effects sa TV">
-        <button data-sfx="applause">Palakpak</button><button data-sfx="drumroll">Drum roll</button>
-        <button data-sfx="horn">Busina</button><button data-sfx="ding">Ding</button>
+        <button data-sfx="applause">Palakpak</button><button data-sfx="cheers">Cheers</button>
+        <button data-sfx="wownaman">Wow naman</button><button id="sbMore" class="sb-more" aria-expanded="false">Soundboard</button>
+      </div>
+      <div class="sb" id="sb" hidden>
+        <div class="sfx sb-grid">
+          <button data-sfx="drumroll">Drum roll</button><button data-sfx="ding">Ding</button><button data-sfx="horn">Busina</button><button data-sfx="boom">Boom</button>
+          <button data-sfx="wow">Wow</button><button data-sfx="aww">Aww</button><button data-sfx="boo">Boo</button><button data-sfx="laugh">Tawa</button>
+          <button data-sfx="angry">Galit</button><button data-sfx="omg">OMG</button><button data-sfx="galing">Ang galing</button><button data-sfx="stop" class="sb-stop">Stop</button>
+        </div>
+        <div class="sb-ctl">
+          <label class="sb-vol"><span>Lakas</span><input type="range" id="sbVol" min="10" max="100" step="10" value="80"></label>
+          <label class="sb-solo"><input type="checkbox" id="sbSolo"><span>Isa-isa lang</span></label>
+        </div>
       </div>
     </div>
 
@@ -84,7 +97,7 @@
 
     <!-- CODE -->
     <div class="pane on" id="pane-code">
-      <div class="display lcd"><div class="dot" id="codeDisp"><span class="ghost">88888</span></div></div>
+      <div class="display lcd"><div translate="no" class="dot" id="codeDisp"><span class="ghost">88888</span></div></div>
       <div class="preview" id="codePrev"><span class="muted">I-type ang song number</span></div>
       <div class="pad" id="pad">
         <button>1</button><button>2</button><button>3</button>
@@ -156,6 +169,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/common.js"></script>
+<script src="../assets/js/voice.js"></script>
 <script src="../assets/js/mic-remote.js"></script>
 <script src="../assets/js/remote.js"></script>
 <script src="../assets/js/screensaver.js"></script>

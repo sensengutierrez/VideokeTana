@@ -1,12 +1,14 @@
 <!DOCTYPE html>
-<html lang="fil">
+<html lang="fil" translate="no">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#15171c">
 <script src="../assets/js/icons.js"></script>
 <script src="../assets/js/theme.js"></script>
 <script src="../assets/js/prefs.js"></script>
+<script src="../assets/js/i18n.js"></script>
 <script src="../assets/js/wallpaper.js"></script>
 <title>Videoke Settings</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,6 +33,10 @@
   <section id="s-itsura">
     <h2>Itsura</h2>
     <div class="group">
+      <div class="set">
+        <div class="set-txt"><b>Wika ng app</b><small>Ang wikang gagamitin sa lahat ng screen ng app sa device na ito.</small></div>
+        <div class="seg" data-pref="lang" data-notr><button data-v="fil">Tagalog</button><button data-v="en">English</button></div>
+      </div>
       <div class="set">
         <div class="set-txt"><b>Tema</b><small>Ang Auto ay sumusunod sa setting ng device mo.</small></div>
         <div class="seg" data-seg="theme"><button data-v="dark">Dark</button><button data-v="light">Light</button><button data-v="auto">Auto</button></div>
@@ -204,7 +210,7 @@
     <h2>Tunog</h2>
     <div class="group">
       <label class="set">
-        <div class="set-txt"><b>Sound effects mula sa phone</b><small>Palakpak, drum roll, busina at ding na pinipindot sa Remote.</small></div>
+        <div class="set-txt"><b>Sound effects mula sa phone</b><small>Ang soundboard sa Remote: palakpak, cheers, wow, boo, tawa at iba pa.</small></div>
         <span class="switch"><input type="checkbox" data-pref="sfxEnabled"><span></span></span>
       </label>
       <div class="set col">
@@ -215,6 +221,14 @@
         <div class="set-txt"><b>Beep sa pag-type ng numero</b><small>Sa phone na ginagamit bilang remote.</small></div>
         <div class="seg" data-pref="keyBeep"><button data-v="off">Wala</button><button data-v="low">Mahina</button><button data-v="mid">Katamtaman</button></div>
       </div>
+      <label class="set">
+        <div class="set-txt"><b>Boses kapag pumindot</b><small>Binabasa nang malakas ang numerong pinipindot at ang mga aksyon, gaya ng "Naka-reserve".</small></div>
+        <span class="switch"><input type="checkbox" data-pref="ttsVoice"><span></span></span>
+      </label>
+      <label class="set">
+        <div class="set-txt"><b>Hindi magpapatong-patong</b><small>Sa soundboard, isang tunog lang sa isang pagkakataon.</small></div>
+        <span class="switch"><input type="checkbox" data-pref="sbNoOverlap"><span></span></span>
+      </label>
     </div>
   </section>
 
@@ -222,7 +236,7 @@
   <section id="s-saver">
     <h2>Screensaver</h2>
     <div class="display preview" aria-hidden="true">
-      <div class="pv-time"><span class="dot" id="pvTime">10:24</span><span class="pv-ampm" id="pvAmpm">PM</span></div>
+      <div class="pv-time"><span translate="no" class="dot" id="pvTime">10:24</span><span class="pv-ampm" id="pvAmpm">PM</span></div>
       <div class="pv-date" id="pvDate"></div>
     </div>
     <div class="group" id="ssGroup">
@@ -280,7 +294,7 @@
   <section>
     <h2>Tungkol sa app</h2>
     <div class="group about">
-      <div class="set"><div class="set-txt"><b>Videoke</b><small>Bersyon 0.7. Pambahay na videoke para sa TV, laptop, tablet at phone.</small></div></div>
+      <div class="set"><div class="set-txt"><b>Videoke</b><small>Bersyon 0.8. Pambahay na videoke para sa TV, laptop, tablet at phone.</small></div></div>
       <div class="set"><div class="set-txt"><b>Mga demo song</b><small>Ang 10001 hanggang 10010 ay public domain na kanta na may original na arrangement.</small></div></div>
     </div>
     <p class="foot">© 2026 VideokeTana. Lahat ng karapatan ay nakalaan.</p>

@@ -511,16 +511,19 @@ async function keepAwake() {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && started) keepAwake(); });
 
 // ================= SOUND EFFECTS mula sa remote =================
-const SFX_LABEL = { applause: 'Palakpak', drumroll: 'Drum roll', horn: 'Busina', ding: 'Ding' };
+const SFX_LABEL = { applause: 'Palakpak', cheers: 'Cheers', drumroll: 'Drum roll', ding: 'Ding', horn: 'Busina', boom: 'Boom',
+  wow: 'Wow', aww: 'Aww', boo: 'Boo', laugh: 'Tawa', angry: 'Galit', omg: 'OMG', wownaman: 'Wow naman', galing: 'Ang galing' };
 let lastSfx = 0;
 function playSfx(v) {
   const p = VK_PREFS.get();
   if (!p.sfxEnabled) return;
   const o = typeof v === 'object' && v ? v : { name: v };
-  if (!SFX_LABEL[o.name] || Date.now() - lastSfx < 1200) return;
+  if (o.name === 'stop') { VKSfx.stop(); return; }
+  if (!SFX_LABEL[o.name] || Date.now() - lastSfx < 350) return;
   lastSfx = Date.now();
   VKSfx.setVolume(p.sfxVolume / 100);
-  VKSfx.play(o.name, { size: 1 });
+  const gain = o.vol == null ? 1 : Math.max(0, Math.min(1, +o.vol));
+  VKSfx.play(o.name, { size: 1, gain, solo: o.solo == null ? p.sbNoOverlap : !!o.solo });
   const n = $('sfxNote');
   n.textContent = SFX_LABEL[o.name] + (o.from ? ` mula kay ${o.from}` : '');
   n.classList.remove('show'); void n.offsetWidth; n.classList.add('show');
@@ -657,6 +660,7 @@ const HOST_NAME = () => localStorage.getItem('vk_name') || null;
 async function hostReserve(songId) {
   const { error } = await sb.from('queue').insert({ room: ROOM, song_id: songId, singer: HOST_NAME() });
   if (error) { toast('Hindi na-reserve: ' + error.message, 'err'); return false; }
+  if (window.VKVoice) VKVoice.act('reserved');
   toast(current ? 'Naka-reserve' : 'Naka-reserve. Magsisimula na.', 'ok');
   loadQueue();
   return true;
@@ -695,6 +699,7 @@ function renderSCode() {
 $('sPad').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
   const k = b.dataset.k;
+  if (window.VKVoice) VKVoice.key(k || b.textContent.trim());
   if (k === 'clr') sCode = ''; else if (k === 'del') sCode = sCode.slice(0, -1); else if (sCode.length < 5) sCode += b.textContent;
   sSong = null; renderSCode();
   $('sPrev').textContent = 'I-type ang song number';
@@ -702,6 +707,7 @@ $('sPad').addEventListener('click', async e => {
     const typed = sCode, s = await findSong(parseInt(sCode, 10));
     if (typed !== sCode) return;
     sSong = s;
+    if (window.VKVoice) s ? VKVoice.say(s.title) : VKVoice.act('notfound');
     $('sPrev').innerHTML = s ? `<b>${esc(s.title)}</b> ${esc(s.artist || '')}` : '<span class="err">Walang kanta sa numerong ito</span>';
     renderSCode();
   }
@@ -774,12 +780,14 @@ async function ceKey(e) {
   if (!started || e.target.closest('input, textarea, select')) return false;
   if (/^[0-9]$/.test(e.key)) {
     if (ceCode.length >= 5) ceCode = '';
+    if (window.VKVoice) VKVoice.key(e.key);
     ceCode += e.key; ceSong = null; $('ceTitle').textContent = '';
     showCE();
     if (ceCode.length === 5) {
       const typed = ceCode, s = await findSong(parseInt(ceCode, 10));
       if (typed !== ceCode) return true;
       ceSong = s;
+      if (window.VKVoice) s ? VKVoice.say(s.title) : VKVoice.act('notfound');
       $('ceTitle').textContent = s ? `${s.title}${s.artist ? ', ' + s.artist : ''}` : 'Walang kanta sa numerong ito';
     }
     return true;
