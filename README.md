@@ -28,6 +28,10 @@ Pambahay na videoke — host sa laptop/tablet (naka-HDMI/Type-C sa TV), remote s
 │       ├── theme.js      Light / dark mode
 │       ├── prefs.js      Settings ng device
 │       ├── screensaver.js Digital clock kapag idle
+│       ├── mic-host.js   Tumatanggap ng boses sa TV (WebRTC + Web Audio)
+│       ├── mic-remote.js Nagpapadala ng boses mula sa phone
+│       ├── sfx.js        Sound effects (Web Audio, walang file)
+│       ├── scenes.js     Animated backgrounds (canvas)
 │       ├── config.js     Supabase URL/key, YouTube API key (optional)
 │       ├── common.js     Shared helpers (Supabase client, toast, queue)
 │       ├── host.js
@@ -41,8 +45,8 @@ Supabase project **VideokeTana** — tables `songs`, `queue`, `admins`; storage 
 
 ## Roadmap
 - [x] Phase 1 — Host + QR + phone remote + queue + library (MP4 / MP3+LRC) + YouTube
-- [ ] Phase 2 — Phone bilang mic (WebRTC) + earphone mode
-- [ ] Phase 3 — Duet (2 mics) + scoring
+- [x] Phase 2 — Phone bilang mic (WebRTC, experimental): echo, reverb, clarity, maraming mic sabay (duet), score mula sa mic, bantay sa feedback
+- [ ] Phase 3 — Score batay sa tono (pitch), recording
 
 ## Demo songs
 Ang `demo/` ay may 4 na public domain na kanta (Twinkle Twinkle Little Star, Jingle Bells, Silent Night, Auld Lang Syne), song no. 10001 hanggang 10004.

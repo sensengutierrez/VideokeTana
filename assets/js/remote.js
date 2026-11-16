@@ -135,6 +135,7 @@ function askName() {
   NAME = n.trim().slice(0, 40);
   localStorage.setItem('vk_name', NAME);
   renderName();
+  VKMicRemote.rename(NAME || 'Mic');
 }
 $('nameChip').onclick = askName;
 $('roomChip').onclick = () => { if (confirm('Lumipat ng room?')) showJoin(); };
@@ -144,6 +145,7 @@ function connect() {
   if (channel) sb.removeChannel(channel);
   channel = sb.channel('room-' + ROOM, { config: { broadcast: { self: false } } })
     .on('broadcast', { event: 'state' }, ({ payload }) => { state = payload; hostSeen = true; renderNow(); renderQueue(); })
+    .on('broadcast', { event: 'rtc' }, ({ payload }) => VKMicRemote.handle(payload))
     .on('broadcast', { event: 'score' }, ({ payload }) => {
       toast(`Score${payload.singer ? ' ni ' + payload.singer : ''}: ${payload.score}`, 'ok', 4000);
       try { navigator.vibrate && navigator.vibrate([20, 60, 20]); } catch (e) {}
@@ -200,6 +202,59 @@ function keyBeep(hi) {
     o.connect(g).connect(beepCtx.destination); o.start(t); o.stop(t + .08);
   } catch (e) {}
 }
+
+// ================= MIC =================
+window.vkMicName = () => NAME || 'Mic';
+const MIC_TEXT = {
+  off: ['Gawing mic ang phone na ito', 'Maririnig ang boses mo sa speaker ng TV.'],
+  asking: ['Humihingi ng pahintulot', 'Pindutin ang "Allow" para magamit ang mic.'],
+  connecting: ['Kumokonekta sa TV', 'Sandali lang.'],
+  connected: ['Naka-on ang mic', 'Kumanta na! Naririnig ka na sa TV.'],
+  reconnecting: ['Kumokonekta ulit', 'Naputol ang koneksyon. Sinusubukan ulit.'],
+  noanswer: ['Hindi sumasagot ang TV', 'Buksan ang Host sa laptop at pindutin ang Simulan. Dapat nasa iisang Wi-Fi.'],
+  denied: ['Hindi pinayagan ang mic', 'Payagan ang microphone sa settings ng browser, tapos subukan ulit.'],
+  nomic: ['Walang nakitang mic', 'Hindi makita ang microphone ng phone na ito.'],
+  unsupported: ['Hindi kaya ng browser na ito', 'Gamitin ang Chrome o Safari na bago.'],
+  error: ['May error sa mic', 'Subukan ulit.']
+};
+let micState = 'off', micRAF = 0;
+VKMicRemote.init(
+  msg => { if (channel) channel.send({ type: 'broadcast', event: 'rtc', payload: msg }); },
+  (s, info) => {
+    micState = s;
+    const t = MIC_TEXT[s] || MIC_TEXT.error;
+    $('micStatus').textContent = t[0];
+    $('micSub').textContent = s === 'error' && info ? `${t[1]} (${info})` : t[1];
+    const active = ['asking', 'connecting', 'connected', 'reconnecting', 'noanswer'].includes(s);
+    $('micBtn').classList.toggle('on', s === 'connected');
+    $('micBtn').classList.toggle('busy', ['asking', 'connecting', 'reconnecting', 'noanswer'].includes(s));
+    $('micActs').hidden = !active;
+    $('micDot').classList.toggle('on', s === 'connected');
+    $('micClean').disabled = active;
+    if (s === 'connected') toast('Naka-on ang mic', 'ok');
+    cancelAnimationFrame(micRAF);
+    if (active) meterLoop(); else $('micMeter').style.width = '0%';
+  }
+);
+function meterLoop() {
+  micRAF = requestAnimationFrame(meterLoop);
+  $('micMeter').style.width = Math.min(100, VKMicRemote.level() * 450) + '%';
+}
+$('micBtn').onclick = () => {
+  buzz();
+  if (VKMicRemote.isOn()) return;
+  if (!hostSeen) toast(`Hindi pa makita ang TV sa room ${ROOM}, pero susubukan pa rin.`, 'err', 3500);
+  VKMicRemote.start({ clean: $('micClean').checked });
+};
+$('micStop').onclick = () => { buzz(); VKMicRemote.stop(); $('micMute').textContent = 'I-mute'; };
+$('micMute').onclick = () => {
+  buzz();
+  const m = !VKMicRemote.isMuted();
+  VKMicRemote.setMuted(m);
+  $('micMute').textContent = m ? 'I-unmute' : 'I-mute';
+  $('micStatus').textContent = m ? 'Naka-mute ang mic' : MIC_TEXT[micState][0];
+};
+window.addEventListener('pagehide', () => { if (VKMicRemote.isOn()) VKMicRemote.stop(); });
 
 function renderNow() {
   const n = state && state.now;

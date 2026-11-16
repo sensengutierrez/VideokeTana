@@ -108,6 +108,7 @@ async function startNext() {
   await showSplash(next);
   starting = false;
   if (current !== next) { startNext(); return; } // na-skip habang splash
+  resetMicStat();
   try { await playItem(next); }
   catch (e) {
     console.error(e);
@@ -153,7 +154,12 @@ function scoreMsg(n) {
 function showScore(item) {
   return new Promise(res => {
     scoring = true;
-    const n = pickScore(), el = $('scoreScreen');
+    const prS = VK_PREFS.get();
+    const fromMic = prS.scoreMode === 'mic' ? micScore() : null;
+    const n = fromMic !== null ? fromMic : pickScore(), el = $('scoreScreen');
+    $('scNote').textContent = prS.scoreMode === 'mic'
+      ? (fromMic !== null ? 'Batay sa pagkanta habang may lyrics' : 'Walang mic na nakakonekta, kaya random ang score')
+      : '';
     $('scNum').textContent = '0';
     $('scMsg').textContent = '';
     $('scWho').textContent = item.singer ? item.singer : '';
@@ -384,6 +390,7 @@ function connect() {
   channel = sb.channel('room-' + ROOM, { config: { broadcast: { self: false } } })
     .on('broadcast', { event: 'cmd' }, ({ payload }) => handleCmd(payload.action, payload.value))
     .on('broadcast', { event: 'hello' }, () => broadcastState())
+    .on('broadcast', { event: 'rtc' }, ({ payload }) => { if (payload && payload.to === 'host') VKMicHost.handle(payload); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'queue' }, () => loadQueueSoon())
     .subscribe(status => {
       if (status === 'SUBSCRIBED') { loadQueue(); broadcastState(); }
@@ -443,6 +450,7 @@ $('gate').onclick = () => {
   $('gate').style.display = 'none';
   keepAwake();
   VKSfx.unlock();
+  VKMicHost.unlock();
   const sc = VK_PREFS.get().scene;
   VKScenes.start($('scene'), sc === 'auto' ? VKScenes.NAMES[Math.floor(Math.random() * VKScenes.NAMES.length)] : sc);
   applyBg(false);
@@ -515,6 +523,52 @@ function playSfx(v) {
   n.textContent = SFX_LABEL[o.name] + (o.from ? ` mula kay ${o.from}` : '');
   n.classList.remove('show'); void n.offsetWidth; n.classList.add('show');
 }
+
+// ================= MIC (phone bilang mic) =================
+VKMicHost.init(
+  msg => { if (channel) channel.send({ type: 'broadcast', event: 'rtc', payload: { ...msg, from: 'host' } }); },
+  renderMics,
+  () => toast('Umuugong ang speaker. Hininaan muna ang mic. Ilayo ang phone sa speaker o hinaan ang mic sa Settings.', 'err', 5000)
+);
+function renderMics() {
+  const list = VKMicHost.list();
+  $('micBar').innerHTML = list.map(m => `<span class="mic-chip ${m.muted ? 'muted' : ''}" data-mic="${esc(m.id)}">${ICON('mic')}<span>${esc(m.name)}</span><i class="lv"><b></b></i></span>`).join('');
+}
+// lugar ng linya ng lyrics sa oras na t (para sa score mula sa mic)
+function inLyricLine(t) {
+  if (!lyrics.length) return true;
+  let idx = -1;
+  for (let k = 0; k < lyrics.length; k++) { if (lyrics[k].t <= t) idx = k; else break; }
+  if (idx < 0) return false;
+  const line = lyrics[idx];
+  if (!line.text) return false;
+  const nextT = idx + 1 < lyrics.length ? lyrics[idx + 1].t : line.t + 5;
+  const dur = Math.min(nextT - line.t, Math.max(2, line.text.length * 0.18) + 1);
+  return t <= line.t + dur + 0.3;
+}
+let micStat = null;
+function resetMicStat() { micStat = { inLine: 0, voiced: 0, mics: 0 }; }
+function micScore() {
+  if (!micStat || micStat.mics === 0 || micStat.inLine < 50) return null;
+  const r = Math.min(1, micStat.voiced / micStat.inLine * 1.1);
+  const lvl = VK_PREFS.get().scoreLevel;
+  const n = lvl === 'easy' ? 62 + 38 * r : lvl === 'hard' ? 40 + 60 * Math.pow(r, 1.4) : 52 + 48 * r;
+  return Math.max(40, Math.min(100, Math.round(n)));
+}
+setInterval(() => {
+  const lv = VKMicHost.levels();
+  lv.forEach(m => {
+    const el = document.querySelector(`[data-mic="${CSS.escape(m.id)}"] .lv b`);
+    if (el) el.style.width = Math.min(100, m.level * 400) + '%';
+  });
+  if (!current || !micStat || paused || mode === 'idle' || scoring) return;
+  const live = lv.filter(m => m.live && !m.muted);
+  micStat.mics = Math.max(micStat.mics, live.length);
+  if (!live.length) return;
+  const voiced = live.some(m => m.level > 0.025);
+  const inLine = mode === 'audio' ? inLyricLine(aud.currentTime + lyricOffset + (VK_PREFS.get().lyricDelay || 0) / 1000) : true;
+  if (inLine) { micStat.inLine++; if (voiced) micStat.voiced++; }
+}, 100);
 
 // ================= ORASAN + BACKGROUND =================
 const DAYS = ['Linggo', 'Lunes', 'Martes', 'Miyerkules', 'Huwebes', 'Biyernes', 'Sabado'];

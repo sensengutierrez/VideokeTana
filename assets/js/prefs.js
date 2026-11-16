@@ -15,7 +15,7 @@
     countdown: 'num',        // num | dots | off
     lyricDelay: 0,           // ms; positibo = mas maaga ang lyrics
     // score
-    scoreMode: 'random',     // random | off
+    scoreMode: 'random',     // random | mic | off
     scoreLevel: 'medium',    // easy | medium | hard
     applause: 2,             // 0 wala | 1 mahina | 2 katamtaman | 3 malakas
     // TV screen
@@ -29,7 +29,12 @@
     // tunog
     sfxEnabled: true,
     sfxVolume: 80,
-    keyBeep: 'mid'           // off | low | mid
+    keyBeep: 'mid',          // off | low | mid
+    // mic (phone bilang mic)
+    micVolume: 100,          // 0-150
+    micEcho: 30,             // 0-100
+    micReverb: 20,           // 0-100
+    micClarity: 30           // 0-100
   };
   function read() {
     try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); }

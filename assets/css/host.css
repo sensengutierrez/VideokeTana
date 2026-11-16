@@ -155,3 +155,15 @@ body.has-marquee #lyrics { bottom: calc(12vh + 3.6vw); }
   background: rgba(12,14,17,.85); border: 1px solid rgba(255,255,255,.1); padding: .7vw 1.4vw; border-radius: 999px; font-size: 1.5vw; font-weight: 700; }
 #sfxNote.show { animation: sfxIn 2.4s ease forwards; }
 @keyframes sfxIn { 0% { opacity: 0; transform: translate(-50%, -10px); } 12%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 0); } }
+
+/* mga mic na nakakonekta (top bar) */
+.mic-bar { display: flex; gap: .6vw; align-items: center; }
+.mic-chip { display: inline-flex; align-items: center; gap: .45vw; background: rgba(8,10,14,.62); border: 1px solid rgba(255,255,255,.08);
+  padding: .4vw .8vw; border-radius: 999px; white-space: nowrap; backdrop-filter: blur(6px); }
+.mic-chip .ic { width: 1.1em; height: 1.1em; color: var(--display-fg); }
+.mic-chip span { max-width: 9vw; overflow: hidden; text-overflow: ellipsis; }
+.mic-chip .lv { display: block; width: 3.2vw; height: .45vw; min-height: 4px; background: rgba(255,255,255,.15); border-radius: 999px; overflow: hidden; }
+.mic-chip .lv b { display: block; height: 100%; width: 0; background: var(--display-fg); transition: width .08s linear; }
+.mic-chip.muted { opacity: .5; }
+.mic-chip.muted .ic { color: #ff8a8a; }
+.sc-note { font-size: 1.2vw; color: #7d8593; margin-top: .8vw; }

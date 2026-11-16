@@ -23,7 +23,7 @@
 
   <nav class="jump" aria-label="Mga section">
     <a href="#s-itsura">Itsura</a><a href="#s-lyrics">Lyrics</a><a href="#s-score">Score</a><a href="#s-tv">TV screen</a>
-    <a href="#s-bg">Background</a><a href="#s-tunog">Tunog</a><a href="#s-saver">Screensaver</a><a href="#s-data">Data</a>
+    <a href="#s-bg">Background</a><a href="#s-mic">Mic</a><a href="#s-tunog">Tunog</a><a href="#s-saver">Screensaver</a><a href="#s-data">Data</a>
   </nav>
 
   <!-- ITSURA -->
@@ -91,8 +91,8 @@
     <h2>Score</h2>
     <div class="group">
       <div class="set">
-        <div class="set-txt"><b>Score pagkatapos ng kanta</b><small>Pang-aliw lang muna ang Random. Ang score na nakabase sa boses ay darating kasama ang mic feature.</small></div>
-        <div class="seg" data-pref="scoreMode"><button data-v="random">Random</button><button data-v="off">Wala</button></div>
+        <div class="set-txt"><b>Score pagkatapos ng kanta</b><small>Ang "Mula sa mic" ay batay sa kung kumakanta ka habang may lyrics; hindi pa nito sinusukat ang tono. Kapag walang mic, random ang score.</small></div>
+        <div class="seg" data-pref="scoreMode"><button data-v="mic">Mula sa mic</button><button data-v="random">Random</button><button data-v="off">Wala</button></div>
       </div>
       <div class="set dep-score">
         <div class="set-txt"><b>Hirap</b><small>Sa Madali, laging mataas ang score. Sa Mahirap, bihira ang 90 pataas.</small></div>
@@ -144,6 +144,34 @@
         <span class="switch"><input type="checkbox" data-pref="bgChange"><span></span></span>
       </label>
     </div>
+  </section>
+
+  <!-- MIC -->
+  <section id="s-mic">
+    <h2>Mic (phone bilang mic)</h2>
+    <div class="group">
+      <div class="set col">
+        <div class="set-txt"><b>Lakas ng mic</b><small>Para sa lahat ng phone na naka-mic. Hinaan kapag umuugong ang speaker.</small></div>
+        <div class="range-row"><span class="muted">0</span><input type="range" data-pref="micVolume" min="0" max="150" step="5"><span class="muted">150</span></div>
+        <div class="range-val" data-show="micVolume"></div>
+      </div>
+      <div class="set col">
+        <div class="set-txt"><b>Echo</b><small>Ang paulit-ulit na tunog ng boses, gaya ng sa videoke machine.</small></div>
+        <div class="range-row"><span class="muted">Wala</span><input type="range" data-pref="micEcho" min="0" max="100" step="5"><span class="muted">Marami</span></div>
+        <div class="range-val" data-show="micEcho"></div>
+      </div>
+      <div class="set col">
+        <div class="set-txt"><b>Reverb</b><small>Parang kumakanta sa malaking kwarto.</small></div>
+        <div class="range-row"><span class="muted">Wala</span><input type="range" data-pref="micReverb" min="0" max="100" step="5"><span class="muted">Marami</span></div>
+        <div class="range-val" data-show="micReverb"></div>
+      </div>
+      <div class="set col">
+        <div class="set-txt"><b>Linaw ng boses</b><small>Pinapalakas ang bahagi ng boses na nagpapalinaw ng salita.</small></div>
+        <div class="range-row"><span class="muted">Natural</span><input type="range" data-pref="micClarity" min="0" max="100" step="5"><span class="muted">Malinaw</span></div>
+        <div class="range-val" data-show="micClarity"></div>
+      </div>
+    </div>
+    <p class="foot">Para gamitin: buksan ang Remote sa phone, pumunta sa Mic tab, at pindutin ang malaking mic button. I-set ang mga ito sa laptop o tablet na naka-TV.</p>
   </section>
 
   <!-- TUNOG -->
@@ -227,7 +255,7 @@
   <section>
     <h2>Tungkol sa app</h2>
     <div class="group about">
-      <div class="set"><div class="set-txt"><b>Videoke</b><small>Bersyon 0.6. Pambahay na videoke para sa TV, laptop, tablet at phone.</small></div></div>
+      <div class="set"><div class="set-txt"><b>Videoke</b><small>Bersyon 0.7. Pambahay na videoke para sa TV, laptop, tablet at phone.</small></div></div>
       <div class="set"><div class="set-txt"><b>Mga demo song</b><small>Ang 10001 hanggang 10010 ay public domain na kanta na may original na arrangement.</small></div></div>
     </div>
     <p class="foot">© 2026 VideokeTana. Lahat ng karapatan ay nakalaan.</p>

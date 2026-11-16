@@ -78,6 +78,7 @@
       <button data-tab="search"><i data-i="search"></i>Hanap</button>
       <button data-tab="yt"><i data-i="yt"></i>YouTube</button>
       <button data-tab="queue"><i data-i="list"></i>Pila<span class="badge" id="qBadge" style="display:none"></span></button>
+      <button data-tab="mic"><i data-i="mic"></i>Mic<span class="micdot" id="micDot"></span></button>
     </nav>
 
     <!-- CODE -->
@@ -118,6 +119,32 @@
       </div>
     </div>
 
+    <!-- MIC -->
+    <div class="pane" id="pane-mic">
+      <div class="display mic-card">
+        <button class="mic-btn" id="micBtn" type="button" aria-label="Gawing mic ang phone"><i data-i="mic"></i></button>
+        <div class="mic-status" id="micStatus">Gawing mic ang phone na ito</div>
+        <div class="mic-sub" id="micSub">Maririnig ang boses mo sa speaker ng TV.</div>
+        <div class="mic-meter"><b id="micMeter"></b></div>
+        <div class="mic-acts" id="micActs" hidden>
+          <button class="btn" id="micMute" type="button">I-mute</button>
+          <button class="btn danger" id="micStop" type="button">Itigil ang mic</button>
+        </div>
+      </div>
+      <label class="mic-opt">
+        <span><b>Linisin ang boses</b><small>Binabawasan ang ingay sa paligid at ang echo. I-off kung gusto mo ng mas natural na tunog.</small></span>
+        <span class="switch"><input type="checkbox" id="micClean" checked><span></span></span>
+      </label>
+      <ul class="mic-tips">
+        <li>Hawakan ang phone malapit sa bibig, parang tunay na mic.</li>
+        <li>Ilayo sa speaker ng TV. Kapag umugong, hinaan ang mic o ang TV.</li>
+        <li>Dapat nasa iisang Wi-Fi ang phone at ang laptop o TV.</li>
+        <li>Huwag i-lock ang phone habang kumakanta, para hindi maputol ang mic.</li>
+        <li>Kung may earphones na may mic, iyon ang gagamitin.</li>
+        <li>May kaunting delay (mga 0.1 hanggang 0.3 segundo) dahil dumadaan sa Wi-Fi.</li>
+      </ul>
+    </div>
+
     <!-- QUEUE -->
     <div class="pane" id="pane-queue">
       <div class="list" id="queueList"></div>
@@ -128,6 +155,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/common.js"></script>
+<script src="../assets/js/mic-remote.js"></script>
 <script src="../assets/js/remote.js"></script>
 <script src="../assets/js/screensaver.js"></script>
 </body>

@@ -39,7 +39,7 @@ document.querySelectorAll('[data-pref]').forEach(el => {
   } else if (el.type === 'checkbox') {
     el.addEventListener('change', () => { VK_PREFS.set(key, el.checked); render(); });
   } else if (el.type === 'range') {
-    el.addEventListener('input', () => { if (key === 'lyricDelay') delayLabel(el.value); });
+    el.addEventListener('input', () => { if (key === 'lyricDelay') delayLabel(el.value); showVal(key, el.value); });
     el.addEventListener('change', () => { VK_PREFS.set(key, Number(el.value)); render(); });
   } else if (el.tagName === 'SELECT') {
     el.addEventListener('change', () => { VK_PREFS.set(key, cast(el, el.value)); render(); });
@@ -63,10 +63,15 @@ function render() {
   document.querySelectorAll('.dep-score').forEach(e => e.classList.toggle('dim', p.scoreMode === 'off'));
   document.querySelectorAll('.dep-anim').forEach(e => e.classList.toggle('dim', p.bgMode !== 'animated'));
   delayLabel(p.lyricDelay);
+  document.querySelectorAll('[data-show]').forEach(e => showVal(e.dataset.show, p[e.dataset.show]));
   lyricPreview(p);
   preview();
 }
 
+function showVal(key, v) {
+  const e = document.querySelector(`[data-show="${key}"]`);
+  if (e) e.textContent = v + '%';
+}
 function delayLabel(v) {
   v = +v;
   $('lyricDelayVal').textContent = v === 0 ? 'Walang adjust' : `${Math.abs(v / 1000).toFixed(1)} segundo ${v > 0 ? 'mas maaga' : 'mas huli'}`;
