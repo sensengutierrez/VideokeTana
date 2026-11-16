@@ -686,8 +686,9 @@ window.addEventListener('vkprefs', () => {
 
 // ================= ISANG DEVICE LANG (solo mode) =================
 const HOST_NAME = () => localStorage.getItem('vk_name') || null;
-async function hostReserve(songId) {
-  const { error } = await sb.from('queue').insert({ room: ROOM, song_id: songId, singer: HOST_NAME() });
+async function hostReserve(songId, yt) {
+  const row = yt ? { room: ROOM, yt_id: yt.yt_id, yt_title: yt.yt_title, singer: HOST_NAME() } : { room: ROOM, song_id: songId, singer: HOST_NAME() };
+  const { error } = await sb.from('queue').insert(row);
   if (error) { toast('Hindi na-reserve: ' + error.message, 'err'); return false; }
   if (window.VKVoice) VKVoice.act('reserved');
   toast(current ? 'Naka-reserve' : 'Naka-reserve. Magsisimula na.', 'ok');
@@ -747,6 +748,14 @@ $('sRes').onclick = async () => { if (sSong && await hostReserve(sSong.id)) { sC
 let sqT = null;
 $('sQ').addEventListener('input', () => { clearTimeout(sqT); sqT = setTimeout(soloSearch, 300); });
 async function soloSearch() {
+  const raw = $('sQ').value.trim();
+  if (/youtu/i.test(raw)) {                       // naka-paste na YouTube link
+    const id = parseYouTubeId(raw);
+    if (!id) { $('sList').innerHTML = '<p class="s-empty">Hindi valid na YouTube link</p>'; return; }
+    const title = (await fetchYouTubeTitle(id).catch(() => null)) || 'YouTube video';
+    $('sList').innerHTML = `<div class="s-row"><span class="dot">YT</span><div><b data-notr>${esc(title)}</b><small>YouTube</small></div><button class="btn small" data-yt="${esc(id)}" data-title="${esc(title)}">Reserve</button></div>`;
+    return;
+  }
   const q = $('sQ').value.trim().replace(/[,%()*\\]/g, ' ').trim();
   let req = sb.from('songs').select('id, code, title, artist, category').order('title').limit(100);
   if (q) req = /^\d{1,5}$/.test(q) ? req.or(`title.ilike.%${q}%,artist.ilike.%${q}%,code.eq.${parseInt(q, 10)}`) : req.or(`title.ilike.%${q}%,artist.ilike.%${q}%`);
@@ -754,7 +763,11 @@ async function soloSearch() {
   $('sList').innerHTML = (data || []).map(s => `<div class="s-row"><span class="dot">${s.code}</span><div><b>${esc(s.title)}</b><small>${esc(s.artist || '')}${s.category ? ', ' + esc(s.category) : ''}</small></div><button class="btn small" data-sid="${s.id}">Reserve</button></div>`).join('')
     || '<p class="s-empty">Walang nahanap.</p>';
 }
-$('sList').addEventListener('click', e => { const b = e.target.closest('[data-sid]'); if (b) hostReserve(b.dataset.sid); });
+$('sList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-sid]'); if (b) { hostReserve(b.dataset.sid); return; }
+  const y = e.target.closest('[data-yt]');
+  if (y && await hostReserve(null, { yt_id: y.dataset.yt, yt_title: y.dataset.title.slice(0, 200) })) $('sQ').value = '';
+});
 
 // pila
 function renderSoloQueue() {

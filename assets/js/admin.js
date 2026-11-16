@@ -451,6 +451,14 @@ function renderYt(items) {
 }
 async function ytFind(mode) {
   const q = $('ytQ').value.trim();
+  if (mode === 'search' && /youtu/i.test(q)) {     // naka-paste na link: hindi na kailangan ng API key
+    const id = parseYouTubeId(q);
+    if (!id) { toast('Hindi valid na YouTube link', 'err'); return; }
+    if (songs.some(s => s.yt_id === id)) { toast(`Nasa library, ${songs.find(s => s.yt_id === id).code}`, 'ok'); return; }
+    const m = cleanYtTitle((await fetchYouTubeTitle(id).catch(() => null)) || '');
+    openSongModal({ mode: 'yt', head: 'Idagdag mula sa YouTube', ytId: id, channel: '', title: m.title, artist: m.artist, category: '' });
+    return;
+  }
   if (mode === 'search' && !q) { $('ytQ').focus(); return; }
   $('ytHead').textContent = mode === 'latest' ? 'Bago at sikat ngayon' : `Resulta para sa "${q}"`;
   $('ytList').innerHTML = '<div class="empty">Hinahanap</div>';

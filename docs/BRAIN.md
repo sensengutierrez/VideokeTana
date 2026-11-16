@@ -70,6 +70,7 @@ Ito ang alaala ng project: **ano** ang nagawa, **bakit**, at **paano**. Basahin 
 | 0.7 | Phone bilang mic; single-device mode; wallpaper at transparent na box | Phase 2 + hiling ng user | WebRTC; on-screen picker; IndexedDB |
 | 0.8 | Wika (Tagalog/English), harang sa Chrome translate, boses kapag pumindot, 14-tunog na soundboard (volume, stop, isa-isa) | Nagpapatong/naghihiwalay ang text dahil sa Chrome translate; hiling ng user | i18n.js, voice.js, sfx.js |
 | 0.9 | Pitch bar + score na may tono; responsive na host sa portrait; ang Brain na ito | Ihanda ang pitch bar bago ang MIDI; nagpapatong ang taas ng TV screen sa phone | pitch.js, `.mel.json`, `pitch()` sa mic-host, media query sa host.css |
+| 0.9.1 | YouTube link sa single-device panel (Hanap) at sa Library (walang API key) | Walang paraan magdagdag ng YouTube sa isang device lang habang wala pang API key | `parseYouTubeId` + oEmbed para sa title; `hostReserve(null, {yt_id, yt_title})` |
 
 ## Susunod
 

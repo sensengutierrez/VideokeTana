@@ -173,6 +173,7 @@
     'Gabay sa tono sa itaas ng lyrics: ang mga guhit ay ang tamang nota, ang bilog ay ang boses mo mula sa mic. Lalabas lang sa kantang may melody, gaya ng mga demo song at ng MIDI sa susunod. Kapag naka-on at may mic, kasama na ang tono sa score.': 'A pitch guide above the lyrics: the bars are the correct notes and the dot is your voice from the mic. It only shows for songs with melody data, like the demo songs and MIDI later. When on with a mic, pitch counts toward the score.',
     'Ang "Mula sa mic" ay batay sa kung kumakanta ka habang may lyrics. Sa kantang may pitch bar, sinusukat na rin ang tono. Kapag walang mic, random ang score.': '"From mic" is based on whether you sing while lyrics are shown. On songs with a pitch bar, pitch is measured too. Without a mic the score is random.',
     'Batay sa tono at pagkanta habang may lyrics': 'Based on pitch and singing while lyrics are shown',
+    'Title, artist, numero o YouTube link': 'Title, artist, number or YouTube link', 'Title, artist o i-paste ang YouTube link': 'Title, artist or paste a YouTube link', 'YT': 'YT',
     'Boses kapag pumindot': 'Voice when tapping', 'Binabasa nang malakas ang numerong pinipindot at ang mga aksyon, gaya ng "Naka-reserve".': 'Reads out the numbers you press and actions like "Reserved".',
     'Soundboard': 'Soundboard', 'Hindi magpapatong-patong': 'No overlap', 'Isang tunog lang sa isang pagkakataon.': 'Only one sound at a time.',
 
