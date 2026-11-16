@@ -5,16 +5,16 @@
 <meta name="google" content="notranslate">
 <meta name="theme-color" content="#15171c">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="../assets/js/icons.js?v=0.9.6"></script>
-<script src="../assets/js/theme.js?v=0.9.6"></script>
-<script src="../assets/js/prefs.js?v=0.9.6"></script>
-<script src="../assets/js/i18n.js?v=0.9.6"></script>
-<script src="../assets/js/wallpaper.js?v=0.9.6"></script>
+<script src="../assets/js/icons.js?v=0.9.7"></script>
+<script src="../assets/js/theme.js?v=0.9.7"></script>
+<script src="../assets/js/prefs.js?v=0.9.7"></script>
+<script src="../assets/js/i18n.js?v=0.9.7"></script>
+<script src="../assets/js/wallpaper.js?v=0.9.7"></script>
 <title>Videoke</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/style.css?v=0.9.6">
-<link rel="stylesheet" href="../assets/css/host.css?v=0.9.6">
+<link rel="stylesheet" href="../assets/css/style.css?v=0.9.7">
+<link rel="stylesheet" href="../assets/css/host.css?v=0.9.7">
 </head>
 <body>
 <div id="gate">
@@ -136,10 +136,18 @@
     </div>
   </aside>
 
+  <div id="rotateHint" hidden>
+    <i data-i="rotate"></i>
+    <b>Gawing landscape</b>
+    <p>Mas malaki ang lyrics at pitch bar kapag nakahiga ang phone o tablet.</p>
+    <button class="btn primary" id="rotGo" type="button">Gawing landscape</button>
+    <button class="link" id="rotStay" type="button">Hayaang nakatayo</button>
+  </div>
   <div id="topBtns">
     <button class="tb" id="btnSkip" title="Laktawan (N)"><i data-i="next"></i><span>Laktawan</span></button>
     <button class="tb" id="btnScene" title="Palitan ang background (B)"><i data-i="film"></i><span>Background</span></button>
     <button class="tb" id="btnNewRoom" title="Bagong room code"><i data-i="refresh"></i><span>Bagong room</span></button>
+    <button class="tb" id="btnRotate" title="Landscape" aria-label="Landscape"><i data-i="rotate"></i></button>
     <button class="tb" id="btnFs" title="Fullscreen (F)" aria-label="Fullscreen"><i data-i="fullscreen"></i></button>
     <button class="theme-toggle"></button>
     <button class="tb" id="btnClose" title="Isara" aria-label="Isara"><i data-i="x"></i></button>
@@ -148,14 +156,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script src="../assets/js/config.js?v=0.9.6"></script>
-<script src="../assets/js/common.js?v=0.9.6"></script>
-<script src="../assets/js/scenes.js?v=0.9.6"></script>
-<script src="../assets/js/sfx.js?v=0.9.6"></script>
-<script src="../assets/js/voice.js?v=0.9.6"></script>
-<script src="../assets/js/pitch.js?v=0.9.6"></script>
-<script src="../assets/js/mic-host.js?v=0.9.6"></script>
-<script src="../assets/js/host.js?v=0.9.6"></script>
-<script src="../assets/js/screensaver.js?v=0.9.6"></script>
+<script src="../assets/js/config.js?v=0.9.7"></script>
+<script src="../assets/js/common.js?v=0.9.7"></script>
+<script src="../assets/js/scenes.js?v=0.9.7"></script>
+<script src="../assets/js/sfx.js?v=0.9.7"></script>
+<script src="../assets/js/voice.js?v=0.9.7"></script>
+<script src="../assets/js/pitch.js?v=0.9.7"></script>
+<script src="../assets/js/mic-host.js?v=0.9.7"></script>
+<script src="../assets/js/host.js?v=0.9.7"></script>
+<script src="../assets/js/screensaver.js?v=0.9.7"></script>
 </body>
 </html>

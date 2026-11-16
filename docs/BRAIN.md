@@ -77,6 +77,7 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `index.h
 | 0.9.1 | YouTube link sa single-device panel (Hanap) at sa Library (walang API key) | Walang paraan magdagdag ng YouTube sa isang device lang habang wala pang API key | `parseYouTubeId` + oEmbed para sa title; `hostReserve(null, {yt_id, yt_title})` |
 | 0.9.2 | `?v=` sa lahat ng CSS/JS link | Lumang CSS ang nakuha ng phone (cache ng browser/GitHub Pages), kaya nagpapatong pa rin sa taas | Palitan ang `?v=` sa lahat ng HTML tuwing may release |
 | 0.9.6 | Highlight ng lyrics bawat salita; kasya sa iisang linya; QR sa kanang itaas; layout para sa nakahigang phone | Sabay na nagha-highlight ang dalawang linya kapag nahati ang mahabang lyric; tinatakpan ng lyrics ang pitch bar | Bawat salita ay may sariling `--p` (`setLine`), `fitLine` na nagpapaliit ng font, media query `max-height: 520px` |
+| 0.9.7 | Landscape mode sa phone/tablet: kusang nakahiga pagpindot ng Simulan, button na Landscape sa itaas, paalala kung hindi kaya ng browser, setting na Landscape/Auto | Hiling ng user; mas malaki ang lyrics at pitch bar kapag nakahiga | Fullscreen + `screen.orientation.lock('landscape')` (Android Chrome); `#rotateHint` bilang fallback (iPhone) |
 
 ## Susunod
 

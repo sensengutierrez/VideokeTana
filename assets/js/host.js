@@ -471,6 +471,34 @@ function toggleFs() {
   else document.documentElement.requestFullscreen().catch(() => {});
 }
 $('btnFs').onclick = toggleFs;
+
+// ----- Landscape sa phone/tablet -----
+// Sa Android Chrome: fullscreen + lock sa landscape. Kapag hindi kaya (hal. iPhone), may paalala na i-rotate ang phone.
+const isTouch = matchMedia('(pointer: coarse)').matches;
+const isPortrait = () => matchMedia('(orientation: portrait)').matches;
+async function goLandscape() {
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+  } catch (e) { /* hindi suportado: ang paalala na lang */ }
+  setTimeout(checkRotate, 400);
+}
+function checkRotate() {
+  const want = isTouch && started && VK_PREFS.get().tvOrient === 'landscape';
+  $('rotateHint').hidden = !(want && isPortrait());
+}
+$('btnRotate').onclick = () => {
+  if (VK_PREFS.get().tvOrient === 'landscape' && !isPortrait()) {   // nakahiga na: ibalik sa auto
+    VK_PREFS.set('tvOrient', 'auto');
+    try { screen.orientation.unlock(); } catch (e) {}
+    toast('Auto na ang screen', 'ok');
+  } else { VK_PREFS.set('tvOrient', 'landscape'); goLandscape(); }
+  checkRotate();
+};
+$('rotGo').onclick = goLandscape;
+$('rotStay').onclick = () => { VK_PREFS.set('tvOrient', 'auto'); checkRotate(); };
+matchMedia('(orientation: portrait)').addEventListener('change', checkRotate);
+if (!isTouch) $('btnRotate').hidden = true;
 $('btnClose').onclick = () => {
   if (!confirm('Isara ang host? Hihinto ang kanta.')) return;
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -512,6 +540,7 @@ $('gate').onclick = () => {
   }
   started = true;
   $('gate').style.display = 'none';
+  if (isTouch && VK_PREFS.get().tvOrient === 'landscape') goLandscape();
   keepAwake();
   VKSfx.unlock();
   VKMicHost.unlock();

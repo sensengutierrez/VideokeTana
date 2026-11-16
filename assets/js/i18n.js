@@ -174,6 +174,10 @@
     'Ang "Mula sa mic" ay batay sa kung kumakanta ka habang may lyrics. Sa kantang may pitch bar, sinusukat na rin ang tono. Kapag walang mic, random ang score.': '"From mic" is based on whether you sing while lyrics are shown. On songs with a pitch bar, pitch is measured too. Without a mic the score is random.',
     'Batay sa tono at pagkanta habang may lyrics': 'Based on pitch and singing while lyrics are shown',
     'Title, artist, numero o YouTube link': 'Title, artist, number or YouTube link', 'Title, artist o i-paste ang YouTube link': 'Title, artist or paste a YouTube link', 'YT': 'YT',
+    'Gawing landscape': 'Switch to landscape', 'Mas malaki ang lyrics at pitch bar kapag nakahiga ang phone o tablet.': 'Lyrics and the pitch bar are bigger when the phone or tablet is sideways.',
+    'Hayaang nakatayo': 'Keep it upright', 'Auto na ang screen': 'Screen is on auto', 'Landscape (L)': 'Landscape (L)', 'Landscape': 'Landscape',
+    'Screen kapag phone o tablet ang TV': 'Screen when a phone or tablet is the TV',
+    'Sa "Landscape", kusang nakahiga ang screen pagpindot ng Simulan. Kapag hindi kaya ng browser (hal. iPhone), may paalala na i-rotate ang phone.': 'With "Landscape", the screen turns sideways when you press Start. If the browser cannot do it (e.g. iPhone), you will be reminded to rotate the phone.',
     'Boses kapag pumindot': 'Voice when tapping', 'Binabasa nang malakas ang numerong pinipindot at ang mga aksyon, gaya ng "Naka-reserve".': 'Reads out the numbers you press and actions like "Reserved".',
     'Soundboard': 'Soundboard', 'Hindi magpapatong-patong': 'No overlap', 'Isang tunog lang sa isang pagkakataon.': 'Only one sound at a time.',
 
