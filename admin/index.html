@@ -2,131 +2,133 @@
 <html lang="fil">
 <head>
 <meta charset="UTF-8">
-<meta name="theme-color" content="#0b0716">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#15171c">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="../assets/js/icons.js"></script>
 <script src="../assets/js/theme.js"></script>
-<title>Videoke — Admin</title>
+<title>Videoke Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="../assets/css/admin.css">
 </head>
 <body>
-<div class="app">
 
-  <!-- AUTH -->
-  <div id="authView" class="auth-wrap" data-mode="login" style="display:none">
-    <div class="auth-top">
-      <a class="close-x" href="../" title="Isara">✕</a>
-      <button class="theme-toggle" type="button">☀️</button>
-    </div>
-
-    <div class="auth-card">
-      <div class="auth-hero">
-        <div class="auth-logo">🎤</div>
-        <h1 class="neon">VIDEOKE</h1>
-        <p class="muted" id="authSub">Mag-login para i-manage ang song library</p>
-      </div>
-
-      <div class="auth-tabs" id="authTabs">
-        <button type="button" data-mode="login" class="on">Login</button>
-        <button type="button" data-mode="signup">Gumawa ng Account</button>
-      </div>
-
-      <form id="authForm" novalidate>
-        <label class="fl f-email">
-          <span>Email</span>
-          <div class="inp"><i>✉️</i><input id="email" type="email" autocomplete="email" placeholder="ikaw@email.com"></div>
-        </label>
-
-        <label class="fl f-pass">
-          <span id="passLbl">Password</span>
-          <div class="inp"><i>🔒</i><input id="pass" type="password" autocomplete="current-password" placeholder="••••••••"><button type="button" class="eye" data-eye="pass" aria-label="Ipakita ang password">👁</button></div>
-        </label>
-
-        <div class="strength f-strength" id="strength"><div class="meter"><b id="meterBar"></b></div><small id="meterTxt">Hindi bababa sa 6 na character</small></div>
-
-        <label class="fl f-pass2">
-          <span>Ulitin ang password</span>
-          <div class="inp"><i>🔒</i><input id="pass2" type="password" autocomplete="new-password" placeholder="••••••••"><button type="button" class="eye" data-eye="pass2" aria-label="Ipakita ang password">👁</button></div>
-        </label>
-
-        <div class="auth-err" id="authErr" role="alert"></div>
-
-        <button class="btn primary auth-submit" id="authSubmit" type="submit"><span class="lbl" id="submitLbl">Login</span><span class="spin"></span></button>
-
-        <div class="auth-links">
-          <button type="button" class="link f-forgot" id="forgotBtn">Nakalimutan ang password?</button>
-          <button type="button" class="link f-back" id="backBtn">← Bumalik sa Login</button>
-        </div>
-      </form>
-
-      <div id="authDone" class="auth-done" style="display:none">
-        <div class="big">📧</div>
-        <h2 id="doneTitle">I-check ang email mo</h2>
-        <p class="muted" id="doneMsg"></p>
-        <button class="btn" type="button" id="doneBack">← Bumalik sa Login</button>
-      </div>
-    </div>
-
-    <p class="auth-foot muted">Admin lang ang kailangang mag-login. Para kumanta, buksan lang ang Remote. 🎶</p>
+<!-- ============ AUTH ============ -->
+<div id="authView" class="auth-wrap" data-mode="login" style="display:none">
+  <div class="auth-top">
+    <a class="close-x" href="../" title="Isara"></a>
+    <button class="theme-toggle"></button>
   </div>
 
-  <!-- MAIN -->
-  <div id="mainView" style="display:none">
-    <header>
-      <div style="display:flex;align-items:center;gap:10px"><a class="close-x" href="../" title="Isara">✕</a><h1>🛠️ Videoke Admin</h1></div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span class="muted acct" id="acctEmail"></span>
-        <button class="theme-toggle" type="button">☀️</button>
-        <button class="btn small" id="pwBtn" title="Palitan ang password">🔑</button>
-        <button class="btn small" id="logoutBtn">Logout</button>
-      </div>
-    </header>
+  <div class="auth">
+    <span class="wordmark"><i data-i="mic"></i>videoke</span>
+    <h1 id="authTitle">Mag-login</h1>
+    <p class="muted" id="authSub">Para mag-upload at mag-ayos ng mga kanta sa library.</p>
 
-    <div id="notAdmin" class="card" style="display:none">
-      <b style="color:var(--red)">Hindi admin ang account na ito.</b>
-      <p class="muted">Ang unang account na nag-sign up lang ang may permiso mag-upload.</p>
+    <div class="auth-tabs" id="authTabs" role="tablist">
+      <button type="button" data-mode="login" class="on">Login</button>
+      <button type="button" data-mode="signup">Gumawa ng account</button>
     </div>
 
-    <div id="adminArea" style="display:none">
-      <div class="card">
-        <h2>⬆️ Mag-upload ng kanta</h2>
-        <div class="drop" id="drop">
-          <b>Pumili o i-drop ang mga file dito</b>
-          <span class="muted" style="font-size:13px">Video: MP4/WebM · Audio: MP3/M4A + .LRC (lyrics) · Max <span id="maxMb"></span>MB bawat file<br>
-          Tip: pangalanan ang file na <b>"Artist - Title.mp3"</b> para auto-fill. Ang .lrc na kapareho ng pangalan ay auto-pair.</span>
-        </div>
-        <input type="file" id="fileIn" multiple accept="video/mp4,video/webm,audio/*,.mp3,.m4a,.mp4,.webm,.ogg,.wav,.lrc" style="display:none">
-        <div class="up" id="upList"></div>
-        <div id="upActions" style="display:none;margin-top:12px;gap:8px">
-          <button class="btn primary" id="upAll">⬆️ I-upload lahat</button>
-          <button class="btn" id="upClear">Linisin</button>
-        </div>
-      </div>
+    <form id="authForm" novalidate>
+      <label class="fl f-email">
+        <span>Email</span>
+        <div class="inp"><i data-i="mail"></i><input id="email" type="email" autocomplete="email" placeholder="ikaw@email.com"></div>
+      </label>
 
-      <div class="card">
-        <h2 style="display:flex;justify-content:space-between;align-items:center">📚 Library <span class="muted" style="font-size:13px;font-weight:400" id="libStats"></span></h2>
-        <div class="bar"><div id="storeBar"></div></div>
-        <input id="libQ" class="field" style="margin-top:12px" placeholder="Hanapin (title, artist, code)...">
-        <div class="lib" id="libList"></div>
+      <label class="fl f-pass">
+        <span id="passLbl">Password</span>
+        <div class="inp"><i data-i="lock"></i><input id="pass" type="password" autocomplete="current-password" placeholder="Ang password mo"><button type="button" class="eye" data-eye="pass" aria-label="Ipakita ang password"><i data-i="eye"></i></button></div>
+      </label>
+
+      <div class="strength f-strength" id="strength"><div class="meter"><b id="meterBar"></b></div><small id="meterTxt">Hindi bababa sa 6 na character</small></div>
+
+      <label class="fl f-pass2">
+        <span>Ulitin ang password</span>
+        <div class="inp"><i data-i="lock"></i><input id="pass2" type="password" autocomplete="new-password" placeholder="I-type ulit"><button type="button" class="eye" data-eye="pass2" aria-label="Ipakita ang password"><i data-i="eye"></i></button></div>
+      </label>
+
+      <div class="auth-err" id="authErr" role="alert"></div>
+
+      <button class="btn primary auth-submit" id="authSubmit" type="submit"><span id="submitLbl">Login</span><span class="spin"></span></button>
+
+      <div class="auth-links">
+        <button type="button" class="link f-forgot" id="forgotBtn">Nakalimutan ang password?</button>
+        <button type="button" class="link f-back" id="backBtn"><i data-i="back"></i>Bumalik sa login</button>
       </div>
+    </form>
+
+    <div id="authDone" class="auth-done" style="display:none">
+      <span class="done-ic"><i data-i="mail"></i></span>
+      <h2 id="doneTitle">I-check ang email mo</h2>
+      <p class="muted" id="doneMsg"></p>
+      <button class="btn" type="button" id="doneBack"><i data-i="back"></i>Bumalik sa login</button>
     </div>
+
+    <p class="auth-foot muted">Hindi kailangan ng account para kumanta. Buksan lang ang Remote sa phone.</p>
   </div>
 </div>
+
+<!-- ============ MAIN ============ -->
+<div id="mainView" class="app" style="display:none">
+  <header class="bar">
+    <a class="close-x" href="../" title="Isara"></a>
+    <div class="ttl"><h1>Library</h1><span class="muted acct" id="acctEmail"></span></div>
+    <button class="theme-toggle"></button>
+    <button class="btn icon" id="pwBtn" title="Palitan ang password" aria-label="Palitan ang password"><i data-i="key"></i></button>
+    <button class="btn icon" id="logoutBtn" title="Logout" aria-label="Logout"><i data-i="logout"></i></button>
+  </header>
+
+  <div id="notAdmin" class="panel" style="display:none">
+    <b>Walang permiso ang account na ito na mag-upload.</b>
+    <p class="muted">Ang admin account lang ang pwedeng magdagdag o magbura ng kanta.</p>
+  </div>
+
+  <div id="adminArea" style="display:none">
+    <section class="panel">
+      <h2>Magdagdag ng kanta</h2>
+      <button type="button" class="drop" id="drop">
+        <i data-i="upload"></i>
+        <b>Pumili ng mga file</b>
+        <span class="muted">o i-drag dito. Video na MP4 o WebM, o audio na MP3 o M4A kasama ang .lrc para sa lyrics. Hanggang <span id="maxMb"></span>MB bawat file.</span>
+      </button>
+      <p class="hint">Pangalanan ang file na <b>Artist - Title.mp3</b> para kusang mapunan. Ang .lrc na kapareho ang pangalan ay kusang naikakabit.</p>
+      <input type="file" id="fileIn" multiple accept="video/mp4,video/webm,audio/*,.mp3,.m4a,.mp4,.webm,.ogg,.wav,.lrc" hidden>
+      <div class="up" id="upList"></div>
+      <div id="upActions" class="up-actions" style="display:none">
+        <button class="btn" id="upClear">Alisin lahat</button>
+        <button class="btn primary" id="upAll"><i data-i="upload"></i>I-upload lahat</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="lib-head">
+        <h2>Mga kanta</h2>
+        <span class="muted" id="libStats"></span>
+      </div>
+      <div class="meterline" title="Gamit na storage"><div id="storeBar"></div></div>
+      <div class="search"><i data-i="search"></i><input id="libQ" placeholder="Hanapin ang title, artist o numero" type="search"></div>
+      <div class="lib" id="libList"></div>
+    </section>
+  </div>
+</div>
+
 <div class="modal" id="pwModal" style="display:none">
   <form class="modal-card" id="pwForm" novalidate>
-    <h2>🔑 Palitan ang password</h2>
+    <h2>Palitan ang password</h2>
     <label class="fl"><span>Bagong password</span>
-      <div class="inp"><i>🔒</i><input id="np1" type="password" autocomplete="new-password" placeholder="••••••••"><button type="button" class="eye" data-eye="np1">👁</button></div></label>
-    <label class="fl"><span>Ulitin</span>
-      <div class="inp"><i>🔒</i><input id="np2" type="password" autocomplete="new-password" placeholder="••••••••"><button type="button" class="eye" data-eye="np2">👁</button></div></label>
+      <div class="inp"><i data-i="lock"></i><input id="np1" type="password" autocomplete="new-password"><button type="button" class="eye" data-eye="np1" aria-label="Ipakita"><i data-i="eye"></i></button></div></label>
+    <label class="fl"><span>Ulitin ang bagong password</span>
+      <div class="inp"><i data-i="lock"></i><input id="np2" type="password" autocomplete="new-password"><button type="button" class="eye" data-eye="np2" aria-label="Ipakita"><i data-i="eye"></i></button></div></label>
     <div class="auth-err" id="pwErr"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
+    <div class="modal-acts">
       <button type="button" class="btn" id="pwCancel">Kanselahin</button>
-      <button type="submit" class="btn primary" id="pwSave">I-save</button>
+      <button type="submit" class="btn primary" id="pwSave">Palitan ang password</button>
     </div>
   </form>
 </div>
-<input type="file" id="lrcIn" accept=".lrc,text/plain" style="display:none">
+<input type="file" id="lrcIn" accept=".lrc,text/plain" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/js/config.js"></script>

@@ -3,97 +3,107 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b0716">
+<meta name="theme-color" content="#15171c">
+<script src="../assets/js/icons.js"></script>
 <script src="../assets/js/theme.js"></script>
-<title>Videoke — Remote</title>
+<title>Videoke Remote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="../assets/css/remote.css">
 </head>
 <body>
 <div class="app">
 
-  <!-- JOIN SCREEN -->
-  <div id="joinView" class="join" style="display:none">
-    <a class="close-x" href="../" style="position:absolute;top:14px;right:14px" title="Isara">✕</a>
-    <div style="position:absolute;top:14px;left:14px"><button class="theme-toggle" type="button">☀️</button></div>
-    <h1 class="neon">🎤</h1>
-    <h2 style="margin:0">Sumali sa Videoke</h2>
-    <p class="muted">I-scan ang QR sa TV gamit ang camera, o i-type ang room code.</p>
-    <input id="joinRoom" class="field" maxlength="8" placeholder="ROOM" autocomplete="off">
-    <input id="joinName" class="field" style="font-size:16px;letter-spacing:0;font-family:inherit;text-transform:none;margin-top:0" maxlength="40" placeholder="Pangalan mo (opsyonal)">
-    <button class="btn primary reserve" id="joinBtn">Sumali</button>
-  </div>
+  <!-- JOIN -->
+  <section id="joinView" class="join" style="display:none">
+    <div class="bar">
+      <a class="close-x" href="../" title="Isara"></a>
+      <button class="theme-toggle"></button>
+    </div>
+    <div class="join-body">
+      <span class="wordmark"><i data-i="mic"></i>videoke</span>
+      <h1>Sumali sa kantahan</h1>
+      <p class="muted">I-scan ang QR code sa TV gamit ang camera ng phone mo. O kaya, i-type ang room code na nakalagay doon.</p>
+      <label class="lbl" for="joinRoom">Room code</label>
+      <input id="joinRoom" class="field room-in" maxlength="8" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
+      <label class="lbl" for="joinName">Pangalan mo</label>
+      <input id="joinName" class="field" maxlength="40" placeholder="Lalabas sa TV kapag ikaw na ang kakanta" autocomplete="nickname">
+      <button class="btn primary wide" id="joinBtn">Sumali</button>
+    </div>
+  </section>
 
   <!-- MAIN -->
-  <div id="mainView" style="display:none">
-    <header>
-      <div style="display:flex;align-items:center;gap:10px"><a class="close-x" href="../" title="Isara">✕</a><div class="logo"><span class="conn" id="conn"></span>🎤 Videoke</div></div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button class="theme-toggle" type="button">☀️</button>
-        <button class="namechip" id="nameChip">🙂 Pangalan</button>
-        <button class="roomchip" id="roomChip">----</button>
-      </div>
+  <section id="mainView" style="display:none">
+    <header class="bar">
+      <a class="close-x" href="../" title="Isara"></a>
+      <span class="wordmark small"><span class="conn" id="conn" title="Koneksyon"></span>videoke</span>
+      <span class="spacer"></span>
+      <button class="roomchip" id="roomChip" title="Lumipat ng room">----</button>
+      <button class="theme-toggle"></button>
     </header>
 
-    <div class="now">
-      <div class="lbl"><span>Kinakanta ngayon</span><span id="volLbl">🔊 --</span></div>
-      <div class="ttl" id="nowTtl"><span class="muted">Walang tumutugtog</span></div>
+    <div class="display now">
+      <div class="now-top"><span>Kinakanta ngayon</span><span id="volLbl"></span></div>
+      <div class="ttl" id="nowTtl"><span class="idle">Walang tumutugtog</span></div>
       <div class="sub" id="nowSub"></div>
       <div class="ctrls">
-        <button data-cmd="restart" title="Ulitin">⏮</button>
-        <button data-cmd="voldown" title="Hinaan">🔉</button>
-        <button data-cmd="toggle" class="big" id="btnToggle" title="Play/Pause">⏯</button>
-        <button data-cmd="volup" title="Lakasan">🔊</button>
-        <button data-cmd="skip" title="Skip">⏭</button>
+        <button data-cmd="restart" title="Ulitin mula simula" aria-label="Ulitin"><i data-i="restart"></i></button>
+        <button data-cmd="voldown" title="Hinaan" aria-label="Hinaan"><i data-i="voldown"></i></button>
+        <button data-cmd="toggle" class="main" id="btnToggle" title="Play o pause" aria-label="Play o pause"><i data-i="playpause"></i></button>
+        <button data-cmd="volup" title="Lakasan" aria-label="Lakasan"><i data-i="volup"></i></button>
+        <button data-cmd="skip" title="Laktawan" aria-label="Laktawan"><i data-i="next"></i></button>
       </div>
     </div>
 
-    <div class="tabs">
-      <button data-tab="code" class="on">🔢 Code</button>
-      <button data-tab="search">🔍 Hanap</button>
-      <button data-tab="yt">▶ YouTube</button>
-      <button data-tab="queue">📋 Pila<span class="badge" id="qBadge" style="display:none"></span></button>
-    </div>
+    <button class="namechip" id="nameChip"><i data-i="user"></i><span>Pangalan</span></button>
+
+    <nav class="tabs" role="tablist">
+      <button data-tab="code" class="on"><i data-i="hash"></i>Numero</button>
+      <button data-tab="search"><i data-i="search"></i>Hanap</button>
+      <button data-tab="yt"><i data-i="yt"></i>YouTube</button>
+      <button data-tab="queue"><i data-i="list"></i>Pila<span class="badge" id="qBadge" style="display:none"></span></button>
+    </nav>
 
     <!-- CODE -->
     <div class="pane on" id="pane-code">
-      <div class="display" id="codeDisp">_____</div>
-      <div class="preview" id="codePrev"><span class="muted">I-type ang 5-digit song number</span></div>
+      <div class="display lcd"><div class="dot" id="codeDisp"><span class="ghost">88888</span></div></div>
+      <div class="preview" id="codePrev"><span class="muted">I-type ang song number</span></div>
       <div class="pad" id="pad">
         <button>1</button><button>2</button><button>3</button>
         <button>4</button><button>5</button><button>6</button>
         <button>7</button><button>8</button><button>9</button>
-        <button class="fn" data-k="clr">C</button><button>0</button><button class="fn" data-k="del">⌫</button>
+        <button class="fn" data-k="clr" aria-label="Burahin lahat">C</button><button>0</button><button class="fn" data-k="del" aria-label="Burahin"><i data-i="del"></i></button>
       </div>
-      <button class="btn primary reserve" id="codeReserve" disabled>🎤 RESERVE</button>
+      <button class="btn primary wide" id="codeReserve" disabled>Reserve</button>
     </div>
 
     <!-- SEARCH -->
     <div class="pane" id="pane-search">
-      <input id="searchQ" class="field" placeholder="Title o artist..." autocomplete="off">
+      <input id="searchQ" class="field" placeholder="Hanapin ang title o artist" autocomplete="off" type="search">
       <div class="list" id="searchList"></div>
     </div>
 
     <!-- YOUTUBE -->
     <div class="pane" id="pane-yt">
       <div id="ytSearchBox" style="display:none">
-        <div style="display:flex;gap:8px">
-          <input id="ytQ" class="field" placeholder="Hanapin sa YouTube (karaoke)..." autocomplete="off">
-          <button class="btn cyan" id="ytGo">🔍</button>
+        <div class="row-in">
+          <input id="ytQ" class="field" placeholder="Hanapin sa YouTube" autocomplete="off" type="search">
+          <button class="btn primary icon" id="ytGo" aria-label="Hanapin"><i data-i="search"></i></button>
         </div>
         <div class="list" id="ytList"></div>
-        <div class="note" style="margin:14px 0 6px">O i-paste ang link:</div>
+        <p class="note">O i-paste ang link:</p>
       </div>
-      <input id="ytLink" class="field" placeholder="I-paste ang YouTube link dito" autocomplete="off">
-      <button class="btn primary reserve" id="ytReserve">🎤 RESERVE YouTube</button>
-      <div class="note">Tip: sa YouTube app, pindutin ang Share → Copy link, tapos i-paste dito. Hanapin ang may "karaoke" para may lyrics.</div>
+      <input id="ytLink" class="field" placeholder="I-paste ang YouTube link" autocomplete="off">
+      <button class="btn primary wide" id="ytReserve">Reserve</button>
+      <p class="note">Sa YouTube app: Share, tapos Copy link. Piliin ang may "karaoke" sa title para may lyrics.</p>
     </div>
 
     <!-- QUEUE -->
     <div class="pane" id="pane-queue">
       <div class="list" id="queueList"></div>
     </div>
-  </div>
+  </section>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

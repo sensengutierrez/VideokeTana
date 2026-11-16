@@ -1,5 +1,5 @@
 // ===== LIGHT / DARK MODE =====
-// I-load sa <head> para walang "flash" ng maling kulay.
+// I-load sa <head> (pagkatapos ng icons.js) para walang "flash" ng maling kulay.
 (function () {
   const KEY = 'vk_theme';
   const mq = window.matchMedia('(prefers-color-scheme: light)');
@@ -9,12 +9,11 @@
   function apply(t) {
     document.documentElement.dataset.theme = t;
     document.querySelectorAll('.theme-toggle').forEach(b => {
-      b.textContent = t === 'light' ? '🌙' : '☀️';
-      b.title = t === 'light' ? 'Dark mode' : 'Light mode';
-      b.setAttribute('aria-label', b.title);
+      b.setAttribute('aria-label', t === 'light' ? 'Lumipat sa dark mode' : 'Lumipat sa light mode');
+      b.title = b.getAttribute('aria-label');
     });
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = t === 'light' ? '#f5f2fb' : '#0b0716';
+    if (meta) meta.content = t === 'light' ? '#eef0f3' : '#15171c';
   }
 
   window.vkToggleTheme = function () {
@@ -24,14 +23,14 @@
   };
 
   apply(current());
-  // Sumunod sa setting ng device kung hindi pa pumipili ang user
   mq.addEventListener && mq.addEventListener('change', () => { if (!saved()) apply(current()); });
 
   document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.theme-toggle').forEach(b => {
+      b.type = 'button';
+      b.innerHTML = `<span class="tt-opt tt-light">${window.ICON ? ICON('sun') : '☀'}</span><span class="tt-opt tt-dark">${window.ICON ? ICON('moon') : '☾'}</span>`;
+      b.addEventListener('click', e => { e.stopPropagation(); window.vkToggleTheme(); });
+    });
     apply(current());
-    document.querySelectorAll('.theme-toggle').forEach(b => b.addEventListener('click', e => {
-      e.stopPropagation();
-      window.vkToggleTheme();
-    }));
   });
 })();

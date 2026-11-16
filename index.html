@@ -2,37 +2,78 @@
 <html lang="fil">
 <head>
 <meta charset="UTF-8">
-<meta name="theme-color" content="#0b0716">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#15171c">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="assets/js/icons.js"></script>
 <script src="assets/js/theme.js"></script>
 <title>Videoke</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/style.css">
-<style>
-  body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
-    background: radial-gradient(ellipse at top, var(--glow) 0%, var(--bg) 60%); }
-  .wrap { width: 100%; max-width: 900px; text-align: center; }
-  h1 { font-size: clamp(42px, 9vw, 76px); margin: 0 0 6px; letter-spacing: 2px; }
-  .sub { margin-bottom: 34px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
-  .card { display: block; text-decoration: none; color: var(--text); background: var(--card); border: 1px solid var(--line);
-    border-radius: 20px; padding: 26px 18px; transition: transform .15s, border-color .2s; }
-  .card:hover, .card:active { transform: translateY(-3px); border-color: var(--pink); }
-  .card .ico { font-size: 46px; }
-  .card b { display: block; font-size: 20px; margin: 10px 0 4px; }
-  .card span { font-size: 14px; color: var(--muted); }
-</style>
+<link rel="stylesheet" href="assets/css/home.css">
 </head>
 <body>
-<div style="position:fixed;top:16px;right:16px"><button class="theme-toggle" type="button">☀️</button></div>
-<div class="wrap">
-  <h1 class="neon">🎤 VIDEOKE</h1>
-  <div class="sub muted">Pambahay na videoke — TV, laptop, tablet at phone</div>
-  <div class="grid">
-    <a class="card" href="host/"><div class="ico">📺</div><b>Host</b><span>Buksan sa laptop/tablet na naka-HDMI sa TV</span></a>
-    <a class="card" href="remote/"><div class="ico">📱</div><b>Remote</b><span>Mag-reserve ng kanta gamit ang phone</span></a>
-    <a class="card" href="songbook/"><div class="ico">📖</div><b>Songbook</b><span>Listahan ng lahat ng kanta at song number</span></a>
-    <a class="card" href="admin/"><div class="ico">🛠️</div><b>Admin</b><span>Mag-upload ng kanta sa library</span></a>
+<main class="home">
+  <header class="topbar">
+    <span class="wordmark"><i data-i="mic"></i>videoke</span>
+    <button class="theme-toggle"></button>
+  </header>
+
+  <div class="home-grid">
+  <section class="display hero" aria-label="Song number display">
+    <div class="hero-row">
+      <span class="hero-lbl">Song no.</span>
+      <span class="hero-count" id="libCount"></span>
+    </div>
+    <div class="dot hero-num" id="heroNum"><span class="ghost">88888</span></div>
+    <div class="hero-title" id="heroTitle">Pumili ng kanta, i-type ang numero, kumanta.</div>
+  </section>
+
+  <nav class="menu">
+    <a href="host/" class="item primary">
+      <span class="item-ic"><i data-i="tv"></i></span>
+      <span class="item-txt"><b>Buksan sa TV</b><small>Sa laptop o tablet na naka-HDMI. Dito tutugtog ang kanta.</small></span>
+      <i data-i="chevron" class="chev"></i>
+    </a>
+    <a href="remote/" class="item">
+      <span class="item-ic"><i data-i="phone"></i></span>
+      <span class="item-txt"><b>Remote</b><small>Mag-reserve at kontrolin ang kanta gamit ang phone.</small></span>
+      <i data-i="chevron" class="chev"></i>
+    </a>
+    <a href="songbook/" class="item">
+      <span class="item-ic"><i data-i="book"></i></span>
+      <span class="item-txt"><b>Songbook</b><small>Lahat ng kanta at ang song number nila.</small></span>
+      <i data-i="chevron" class="chev"></i>
+    </a>
+    <a href="admin/" class="item">
+      <span class="item-ic"><i data-i="sliders"></i></span>
+      <span class="item-txt"><b>Library</b><small>Mag-upload at mag-ayos ng kanta. Para sa admin.</small></span>
+      <i data-i="chevron" class="chev"></i>
+    </a>
+  </nav>
   </div>
-</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/common.js"></script>
+<script>
+// Ipakita ang isang random na kanta sa display, parang demo ng videoke machine
+(async () => {
+  try {
+    const { data, count } = await sb.from('songs').select('code, title, artist', { count: 'exact' }).limit(200);
+    if (!data || !data.length) return;
+    document.getElementById('libCount').textContent = count + (count === 1 ? ' kanta' : ' na kanta');
+    let i = Math.floor(Math.random() * data.length);
+    const show = () => {
+      const s = data[i % data.length]; i++;
+      document.getElementById('heroNum').textContent = s.code;
+      document.getElementById('heroTitle').textContent = s.title + (s.artist ? ', ' + s.artist : '');
+    };
+    show();
+    if (data.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(show, 4000);
+  } catch (e) { /* offline: iwan ang default */ }
+})();
+</script>
 </body>
 </html>

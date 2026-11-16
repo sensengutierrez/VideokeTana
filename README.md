@@ -21,6 +21,8 @@ Pambahay na videoke — host sa laptop/tablet (naka-HDMI/Type-C sa TV), remote s
 ├── assets/
 │   ├── css/              style.css (shared) + isang CSS bawat page
 │   └── js/
+│       ├── icons.js      Line icons (SVG)
+│       ├── theme.js      Light / dark mode
 │       ├── config.js     Supabase URL/key, YouTube API key (optional)
 │       ├── common.js     Shared helpers (Supabase client, toast, queue)
 │       ├── host.js

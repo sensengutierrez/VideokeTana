@@ -54,13 +54,14 @@ function renderNextBar() {
   if (mode === 'idle' || !waiting.length) { bar.style.display = 'none'; }
   else {
     const n = waiting[0], i = itemInfo(n);
-    bar.innerHTML = `<b>SUSUNOD:</b> ${esc(i.code)} · ${esc(i.title)}${n.singer ? ' — ' + esc(n.singer) : ''}`
-      + (waiting.length > 1 ? ` <span class="muted">(+${waiting.length - 1} pa)</span>` : '');
+    bar.innerHTML = `<span class="nb-lbl">Susunod</span><span class="dot nb-num">${esc(i.code)}</span><span class="nb-t">${esc(i.title)}</span>`
+      + (n.singer ? `<span class="nb-s">${esc(n.singer)}</span>` : '')
+      + (waiting.length > 1 ? `<span class="nb-more">+${waiting.length - 1}</span>` : '');
     bar.style.display = 'block';
   }
   $('idleHint').textContent = waiting.length && mode === 'idle'
-    ? 'Naghahanda ng susunod na kanta...'
-    : 'I-scan ang QR gamit ang phone camera para mag-reserve ng kanta.';
+    ? 'Inihahanda ang susunod na kanta'
+    : 'I-scan ang QR code gamit ang camera ng phone para mag-reserve ng kanta.';
 }
 
 function flash(el, text, ms = 1400) {
@@ -103,7 +104,7 @@ async function startNext() {
   try { await playItem(next); }
   catch (e) {
     console.error(e);
-    if (e.name === 'NotAllowedError') { $('gateBtn').textContent = '▶ Tap para ituloy'; $('gate').style.display = 'flex'; }
+    if (e.name === 'NotAllowedError') { $('gateBtn').querySelector('span').textContent = 'Ituloy'; $('gate').style.display = 'flex'; }
     else failCurrent('Hindi ma-play: ' + (e.message || e));
   }
   broadcastState();
@@ -134,7 +135,7 @@ function showSplash(item) {
     $('spNum').textContent = i.code;
     $('spT').textContent = i.title;
     $('spA').textContent = i.artist;
-    $('spS').textContent = item.singer ? '🎤 ' + item.singer : '';
+    $('spS').textContent = item.singer ? 'Kumakanta: ' + item.singer : '';
     $('splash').style.display = 'flex';
     setTimeout(() => { $('splash').style.display = 'none'; res(); }, 3000);
   });
@@ -150,7 +151,7 @@ function stopMedia() {
 
 async function playItem(item) {
   const i = itemInfo(item);
-  $('nowTag').innerHTML = `<span class="code-badge ${i.source === 'youtube' ? 'yt' : ''}">${esc(i.code)}</span> ${esc(i.title)}${item.singer ? ' · 🎤 ' + esc(item.singer) : ''}`;
+  $('nowTag').innerHTML = `<span class="dot">${esc(i.code)}</span><span>${esc(i.title)}</span>${item.singer ? `<span class="nt-s">${esc(item.singer)}</span>` : ''}`;
   applyVolume();
 
   if (item.song && item.song.kind === 'video') {
@@ -240,7 +241,7 @@ function lyricTick() {
     const first = lyrics[0];
     const left = first.t - t;
     cur.style.setProperty('--p', '0%');
-    cur.textContent = left <= 4 ? '● '.repeat(Math.max(1, Math.ceil(left))).trim() : '♪ ♪ ♪';
+    cur.textContent = left <= 4 ? '● '.repeat(Math.max(1, Math.ceil(left))).trim() : '';
     nxt.textContent = first.text;
     return;
   }
@@ -286,9 +287,9 @@ function handleCmd(action, value) {
     case 'play': setPaused(false); break;
     case 'skip': if (current) finishCurrent(); break;
     case 'restart': restart(); break;
-    case 'volup': volume = Math.min(100, volume + 10); applyVolume(); flash($('volBadge'), '🔊 ' + volume); break;
-    case 'voldown': volume = Math.max(0, volume - 10); applyVolume(); flash($('volBadge'), '🔉 ' + volume); break;
-    case 'setvol': volume = Math.max(0, Math.min(100, parseInt(value, 10) || 0)); applyVolume(); flash($('volBadge'), '🔊 ' + volume); break;
+    case 'volup': volume = Math.min(100, volume + 10); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
+    case 'voldown': volume = Math.max(0, volume - 10); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
+    case 'setvol': volume = Math.max(0, Math.min(100, parseInt(value, 10) || 0)); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
     case 'refresh': loadQueue(); break;
   }
   broadcastState();

@@ -2,20 +2,27 @@
 <html lang="fil">
 <head>
 <meta charset="UTF-8">
-<meta name="theme-color" content="#0b0716">
+<meta name="theme-color" content="#15171c">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../assets/js/icons.js"></script>
 <script src="../assets/js/theme.js"></script>
-<title>Videoke — Host</title>
+<title>Videoke</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="../assets/css/host.css">
 </head>
 <body>
 <div id="gate">
-  <a class="close-x" href="../" style="position:absolute;top:20px;right:20px" title="Isara">✕</a>
-  <div style="position:absolute;top:20px;left:20px"><button class="theme-toggle" type="button">☀️</button></div>
-  <h1 class="neon">🎤 VIDEOKE</h1>
-  <button class="btn primary tap" id="gateBtn">▶ Tap para simulan</button>
-  <div class="muted">Kailangan ng isang tap para payagan ng browser ang tunog.<br>Tip: pindutin ang F para fullscreen.</div>
+  <div class="gate-top">
+    <span class="wordmark"><i data-i="mic"></i>videoke</span>
+    <div class="gate-acts"><button class="theme-toggle"></button><a class="close-x" href="../" title="Isara"></a></div>
+  </div>
+  <div class="gate-body">
+    <h1>Handa na ang TV</h1>
+    <p class="muted">Pindutin para payagan ng browser na tumunog ang kanta. Pagkatapos, F para fullscreen.</p>
+    <button class="btn primary gate-btn" id="gateBtn"><i data-i="play"></i><span>Simulan</span></button>
+  </div>
 </div>
 
 <div id="stage">
@@ -23,37 +30,44 @@
   <div id="ytWrap"><div id="ytPlayer"></div></div>
 
   <div id="audioStage">
-    <div class="orb" style="width:40vw;height:40vw;background:#ff3d9a;left:-10vw;top:-10vw"></div>
-    <div class="orb" style="width:35vw;height:35vw;background:#29e0ff;right:-8vw;bottom:-12vw;animation-delay:-5s"></div>
     <div id="aTitle"><div class="t" id="aT"></div><div class="a" id="aA"></div></div>
     <div id="lyrics"><div id="lyCur"></div><div id="lyNext"></div></div>
-    <div id="noLrc">♪ Walang lyrics file para sa kantang ito ♪</div>
+    <div id="noLrc">Walang lyrics para sa kantang ito</div>
     <audio id="aud" preload="auto"></audio>
   </div>
 
   <div id="idle">
-    <div class="left">
-      <h1 class="neon">🎤 VIDEOKE</h1>
-      <div class="room">Room code<b id="roomCode">----</b></div>
-      <div class="hint" id="idleHint">I-scan ang QR gamit ang phone camera para mag-reserve ng kanta.</div>
-      <div class="url" id="remoteUrl"></div>
+    <div class="idle-main">
+      <span class="wordmark"><i data-i="mic"></i>videoke</span>
+      <div class="room">
+        <span class="room-lbl">Room code</span>
+        <b class="dot" id="roomCode">----</b>
+      </div>
+      <p class="hint" id="idleHint">I-scan ang QR code gamit ang camera ng phone para mag-reserve ng kanta.</p>
+      <p class="url" id="remoteUrl"></p>
     </div>
-    <div id="qrBig"></div>
+    <div class="qr-card"><div id="qrBig"></div><span>I-scan para sumali</span></div>
   </div>
 
-  <div id="splash"><div class="num" id="spNum"></div><div class="t" id="spT"></div><div class="a" id="spA"></div><div class="s" id="spS"></div></div>
+  <div id="splash">
+    <span class="sp-lbl">Song no.</span>
+    <div class="dot sp-num" id="spNum"></div>
+    <div class="sp-t" id="spT"></div>
+    <div class="sp-a" id="spA"></div>
+    <div class="sp-s" id="spS"></div>
+  </div>
   <div id="nowTag"></div>
   <div id="nextBar"></div>
-  <div id="cornerQr"><div id="qrSmall"></div><div class="rc" id="roomSmall"></div></div>
-  <div id="pauseBadge"><div>⏸ NAKA-PAUSE</div></div>
+  <div id="cornerQr"><div id="qrSmall"></div><div class="dot rc" id="roomSmall"></div></div>
+  <div id="pauseBadge"><div><i data-i="pause"></i>Naka-pause</div></div>
   <div id="volBadge"></div>
 
   <div id="topBtns">
-    <button class="btn small" id="btnSkip" title="Skip (N)">⏭ Skip</button>
-    <button class="btn small" id="btnNewRoom" title="Bagong room code">🔄 Room</button>
-    <button class="btn small" id="btnFs" title="Fullscreen (F)">⛶</button>
-    <button class="theme-toggle" type="button">☀️</button>
-    <button class="btn small" id="btnClose" title="Isara">✕</button>
+    <button class="tb" id="btnSkip" title="Laktawan (N)"><i data-i="next"></i><span>Laktawan</span></button>
+    <button class="tb" id="btnNewRoom" title="Bagong room code"><i data-i="refresh"></i><span>Bagong room</span></button>
+    <button class="tb" id="btnFs" title="Fullscreen (F)" aria-label="Fullscreen"><i data-i="fullscreen"></i></button>
+    <button class="theme-toggle"></button>
+    <button class="tb" id="btnClose" title="Isara" aria-label="Isara"><i data-i="x"></i></button>
   </div>
 </div>
 

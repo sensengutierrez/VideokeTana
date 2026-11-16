@@ -37,7 +37,9 @@ function start() {
   if (!NAME) setTimeout(askName, 400);
 }
 
-function renderName() { $('nameChip').textContent = '🙂 ' + (NAME || 'Pangalan'); }
+function renderName() {
+  $('nameChip').innerHTML = ICON('user') + (NAME ? `<span>Kumakanta bilang <b>${esc(NAME)}</b>. Palitan</span>` : '<span>Ilagay ang pangalan mo</span>');
+}
 function askName() {
   const n = prompt('Pangalan mo? (lalabas sa TV kapag ikaw na ang kakanta)', NAME);
   if (n === null) return;
@@ -80,14 +82,14 @@ document.querySelectorAll('.ctrls button').forEach(b => b.onclick = () => {
 function renderNow() {
   const n = state && state.now;
   if (!n) {
-    $('nowTtl').innerHTML = '<span class="muted">Walang tumutugtog</span>';
+    $('nowTtl').innerHTML = '<span class="idle">Walang tumutugtog</span>';
     $('nowSub').textContent = '';
   } else {
-    $('nowTtl').innerHTML = `<span class="code-badge ${n.source === 'youtube' ? 'yt' : ''}">${esc(n.code)}</span><span>${esc(n.title)}</span>`;
-    $('nowSub').textContent = [n.artist, n.singer ? '🎤 ' + n.singer : ''].filter(Boolean).join(' · ');
+    $('nowTtl').innerHTML = (n.source === 'youtube' ? '<span class="yt">YouTube</span>' : `<span class="dot">${esc(n.code)}</span>`) + `<span class="t">${esc(n.title)}</span>`;
+    $('nowSub').textContent = [n.artist, n.singer ? 'Kumakanta: ' + n.singer : ''].filter(Boolean).join(', ');
   }
-  $('volLbl').textContent = state ? '🔊 ' + state.volume : '🔊 --';
-  $('btnToggle').textContent = state && state.paused ? '▶' : '⏯';
+  $('volLbl').textContent = state ? 'Volume ' + state.volume : '';
+  $('btnToggle').innerHTML = ICON(state && state.paused ? 'play' : (state && state.now ? 'pause' : 'playpause'));
 }
 
 // ================= QUEUE =================
@@ -106,19 +108,19 @@ function renderQueue() {
   b.style.display = waiting.length ? 'inline-block' : 'none';
   b.textContent = waiting.length;
 
-  if (!queue.length) { $('queueList').innerHTML = '<div class="empty">Walang nakapila. Mag-reserve na! 🎤</div>'; return; }
+  if (!queue.length) { $('queueList').innerHTML = '<div class="empty">Walang nakapila. Mag-reserve ng kanta sa Numero o Hanap.</div>'; return; }
   let pos = 0;
   $('queueList').innerHTML = queue.map(q => {
     const i = itemInfo(q);
     const playing = q.status === 'playing';
     if (!playing) pos++;
     return `<div class="row ${playing ? 'playing' : ''}">
-      <div class="pos">${playing ? '🎤' : pos}</div>
+      <div class="pos">${playing ? ICON('mic') : pos}</div>
       <div class="info">
-        <div class="t"><span class="code-badge ${i.source === 'youtube' ? 'yt' : ''}">${esc(i.code)}</span> ${esc(i.title)}</div>
-        <div class="a">${esc(i.artist)}${q.singer ? ' · ' + esc(q.singer) : ''}${playing ? ' · <b style="color:var(--pink)">Kinakanta</b>' : ''}</div>
+        <div class="t">${esc(i.title)}</div>
+        <div class="a">${i.source === 'youtube' ? 'YouTube' : esc(i.code)}${i.artist && i.source !== 'youtube' ? ', ' + esc(i.artist) : ''}${q.singer ? '. Kakanta: ' + esc(q.singer) : ''}</div>
       </div>
-      ${playing ? '' : `${pos > 1 ? `<button class="btn small" data-top="${q.id}" title="Unahin">⬆</button>` : ''}<button class="btn small danger" data-del="${q.id}" title="Alisin">✕</button>`}
+      ${playing ? '<span class="now-lbl">Kinakanta</span>' : `<div class="acts">${pos > 1 ? `<button class="btn small icon" data-top="${q.id}" title="Unahin" aria-label="Unahin">${ICON('up')}</button>` : ''}<button class="btn small icon danger" data-del="${q.id}" title="Alisin" aria-label="Alisin">${ICON('x')}</button></div>`}
     </div>`;
   }).join('');
 }
@@ -130,7 +132,7 @@ $('queueList').addEventListener('click', async e => {
     const waiting = queue.filter(q => q.status === 'waiting');
     const min = Math.min(...waiting.map(q => q.sort_order));
     const { error } = await sb.from('queue').update({ sort_order: min - 1 }).eq('id', top.dataset.top);
-    if (error) toast(error.message, 'err'); else { toast('Inuna sa pila ⬆', 'ok'); loadQueue(); }
+    if (error) toast(error.message, 'err'); else { toast('Inuna sa pila', 'ok'); loadQueue(); }
   }
   if (del) {
     if (!confirm('Alisin sa pila?')) return;
@@ -145,7 +147,7 @@ async function reserve(row) {
   if (error) { toast('Hindi na-reserve: ' + error.message, 'err'); return false; }
   await loadQueue();
   const n = queue.filter(q => q.status === 'waiting').length;
-  toast(`Naka-reserve! 🎤 Pang-${n} sa pila`, 'ok');
+  toast(n === 1 ? 'Naka-reserve. Ikaw ang susunod.' : `Naka-reserve. Pang-${n} ka sa pila.`, 'ok');
   return true;
 }
 
@@ -159,7 +161,7 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
 
 // ================= CODE KEYPAD =================
 function renderCode() {
-  $('codeDisp').textContent = (code + '_____').slice(0, 5);
+  $('codeDisp').innerHTML = esc(code) + `<span class="ghost">${'8'.repeat(5 - code.length)}</span>`;
   $('codeReserve').disabled = !codeSong;
 }
 $('pad').addEventListener('click', async e => {
@@ -177,17 +179,17 @@ $('pad').addEventListener('click', async e => {
     const { data } = await sb.from('songs').select('id, code, title, artist').eq('code', parseInt(code, 10)).maybeSingle();
     if (typed !== code) return;
     if (data) { codeSong = data; $('codePrev').innerHTML = `<b>${esc(data.title)}</b><span class="muted">${esc(data.artist || '')}</span>`; }
-    else $('codePrev').innerHTML = '<span style="color:var(--red)">Walang kantang may ganitong number</span>';
+    else $('codePrev').innerHTML = '<span class="err">Walang kanta sa numerong ito</span>';
     renderCode();
   } else {
-    $('codePrev').innerHTML = '<span class="muted">I-type ang 5-digit song number</span>';
+    $('codePrev').innerHTML = '<span class="muted">I-type ang song number</span>';
   }
 });
 $('codeReserve').onclick = async () => {
   if (!codeSong) return;
   if (await reserve({ song_id: codeSong.id })) {
     code = ''; codeSong = null; renderCode();
-    $('codePrev').innerHTML = '<span class="muted">I-type ang 5-digit song number</span>';
+    $('codePrev').innerHTML = '<span class="muted">I-type ang song number</span>';
   }
 };
 
@@ -205,9 +207,9 @@ async function doSearch() {
   if (error) { toast(error.message, 'err'); return; }
   $('searchList').innerHTML = data.length ? data.map(s => `
     <div class="row">
-      <span class="code-badge">${s.code}</span>
+      <span class="num">${s.code}</span>
       <div class="info"><div class="t">${esc(s.title)}</div><div class="a">${esc(s.artist || '')}</div></div>
-      <button class="btn small primary" data-song="${s.id}">🎤</button>
+      <button class="btn small" data-song="${s.id}">Reserve</button>
     </div>`).join('')
     : `<div class="empty">${q ? 'Walang nahanap.' : 'Wala pang kanta sa library. Mag-upload sa Admin page.'}</div>`;
 }
@@ -240,7 +242,7 @@ async function ytSearch() {
       return `<div class="row">
         <img src="${esc(it.snippet.thumbnails.default.url)}" alt="">
         <div class="info"><div class="t">${esc(t)}</div><div class="a">${esc(it.snippet.channelTitle)}</div></div>
-        <button class="btn small primary" data-yt="${esc(it.id.videoId)}" data-title="${esc(t)}">🎤</button>
+        <button class="btn small primary" data-yt="${esc(it.id.videoId)}" data-title="${esc(t)}">Reserve</button>
       </div>`;
     }).join('') || '<div class="empty">Walang nahanap.</div>';
   } catch (e) { $('ytList').innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`; }

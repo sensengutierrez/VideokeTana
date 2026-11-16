@@ -2,41 +2,40 @@
 <html lang="fil">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b0716">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15171c">
+<script src="../assets/js/icons.js"></script>
 <script src="../assets/js/theme.js"></script>
-<title>Videoke — Songbook</title>
+<title>Videoke Songbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="../assets/css/songbook.css">
 </head>
 <body>
 <div class="app">
-  <header>
-    <div class="head-left">
-      <a class="close-x" href="../" title="Isara">✕</a>
-      <div>
-        <h1>📖 Songbook</h1>
-        <div class="muted" id="count">Naglo-load...</div>
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px"><div id="roomInfo" class="muted" style="font-size:13px"></div><button class="theme-toggle" type="button">☀️</button></div>
+  <header class="bar">
+    <a class="close-x" href="../" title="Isara"></a>
+    <div class="ttl"><h1>Songbook</h1><span class="muted" id="count">Naglo-load</span></div>
+    <button class="theme-toggle"></button>
   </header>
 
   <div class="tools">
-    <input id="q" class="field" placeholder="🔍 Hanapin ang title, artist o song number..." autocomplete="off">
+    <div class="search"><i data-i="search"></i><input id="q" placeholder="Hanapin ang title, artist o numero" autocomplete="off" type="search"></div>
     <div class="row-tools">
-      <div class="seg" id="sortSeg">
-        <button data-sort="code" class="on">#</button>
+      <div class="seg" id="sortSeg" aria-label="Ayusin ayon sa">
+        <button data-sort="code" class="on">Numero</button>
         <button data-sort="title">Title</button>
         <button data-sort="artist">Artist</button>
       </div>
-      <div class="seg" id="kindSeg">
+      <div class="seg" id="kindSeg" aria-label="Uri">
         <button data-kind="" class="on">Lahat</button>
-        <button data-kind="video">🎬 Video</button>
-        <button data-kind="audio">🎵 Audio</button>
+        <button data-kind="video">Video</button>
+        <button data-kind="audio">Audio</button>
       </div>
     </div>
     <div class="letters" id="letters"></div>
+    <div id="roomInfo" class="room-info"></div>
   </div>
 
   <div id="list" class="book"></div>

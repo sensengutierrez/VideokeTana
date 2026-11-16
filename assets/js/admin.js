@@ -17,16 +17,17 @@ let mode = 'login';
 let recovering = false;
 
 const MODES = {
-  login:   { sub: 'Mag-login para i-manage ang song library', btn: 'Login', passLbl: 'Password', ac: 'current-password' },
-  signup:  { sub: 'Gumawa ng bagong account', btn: 'Gumawa ng Account', passLbl: 'Password', ac: 'new-password' },
-  forgot:  { sub: 'Ilagay ang email mo — padadalhan ka namin ng link para mag-reset ng password', btn: 'Ipadala ang reset link', passLbl: 'Password', ac: 'current-password' },
-  newpass: { sub: 'Gumawa ng bagong password', btn: 'I-save ang bagong password', passLbl: 'Bagong password', ac: 'new-password' }
+  login:   { title: 'Mag-login', sub: 'Para mag-upload at mag-ayos ng mga kanta sa library.', btn: 'Login', passLbl: 'Password', ac: 'current-password' },
+  signup:  { title: 'Gumawa ng account', sub: 'Gamit ang email at password na madali mong maaalala.', btn: 'Gumawa ng account', passLbl: 'Password', ac: 'new-password' },
+  forgot:  { title: 'I-reset ang password', sub: 'Ilagay ang email mo. Padadalhan ka ng link para gumawa ng bagong password.', btn: 'Ipadala ang link', passLbl: 'Password', ac: 'current-password' },
+  newpass: { title: 'Bagong password', sub: 'Gumawa ng bagong password para sa account mo.', btn: 'I-save ang password', passLbl: 'Bagong password', ac: 'new-password' }
 };
 
 function setMode(m) {
   mode = m;
   const cfg = MODES[m];
   $('authView').dataset.mode = m;
+  $('authTitle').textContent = cfg.title;
   $('authSub').textContent = cfg.sub;
   $('submitLbl').textContent = cfg.btn;
   $('passLbl').textContent = cfg.passLbl;
@@ -74,11 +75,11 @@ function updateStrength() {
   const p = $('pass').value;
   const sc = p ? pwScore(p) : 0;
   const lv = [
-    ['0%', 'var(--red)', 'Hindi bababa sa 6 na character'],
-    ['25%', 'var(--red)', 'Mahina'],
-    ['50%', 'var(--gold)', 'Pwede na'],
-    ['75%', 'var(--cyan)', 'Malakas'],
-    ['100%', 'var(--green)', 'Napakalakas 💪']
+    ['0%', 'var(--danger)', 'Hindi bababa sa 6 na character'],
+    ['25%', 'var(--danger)', 'Mahina'],
+    ['50%', 'var(--warn)', 'Pwede na'],
+    ['75%', 'var(--accent)', 'Malakas'],
+    ['100%', 'var(--accent)', 'Napakalakas']
   ][p ? Math.max(1, sc) : 0];
   $('meterBar').style.width = lv[0];
   $('meterBar').style.background = lv[1];
@@ -93,7 +94,7 @@ document.addEventListener('click', e => {
   const show = inp.type === 'password';
   inp.type = show ? 'text' : 'password';
   b.classList.toggle('on', show);
-  b.textContent = show ? '🙈' : '👁';
+  b.innerHTML = ICON(show ? 'eyeoff' : 'eye');
 });
 
 document.querySelectorAll('#authTabs button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
@@ -136,7 +137,7 @@ $('authForm').addEventListener('submit', async e => {
     if (mode === 'login') {
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      toast('Welcome back! 🎤', 'ok');
+      toast('Naka-login ka na', 'ok');
       refreshAuth();
     } else if (mode === 'signup') {
       const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: REDIRECT } });
@@ -144,7 +145,7 @@ $('authForm').addEventListener('submit', async e => {
       if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
         throw new Error('User already registered');
       }
-      if (data.session) { toast('Account ginawa! 🎉', 'ok'); refreshAuth(); }
+      if (data.session) { toast('Nagawa na ang account', 'ok'); refreshAuth(); }
       else done('I-check ang email mo', `Nagpadala kami ng confirmation link sa <b>${esc(email)}</b>.<br>I-click ito, tapos bumalik dito para mag-login.<br><small>Wala sa inbox? Tingnan ang Spam/Promotions.</small>`);
     } else if (mode === 'forgot') {
       const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: REDIRECT });
@@ -155,7 +156,7 @@ $('authForm').addEventListener('submit', async e => {
       if (error) throw error;
       recovering = false;
       history.replaceState(null, '', location.pathname);
-      toast('Napalitan na ang password ✅', 'ok');
+      toast('Napalitan ang password', 'ok');
       refreshAuth();
     }
   } catch (err) {
@@ -206,7 +207,7 @@ $('pwForm').addEventListener('submit', async e => {
   $('pwSave').disabled = false;
   if (error) return showErr(friendly(error), false, $('pwErr'));
   closePw();
-  toast('Napalitan na ang password ✅', 'ok');
+  toast('Napalitan ang password', 'ok');
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePw(); });
 
@@ -255,9 +256,9 @@ function renderPending() {
     <div class="uprow">
       <input class="field" data-i="${i}" data-f="title" value="${esc(p.title)}" placeholder="Title" ${p.status === 'ok' ? 'disabled' : ''}>
       <input class="field" data-i="${i}" data-f="artist" value="${esc(p.artist)}" placeholder="Artist" ${p.status === 'ok' ? 'disabled' : ''}>
-      ${p.status === 'wait' || p.status === 'err' ? `<button class="btn small danger" data-rm="${i}">✕</button>` : '<span></span>'}
+      ${p.status === 'wait' || p.status === 'err' ? `<button class="btn small icon danger" data-rm="${i}" aria-label="Alisin">${ICON('x')}</button>` : '<span></span>'}
       <div class="meta">
-        <span>${p.kind === 'video' ? '🎬' : '🎵'} ${esc(p.file.name)} · ${fmtMB(p.file.size)}${p.kind === 'audio' ? (p.lrc ? ' · 📝 ' + esc(p.lrc.name) : ' · <span style="color:var(--gold)">walang .lrc</span>') : ''}</span>
+        <span>${ICON(p.kind === 'video' ? 'film' : 'music')}${esc(p.file.name)}, ${fmtMB(p.file.size)}${p.kind === 'audio' ? (p.lrc ? ', may lyrics' : ', <span class="warn">walang .lrc</span>') : ''}</span>
         <span class="${p.status === 'ok' ? 'st-ok' : p.status === 'err' ? 'st-err' : p.status === 'run' ? 'st-run' : 'muted'}">${esc(p.msg || (p.status === 'wait' ? 'Handa' : ''))}</span>
       </div>
     </div>`).join('');
@@ -301,7 +302,7 @@ async function uploadOne(p) {
     await sb.storage.from('songs').remove([mediaPath, lrcPath].filter(Boolean));
     throw error;
   }
-  p.status = 'ok'; p.msg = '✓ Song # ' + data.code;
+  p.status = 'ok'; p.msg = 'Na-upload, song no. ' + data.code;
 }
 
 $('upAll').onclick = async () => {
@@ -325,7 +326,7 @@ async function loadLib() {
   if (error) { toast(error.message, 'err'); return; }
   songs = data || [];
   const used = songs.reduce((s, x) => s + (x.size_bytes || 0), 0);
-  $('libStats').textContent = `${songs.length} kanta · ${fmtMB(used)} / 1GB`;
+  $('libStats').textContent = `${songs.length} kanta, ${fmtMB(used)} sa 1GB`;
   $('storeBar').style.width = Math.min(100, used / FREE_STORAGE * 100).toFixed(1) + '%';
   renderLib();
 }
@@ -334,17 +335,17 @@ function renderLib() {
   const list = songs.filter(s => !q || String(s.code).includes(q) || s.title.toLowerCase().includes(q) || (s.artist || '').toLowerCase().includes(q));
   $('libList').innerHTML = list.length ? list.map(s => `
     <div class="lrow">
-      <span class="code-badge">${s.code}</span>
+      <span class="num">${s.code}</span>
       <div class="info">
         <div class="t">${esc(s.title)}</div>
-        <div class="a">${esc(s.artist || '—')}<span class="tag">${s.kind === 'video' ? '🎬 video' : '🎵 audio'}</span>${s.kind === 'audio' ? `<span class="tag">${s.lrc_path ? '📝 lyrics' : '⚠ walang lyrics'}</span>` : ''}</div>
+        <div class="a">${ICON(s.kind === 'video' ? 'film' : 'music')}<span>${esc(s.artist || 'Walang artist')}</span>${s.kind === 'audio' ? (s.lrc_path ? '<span class="tag">May lyrics</span>' : '<span class="tag warn">Walang lyrics</span>') : ''}</div>
       </div>
       <div class="acts">
-        ${s.kind === 'audio' ? `<button class="btn small" data-lrc="${s.id}" title="Upload/palitan ang .lrc">📝</button>` : ''}
-        <button class="btn small" data-edit="${s.id}" title="I-edit">✏️</button>
-        <button class="btn small danger" data-del="${s.id}" title="Burahin">🗑</button>
+        ${s.kind === 'audio' ? `<button class="btn small icon" data-lrc="${s.id}" title="${s.lrc_path ? 'Palitan' : 'Idagdag'} ang lyrics (.lrc)" aria-label="Lyrics">${ICON('lyrics')}</button>` : ''}
+        <button class="btn small icon" data-edit="${s.id}" title="I-edit ang title at artist" aria-label="I-edit">${ICON('edit')}</button>
+        <button class="btn small icon danger" data-del="${s.id}" title="Burahin" aria-label="Burahin">${ICON('trash')}</button>
       </div>
-    </div>`).join('') : '<div class="muted" style="padding:16px;text-align:center">Wala pang kanta.</div>';
+    </div>`).join('') : `<div class="empty">${q ? 'Walang nahanap.' : 'Wala pang kanta. Magdagdag sa itaas.'}</div>`;
 }
 $('libQ').addEventListener('input', renderLib);
 
@@ -376,7 +377,7 @@ $('lrcIn').onchange = async e => {
   const up = await sb.storage.from('songs').upload(path, f, { contentType: 'text/plain; charset=utf-8', upsert: true });
   if (up.error) { toast(up.error.message, 'err'); return; }
   const { error } = await sb.from('songs').update({ lrc_path: path }).eq('id', s.id);
-  if (error) toast(error.message, 'err'); else { toast('Lyrics na-save 📝', 'ok'); loadLib(); }
+  if (error) toast(error.message, 'err'); else { toast('Na-save ang lyrics', 'ok'); loadLib(); }
 };
 
 // Error galing sa email link (hal. expired na link)

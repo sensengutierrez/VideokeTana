@@ -43,11 +43,11 @@ function render() {
     (!letter || sortBy === 'code' || letterOf(s) === letter));
   list.sort((a, b) => { const x = sortKey(a), y = sortKey(b); return x < y ? -1 : x > y ? 1 : 0; });
 
-  $('count').textContent = songs.length ? `${list.length} sa ${songs.length} kanta` : 'Wala pang kanta';
+  $('count').textContent = songs.length ? (list.length === songs.length ? `${songs.length} kanta` : `${list.length} sa ${songs.length} kanta`) : 'Wala pang kanta';
 
   if (!songs.length) {
-    $('list').innerHTML = `<div class="empty"><div class="big">🎵</div><b>Wala pang kanta sa library.</b><br>
-      Mag-upload muna sa <a href="../admin/">Admin page</a> — doon din awtomatikong nabibigyan ng song number ang bawat kanta.</div>`;
+    $('list').innerHTML = `<div class="empty">${ICON('book')}<b>Wala pang kanta</b>
+      Mag-upload sa <a href="../admin/">Library</a>. Kusang nabibigyan ng song number ang bawat kanta.</div>`;
     return;
   }
   if (!list.length) { $('list').innerHTML = '<div class="empty">Walang nahanap.</div>'; return; }
@@ -55,9 +55,8 @@ function render() {
   $('list').innerHTML = list.map(s => `
     <div class="song">
       <div class="num">${s.code}</div>
-      <div class="info"><div class="t">${esc(s.title)}</div><div class="a">${esc(s.artist || '—')}</div></div>
-      <span class="k" title="${s.kind}">${s.kind === 'video' ? '🎬' : '🎵'}</span>
-      ${ROOM_RE.test(ROOM) ? `<button class="btn small primary" data-res="${s.id}" title="Reserve sa room ${ROOM}">🎤</button>` : ''}
+      <div class="info"><div class="t">${esc(s.title)}</div><div class="a">${ICON(s.kind === 'video' ? 'film' : 'music')}<span>${esc(s.artist || 'Walang artist')}</span></div></div>
+      ${ROOM_RE.test(ROOM) ? `<button class="btn small" data-res="${s.id}">Reserve</button>` : '<span></span>'}
     </div>`).join('');
 }
 
@@ -86,10 +85,10 @@ $('list').addEventListener('click', async e => {
   const { error } = await sb.from('queue').insert({ room: ROOM, song_id: b.dataset.res, singer: NAME || null });
   b.disabled = false;
   if (error) toast('Hindi na-reserve: ' + error.message, 'err');
-  else toast(`Naka-reserve sa room ${ROOM}! 🎤`, 'ok');
+  else toast(`Naka-reserve sa room ${ROOM}`, 'ok');
 });
 
-if (ROOM_RE.test(ROOM)) $('roomInfo').innerHTML = `Room: <b style="color:var(--gold)">${ROOM}</b> · pindutin ang 🎤 para mag-reserve`;
+if (ROOM_RE.test(ROOM)) $('roomInfo').innerHTML = `Nakakonekta sa room <b>${ROOM}</b>. Pindutin ang Reserve para ipila ang kanta.`;
 
 // Auto-refresh kapag may bagong upload
 sb.channel('songbook').on('postgres_changes', { event: '*', schema: 'public', table: 'songs' }, load).subscribe();
