@@ -27,27 +27,36 @@
 </div>
 
 <div id="stage">
+  <canvas id="scene" aria-hidden="true"></canvas>
   <video id="vid" playsinline preload="auto"></video>
   <div id="ytWrap"><div id="ytPlayer"></div></div>
 
+  <!-- top bar: laging nakikita, parang tunay na videoke -->
+  <div id="topBar">
+    <div id="nowTag"></div>
+    <div id="nextBar" class="reserved"></div>
+    <div class="tb-clock"><span class="dot" id="tbClock"></span><span id="tbAmpm"></span></div>
+  </div>
+
   <div id="audioStage">
-    <div id="aTitle"><div class="t" id="aT"></div><div class="a" id="aA"></div></div>
+    <div id="aTitle"><div class="t" id="aT"></div><div class="a" id="aA"></div><div class="s" id="aS"></div></div>
     <div id="lyrics"><div id="lyCur"></div><div id="lyNext"></div></div>
     <div id="noLrc">Walang lyrics para sa kantang ito</div>
     <audio id="aud" preload="auto"></audio>
   </div>
 
+  <!-- attract screen kapag walang kanta -->
   <div id="idle">
-    <div class="idle-main">
-      <span class="wordmark"><i data-i="mic"></i>videoke</span>
-      <div class="room">
-        <span class="room-lbl">Room code</span>
-        <b class="dot" id="roomCode">----</b>
-      </div>
+    <div class="idle-panel">
+      <div class="idle-time"><span class="dot" id="idleClock"></span><span id="idleAmpm"></span></div>
+      <div class="idle-date" id="idleDate"></div>
       <p class="hint" id="idleHint">I-scan ang QR code gamit ang camera ng phone para mag-reserve ng kanta.</p>
+    </div>
+    <div class="qr-card">
+      <div id="qrBig"></div>
+      <div class="qr-room"><span>Room</span><b class="dot" id="roomCode">----</b></div>
       <p class="url" id="remoteUrl"></p>
     </div>
-    <div class="qr-card"><div id="qrBig"></div><span>I-scan para sumali</span></div>
   </div>
 
   <div id="splash">
@@ -57,14 +66,13 @@
     <div class="sp-a" id="spA"></div>
     <div class="sp-s" id="spS"></div>
   </div>
-  <div id="nowTag"></div>
-  <div id="nextBar"></div>
   <div id="cornerQr"><div id="qrSmall"></div><div class="dot rc" id="roomSmall"></div></div>
   <div id="pauseBadge"><div><i data-i="pause"></i>Naka-pause</div></div>
   <div id="volBadge"></div>
 
   <div id="topBtns">
     <button class="tb" id="btnSkip" title="Laktawan (N)"><i data-i="next"></i><span>Laktawan</span></button>
+    <button class="tb" id="btnScene" title="Palitan ang background (B)"><i data-i="film"></i><span>Background</span></button>
     <button class="tb" id="btnNewRoom" title="Bagong room code"><i data-i="refresh"></i><span>Bagong room</span></button>
     <button class="tb" id="btnFs" title="Fullscreen (F)" aria-label="Fullscreen"><i data-i="fullscreen"></i></button>
     <button class="theme-toggle"></button>
@@ -76,6 +84,7 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/common.js"></script>
+<script src="../assets/js/scenes.js"></script>
 <script src="../assets/js/host.js"></script>
 <script src="../assets/js/screensaver.js"></script>
 </body>

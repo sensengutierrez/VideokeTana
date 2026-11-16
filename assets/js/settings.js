@@ -28,6 +28,7 @@ function render() {
   $('ssSeconds').checked = p.ssSeconds;
   $('ssDate').checked = p.ssDate;
   $('ssAfter').value = String(p.ssAfter);
+  $('sceneSel').value = p.scene;
   $('ssEnabled').closest('.group').classList.toggle('off', !p.ssEnabled);
   preview();
 }
@@ -37,6 +38,7 @@ $('ssEnabled').addEventListener('change', e => { VK_PREFS.set('ssEnabled', e.tar
 $('ssSeconds').addEventListener('change', e => { VK_PREFS.set('ssSeconds', e.target.checked); preview(); });
 $('ssDate').addEventListener('change', e => { VK_PREFS.set('ssDate', e.target.checked); preview(); });
 $('ssAfter').addEventListener('change', e => VK_PREFS.set('ssAfter', parseInt(e.target.value, 10)));
+$('sceneSel').addEventListener('change', e => VK_PREFS.set('scene', e.target.value));
 $('ssTest').addEventListener('click', () => window.vkSleepNow());
 
 function preview() {

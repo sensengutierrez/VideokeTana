@@ -45,19 +45,23 @@ function show(m) {
   const playing = m !== 'idle';
   $('cornerQr').style.display = playing ? 'flex' : 'none';
   $('nowTag').style.display = (m === 'video' || m === 'youtube') ? 'block' : 'none'; // sa audio, nasa screen na ang title
+  // ang background ay tumatakbo lang kapag hindi natatakpan ng video
+  if (window.VKScenes) (m === 'video' || m === 'youtube') ? VKScenes.pause() : VKScenes.resume();
   renderNextBar();
 }
 
+// Listahan ng naka-reserve sa itaas ng screen, parang tunay na videoke
 function renderNextBar() {
   const waiting = queue.filter(q => q.status === 'waiting' && (!current || q.id !== current.id));
   const bar = $('nextBar');
-  if (mode === 'idle' || !waiting.length) { bar.style.display = 'none'; }
-  else {
-    const n = waiting[0], i = itemInfo(n);
-    bar.innerHTML = `<span class="nb-lbl">Susunod</span><span class="dot nb-num">${esc(i.code)}</span><span class="nb-t">${esc(i.title)}</span>`
-      + (n.singer ? `<span class="nb-s">${esc(n.singer)}</span>` : '')
-      + (waiting.length > 1 ? `<span class="nb-more">+${waiting.length - 1}</span>` : '');
-    bar.style.display = 'block';
+  if (!waiting.length) {
+    bar.innerHTML = `<span class="rs-empty">${current ? 'Walang kasunod. Mag-reserve gamit ang phone.' : 'Walang naka-reserve'}</span>`;
+  } else {
+    const max = 5;
+    bar.innerHTML = `<span class="rs-lbl">Reserved<b>${waiting.length}</b></span>` + waiting.slice(0, max).map((q, k) => {
+      const i = itemInfo(q);
+      return `<span class="rs ${k === 0 ? 'first' : ''}"><span class="dot">${esc(i.code)}</span><span>${esc(i.title)}</span></span>`;
+    }).join('') + (waiting.length > max ? `<span class="rs-more">+${waiting.length - max}</span>` : '');
   }
   $('idleHint').textContent = waiting.length && mode === 'idle'
     ? 'Inihahanda ang susunod na kanta'
@@ -95,6 +99,7 @@ async function startNext() {
   starting = true;
   current = next;
   if (window.vkWake) window.vkWake();
+  if (window.VKScenes && VK_PREFS.get().scene === 'auto') VKScenes.next();
   if (next.status !== 'playing') {
     await sb.from('queue').update({ status: 'playing' }).eq('id', next.id);
     next.status = 'playing';
@@ -163,6 +168,7 @@ async function playItem(item) {
     show('audio');
     $('aT').textContent = item.song.title;
     $('aA').textContent = item.song.artist || '';
+    $('aS').textContent = item.singer ? 'Kumakanta: ' + item.singer : '';
     $('lyCur').textContent = ''; $('lyNext').textContent = '';
     lyrics = []; lyricOffset = 0;
     if (item.song.lrc_path) {
@@ -292,6 +298,7 @@ function handleCmd(action, value) {
     case 'voldown': volume = Math.max(0, volume - 10); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
     case 'setvol': volume = Math.max(0, Math.min(100, parseInt(value, 10) || 0)); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
     case 'refresh': loadQueue(); break;
+    case 'scene': nextScene(); break;
   }
   broadcastState();
 }
@@ -353,6 +360,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'ArrowDown') handleCmd('voldown');
   else if (e.key === 'f' || e.key === 'F') toggleFs();
   else if (e.key === 'r' || e.key === 'R') handleCmd('restart');
+  else if (e.key === 'b' || e.key === 'B') nextScene();
 });
 
 $('gate').onclick = () => {
@@ -365,6 +373,8 @@ $('gate').onclick = () => {
   started = true;
   $('gate').style.display = 'none';
   keepAwake();
+  const sc = VK_PREFS.get().scene;
+  VKScenes.start($('scene'), sc === 'auto' ? VKScenes.NAMES[Math.floor(Math.random() * VKScenes.NAMES.length)] : sc);
   // i-unlock ang audio para sa susunod na autoplay
   [vid, aud].forEach(el => { el.muted = true; el.play().catch(() => {}); el.pause(); el.muted = false; });
   loadYTApi();
@@ -373,7 +383,8 @@ $('gate').onclick = () => {
 
 // ================= SCREENSAVER + SETTINGS =================
 // Screensaver lang kapag walang kanta; may QR at room code para makasali pa rin
-window.vkCanSleep = () => mode === 'idle' && !current && !starting;
+// Ang host ay may sariling "attract screen" (background + orasan + QR), kaya hindi na kailangan ang itim na screensaver
+window.vkCanSleep = () => false;
 window.vkSaverExtra = () => `<div class="ss-qr">${$('qrBig').innerHTML}</div><div>I-scan para mag-reserve<br>Room <b>${ROOM}</b></div>`;
 function applyPrefs() {
   const p = VK_PREFS.get();
@@ -389,6 +400,32 @@ async function keepAwake() {
   try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => wakeLock = null); } } catch (e) {}
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && started) keepAwake(); });
+
+// ================= ORASAN + BACKGROUND =================
+const DAYS = ['Linggo', 'Lunes', 'Martes', 'Miyerkules', 'Huwebes', 'Biyernes', 'Sabado'];
+const MONTHS = ['Enero', 'Pebrero', 'Marso', 'Abril', 'Mayo', 'Hunyo', 'Hulyo', 'Agosto', 'Setyembre', 'Oktubre', 'Nobyembre', 'Disyembre'];
+function tickClock() {
+  const p = VK_PREFS.get(), d = new Date();
+  let h = d.getHours();
+  const ampm = p.ss24h ? '' : (h < 12 ? 'AM' : 'PM');
+  if (!p.ss24h) h = h % 12 || 12;
+  const hm = (p.ss24h ? String(h).padStart(2, '0') : h) + ':' + String(d.getMinutes()).padStart(2, '0');
+  $('tbClock').textContent = hm; $('tbAmpm').textContent = ampm;
+  $('idleClock').textContent = hm; $('idleAmpm').textContent = ampm;
+  $('idleDate').textContent = `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+}
+setInterval(tickClock, 1000); tickClock();
+function nextScene() {
+  if (!window.VKScenes) return;
+  VKScenes.next();
+  if (VK_PREFS.get().scene !== 'auto') VK_PREFS.set('scene', VKScenes.current());
+}
+$('btnScene').onclick = nextScene;
+window.addEventListener('vkprefs', () => {
+  const sc = VK_PREFS.get().scene;
+  if (window.VKScenes && sc !== 'auto' && sc !== VKScenes.current()) VKScenes.set(sc);
+  tickClock();
+});
 
 // ================= INIT =================
 renderQr();

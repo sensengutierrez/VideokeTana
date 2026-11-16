@@ -30,6 +30,13 @@
         </div>
       </div>
       <div class="set">
+        <div class="set-txt"><b>Background sa TV</b><small>Gumagalaw na background habang kumakanta at naghihintay. Ang Palit-palit ay iba bawat kanta.</small></div>
+        <select class="field select" id="sceneSel">
+          <option value="auto">Palit-palit</option><option value="city">Lungsod sa gabi</option>
+          <option value="sea">Dagat sa paglubog ng araw</option><option value="sky">Langit na may bituin</option>
+        </select>
+      </div>
+      <div class="set">
         <div class="set-txt"><b>Laki ng lyrics sa TV</b><small>Para sa mga kantang may .lrc na lyrics.</small></div>
         <div class="seg" id="lyrSeg">
           <button data-v="s">Maliit</button><button data-v="m">Katamtaman</button><button data-v="l">Malaki</button>
@@ -46,7 +53,7 @@
     </div>
     <div class="group">
       <label class="set">
-        <div class="set-txt"><b>Gamitin ang screensaver</b><small>Lalabas ang orasan kapag walang gumagamit ng app. Hindi ito lalabas habang may kantang tumutugtog.</small></div>
+        <div class="set-txt"><b>Gamitin ang screensaver</b><small>Lalabas ang orasan sa phone at ibang page kapag walang gumagamit. Sa TV, laging may orasan at background kapag walang kanta.</small></div>
         <span class="switch"><input type="checkbox" id="ssEnabled"><span></span></span>
       </label>
       <div class="set dep">

@@ -7,7 +7,8 @@
     ss24h: false,         // 24-oras na format
     ssSeconds: false,     // ipakita ang segundo
     ssDate: true,         // ipakita ang petsa
-    lyricSize: 'm'        // s | m | l (sa TV)
+    lyricSize: 'm',       // s | m | l (sa TV)
+    scene: 'auto'         // background sa TV: auto | city | sea | sky
   };
   function read() {
     try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(KEY) || '{}')); }
