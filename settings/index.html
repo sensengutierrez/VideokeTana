@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15171c">
+<script src="../assets/js/icons.js"></script>
+<script src="../assets/js/theme.js"></script>
+<script src="../assets/js/prefs.js"></script>
+<title>Videoke Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/settings.css">
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <a class="close-x" href="../" title="Isara"></a>
+    <h1>Settings</h1>
+  </header>
+
+  <section>
+    <h2>Itsura</h2>
+    <div class="group">
+      <div class="set">
+        <div class="set-txt"><b>Tema</b><small>Ang Auto ay sumusunod sa setting ng device mo.</small></div>
+        <div class="seg" id="themeSeg">
+          <button data-v="dark">Dark</button><button data-v="light">Light</button><button data-v="auto">Auto</button>
+        </div>
+      </div>
+      <div class="set">
+        <div class="set-txt"><b>Laki ng lyrics sa TV</b><small>Para sa mga kantang may .lrc na lyrics.</small></div>
+        <div class="seg" id="lyrSeg">
+          <button data-v="s">Maliit</button><button data-v="m">Katamtaman</button><button data-v="l">Malaki</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Screensaver</h2>
+    <div class="display preview" id="ssPreview" aria-hidden="true">
+      <div class="pv-time"><span class="dot" id="pvTime">10:24</span><span class="pv-ampm" id="pvAmpm">PM</span></div>
+      <div class="pv-date" id="pvDate"></div>
+    </div>
+    <div class="group">
+      <label class="set">
+        <div class="set-txt"><b>Gamitin ang screensaver</b><small>Lalabas ang orasan kapag walang gumagamit ng app. Hindi ito lalabas habang may kantang tumutugtog.</small></div>
+        <span class="switch"><input type="checkbox" id="ssEnabled"><span></span></span>
+      </label>
+      <div class="set dep">
+        <div class="set-txt"><b>Lalabas pagkatapos ng</b></div>
+        <select class="field select" id="ssAfter">
+          <option value="1">1 minuto</option><option value="2">2 minuto</option><option value="5">5 minuto</option>
+          <option value="10">10 minuto</option><option value="15">15 minuto</option><option value="30">30 minuto</option>
+        </select>
+      </div>
+      <div class="set dep">
+        <div class="set-txt"><b>Format ng oras</b></div>
+        <div class="seg" id="fmtSeg"><button data-v="12">12-oras</button><button data-v="24">24-oras</button></div>
+      </div>
+      <label class="set dep">
+        <div class="set-txt"><b>Ipakita ang segundo</b></div>
+        <span class="switch"><input type="checkbox" id="ssSeconds"><span></span></span>
+      </label>
+      <label class="set dep">
+        <div class="set-txt"><b>Ipakita ang petsa</b></div>
+        <span class="switch"><input type="checkbox" id="ssDate"><span></span></span>
+      </label>
+    </div>
+    <button class="btn wide" id="ssTest"><i data-i="play"></i>Subukan ang screensaver</button>
+  </section>
+
+  <section>
+    <h2>Tungkol sa app</h2>
+    <div class="group about">
+      <div class="set"><div class="set-txt"><b>Videoke</b><small>Bersyon 0.4. Pambahay na videoke para sa TV, laptop, tablet at phone.</small></div></div>
+      <div class="set"><div class="set-txt"><b>Saan naka-save ang settings</b><small>Sa device na ito lang. Kailangang i-set ulit sa ibang phone o TV.</small></div></div>
+      <div class="set"><div class="set-txt"><b>Mga demo song</b><small>Ang mga demo song (10001 hanggang 10004) ay public domain na kanta na may original na arrangement.</small></div></div>
+    </div>
+    <p class="foot">© 2026 VideokeTana. Lahat ng karapatan ay nakalaan.</p>
+  </section>
+</div>
+
+<script src="../assets/js/screensaver.js"></script>
+<script src="../assets/js/settings.js"></script>
+</body>
+</html>

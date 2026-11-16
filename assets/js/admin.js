@@ -338,7 +338,7 @@ function renderLib() {
       <span class="num">${s.code}</span>
       <div class="info">
         <div class="t">${esc(s.title)}</div>
-        <div class="a">${ICON(s.kind === 'video' ? 'film' : 'music')}<span>${esc(s.artist || 'Walang artist')}</span>${s.kind === 'audio' ? (s.lrc_path ? '<span class="tag">May lyrics</span>' : '<span class="tag warn">Walang lyrics</span>') : ''}</div>
+        <div class="a">${ICON(s.kind === 'video' ? 'film' : 'music')}<span>${esc(s.artist || 'Walang artist')}</span>${s.kind === 'audio' ? (s.lrc_path ? '<span class="tag">May lyrics</span>' : '<span class="tag warn">Walang lyrics</span>') : ''}${s.license_note ? `<span class="tag" title="${esc(s.license_note)}">${/public domain/i.test(s.license_note) ? 'Public domain' : 'May note'}</span>` : ''}</div>
       </div>
       <div class="acts">
         ${s.kind === 'audio' ? `<button class="btn small icon" data-lrc="${s.id}" title="${s.lrc_path ? 'Palitan' : 'Idagdag'} ang lyrics (.lrc)" aria-label="Lyrics">${ICON('lyrics')}</button>` : ''}
@@ -364,7 +364,8 @@ $('libList').addEventListener('click', async e => {
     if (!confirm(`Burahin ang #${s.code} "${s.title}"? Hindi na ito maibabalik.`)) return;
     const { error } = await sb.from('songs').delete().eq('id', s.id);
     if (error) { toast(error.message, 'err'); return; }
-    await sb.storage.from('songs').remove([s.media_path, s.lrc_path].filter(Boolean));
+    const files = [s.media_path, s.lrc_path].filter(x => x && !isSitePath(x));
+    if (files.length) await sb.storage.from('songs').remove(files);
     toast('Nabura', 'ok'); loadLib();
   }
   if (lr) { lrcTarget = songs.find(x => x.id === lr.dataset.lrc); $('lrcIn').click(); }
@@ -373,7 +374,7 @@ $('lrcIn').onchange = async e => {
   const f = e.target.files[0]; e.target.value = '';
   if (!f || !lrcTarget) return;
   const s = lrcTarget;
-  const path = s.lrc_path || `lrc/${baseOf(s.media_path.split('/').pop())}.lrc`;
+  const path = (s.lrc_path && !isSitePath(s.lrc_path)) ? s.lrc_path : `lrc/${s.id}.lrc`;
   const up = await sb.storage.from('songs').upload(path, f, { contentType: 'text/plain; charset=utf-8', upsert: true });
   if (up.error) { toast(up.error.message, 'err'); return; }
   const { error } = await sb.from('songs').update({ lrc_path: path }).eq('id', s.id);

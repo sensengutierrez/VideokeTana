@@ -90,3 +90,7 @@ body.ui #topBtns { opacity: 1; pointer-events: auto; }
 .tb .ic { width: 18px; height: 18px; }
 #btnFs, #btnClose { width: 38px; padding: 0; justify-content: center; }
 #btnClose:hover { color: var(--danger); border-color: var(--danger); }
+
+/* laki ng lyrics (Settings) */
+body.lyr-s #lyCur { font-size: 3.8vw; } body.lyr-s #lyNext { font-size: 2.5vw; }
+body.lyr-l #lyCur { font-size: 6.4vw; } body.lyr-l #lyNext { font-size: 4vw; }

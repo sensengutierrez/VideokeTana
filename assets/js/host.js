@@ -44,7 +44,7 @@ function show(m) {
   $('idle').style.display = m === 'idle' ? 'flex' : 'none';
   const playing = m !== 'idle';
   $('cornerQr').style.display = playing ? 'flex' : 'none';
-  $('nowTag').style.display = playing ? 'block' : 'none';
+  $('nowTag').style.display = (m === 'video' || m === 'youtube') ? 'block' : 'none'; // sa audio, nasa screen na ang title
   renderNextBar();
 }
 
@@ -94,6 +94,7 @@ async function startNext() {
   if (!next) { show('idle'); broadcastState(); return; }
   starting = true;
   current = next;
+  if (window.vkWake) window.vkWake();
   if (next.status !== 'playing') {
     await sb.from('queue').update({ status: 'playing' }).eq('id', next.id);
     next.status = 'playing';
@@ -363,11 +364,31 @@ $('gate').onclick = () => {
   }
   started = true;
   $('gate').style.display = 'none';
+  keepAwake();
   // i-unlock ang audio para sa susunod na autoplay
   [vid, aud].forEach(el => { el.muted = true; el.play().catch(() => {}); el.pause(); el.muted = false; });
   loadYTApi();
   loadQueue();
 };
+
+// ================= SCREENSAVER + SETTINGS =================
+// Screensaver lang kapag walang kanta; may QR at room code para makasali pa rin
+window.vkCanSleep = () => mode === 'idle' && !current && !starting;
+window.vkSaverExtra = () => `<div class="ss-qr">${$('qrBig').innerHTML}</div><div>I-scan para mag-reserve<br>Room <b>${ROOM}</b></div>`;
+function applyPrefs() {
+  const p = VK_PREFS.get();
+  document.body.classList.remove('lyr-s', 'lyr-m', 'lyr-l');
+  document.body.classList.add('lyr-' + p.lyricSize);
+}
+window.addEventListener('vkprefs', applyPrefs);
+applyPrefs();
+
+// Huwag hayaang mag-sleep ang screen ng TV/laptop habang bukas ang host
+let wakeLock = null;
+async function keepAwake() {
+  try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => wakeLock = null); } } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && started) keepAwake(); });
 
 // ================= INIT =================
 renderQr();

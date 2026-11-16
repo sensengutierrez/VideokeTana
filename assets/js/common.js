@@ -1,9 +1,18 @@
 // ===== Shared helpers (host / remote / admin) =====
 const sb = window.supabase.createClient(VK_CONFIG.SUPABASE_URL, VK_CONFIG.SUPABASE_KEY);
 
+// Root URL ng site (hal. https://user.github.io/VideokeTana/), mula sa lokasyon ng common.js
+const SITE_ROOT = (() => {
+  const src = (document.currentScript && document.currentScript.src) || location.href;
+  return src.replace(/assets\/js\/common\.js.*$/, '');
+})();
+
+// "site:demo/x.mp3" = file na kasama sa website; kung hindi, nasa Supabase storage
 function mediaUrl(path) {
+  if (path && path.startsWith('site:')) return SITE_ROOT + path.slice(5);
   return sb.storage.from('songs').getPublicUrl(path).data.publicUrl;
 }
+const isSitePath = p => !!p && p.startsWith('site:');
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
