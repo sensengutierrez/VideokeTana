@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0716">
+<script src="../assets/js/theme.js"></script>
 <title>Videoke — Remote</title>
 <link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="../assets/css/remote.css">
@@ -14,6 +15,7 @@
   <!-- JOIN SCREEN -->
   <div id="joinView" class="join" style="display:none">
     <a class="close-x" href="../" style="position:absolute;top:14px;right:14px" title="Isara">✕</a>
+    <div style="position:absolute;top:14px;left:14px"><button class="theme-toggle" type="button">☀️</button></div>
     <h1 class="neon">🎤</h1>
     <h2 style="margin:0">Sumali sa Videoke</h2>
     <p class="muted">I-scan ang QR sa TV gamit ang camera, o i-type ang room code.</p>
@@ -26,7 +28,8 @@
   <div id="mainView" style="display:none">
     <header>
       <div style="display:flex;align-items:center;gap:10px"><a class="close-x" href="../" title="Isara">✕</a><div class="logo"><span class="conn" id="conn"></span>🎤 Videoke</div></div>
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="theme-toggle" type="button">☀️</button>
         <button class="namechip" id="nameChip">🙂 Pangalan</button>
         <button class="roomchip" id="roomChip">----</button>
       </div>

@@ -12,31 +12,203 @@ let pending = []; // {file, lrc, kind, ext, title, artist, status, msg}
 let songs = [];
 
 // ================= AUTH =================
+const REDIRECT = location.origin + location.pathname;
+let mode = 'login';
+let recovering = false;
+
+const MODES = {
+  login:   { sub: 'Mag-login para i-manage ang song library', btn: 'Login', passLbl: 'Password', ac: 'current-password' },
+  signup:  { sub: 'Gumawa ng bagong account', btn: 'Gumawa ng Account', passLbl: 'Password', ac: 'new-password' },
+  forgot:  { sub: 'Ilagay ang email mo — padadalhan ka namin ng link para mag-reset ng password', btn: 'Ipadala ang reset link', passLbl: 'Password', ac: 'current-password' },
+  newpass: { sub: 'Gumawa ng bagong password', btn: 'I-save ang bagong password', passLbl: 'Bagong password', ac: 'new-password' }
+};
+
+function setMode(m) {
+  mode = m;
+  const cfg = MODES[m];
+  $('authView').dataset.mode = m;
+  $('authSub').textContent = cfg.sub;
+  $('submitLbl').textContent = cfg.btn;
+  $('passLbl').textContent = cfg.passLbl;
+  $('pass').autocomplete = cfg.ac;
+  document.querySelectorAll('#authTabs button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('authForm').style.display = 'block';
+  $('authDone').style.display = 'none';
+  $('pass').value = ''; $('pass2').value = '';
+  updateStrength();
+  showErr('');
+  document.querySelectorAll('.fl.bad').forEach(f => f.classList.remove('bad'));
+  setTimeout(() => (m === 'newpass' ? $('pass') : $('email')).focus(), 50);
+}
+
+function showErr(msg, ok = false, el = $('authErr')) {
+  el.textContent = msg;
+  el.classList.toggle('show', !!msg);
+  el.classList.toggle('ok', ok);
+}
+
+function friendly(err) {
+  const m = (err && (err.message || err.msg || String(err))) || '';
+  if (/invalid login credentials/i.test(m)) return 'Mali ang email o password. Subukan ulit.';
+  if (/email not confirmed/i.test(m)) return 'Hindi pa naka-confirm ang email. I-check ang inbox (pati Spam) para sa confirmation link.';
+  if (/already registered|already been registered|user already exists/i.test(m)) return 'May account na ang email na ito — mag-login na lang.';
+  if (/rate limit|too many|security purposes/i.test(m)) return 'Masyadong maraming subok. Maghintay ng ilang minuto bago ulitin.';
+  if (/password should be at least|weak password/i.test(m)) return 'Masyadong maikli o mahina ang password (min 6 na character).';
+  if (/invalid email|unable to validate email/i.test(m)) return 'Hindi valid ang email address.';
+  if (/signups? not allowed|signup is disabled/i.test(m)) return 'Naka-off ang pag-sign up sa ngayon.';
+  if (/failed to fetch|network/i.test(m)) return 'Walang internet o hindi maabot ang server. Subukan ulit.';
+  if (/same.*password|different from the old/i.test(m)) return 'Kailangang iba ang bagong password sa luma.';
+  return m || 'May error. Subukan ulit.';
+}
+
+function pwScore(p) {
+  let s = 0;
+  if (p.length >= 6) s++;
+  if (p.length >= 10) s++;
+  if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++;
+  if (/\d/.test(p)) s++;
+  if (/[^A-Za-z0-9]/.test(p)) s++;
+  return p.length < 6 ? Math.min(s, 1) : Math.min(4, s);
+}
+function updateStrength() {
+  const p = $('pass').value;
+  const sc = p ? pwScore(p) : 0;
+  const lv = [
+    ['0%', 'var(--red)', 'Hindi bababa sa 6 na character'],
+    ['25%', 'var(--red)', 'Mahina'],
+    ['50%', 'var(--gold)', 'Pwede na'],
+    ['75%', 'var(--cyan)', 'Malakas'],
+    ['100%', 'var(--green)', 'Napakalakas 💪']
+  ][p ? Math.max(1, sc) : 0];
+  $('meterBar').style.width = lv[0];
+  $('meterBar').style.background = lv[1];
+  $('meterTxt').textContent = p && p.length < 6 ? `Kulang pa ng ${6 - p.length} character` : lv[2];
+}
+$('pass').addEventListener('input', updateStrength);
+
+// Show / hide password
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-eye]'); if (!b) return;
+  const inp = $(b.dataset.eye);
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  b.classList.toggle('on', show);
+  b.textContent = show ? '🙈' : '👁';
+});
+
+document.querySelectorAll('#authTabs button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+$('forgotBtn').onclick = () => setMode('forgot');
+$('backBtn').onclick = () => setMode('login');
+$('doneBack').onclick = () => setMode('login');
+
+function done(title, msg) {
+  $('doneTitle').textContent = title;
+  $('doneMsg').innerHTML = msg;
+  $('authForm').style.display = 'none';
+  $('authDone').style.display = 'block';
+}
+
+function bad(id, msg) {
+  $(id).closest('.fl').classList.add('bad');
+  showErr(msg);
+  $(id).focus();
+  return false;
+}
+function validate() {
+  document.querySelectorAll('.fl.bad').forEach(f => f.classList.remove('bad'));
+  const email = $('email').value.trim(), p = $('pass').value, p2 = $('pass2').value;
+  if (mode !== 'newpass' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad('email', 'Ilagay ang tamang email address.');
+  if (mode === 'forgot') return true;
+  if (!p) return bad('pass', 'Ilagay ang password.');
+  if ((mode === 'signup' || mode === 'newpass') && p.length < 6) return bad('pass', 'Kailangang 6 na character o higit pa ang password.');
+  if ((mode === 'signup' || mode === 'newpass') && p !== p2) return bad('pass2', 'Hindi magkapareho ang dalawang password.');
+  return true;
+}
+
+$('authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  showErr('');
+  if (!validate()) return;
+  const email = $('email').value.trim(), password = $('pass').value;
+  const btn = $('authSubmit');
+  btn.classList.add('loading');
+  try {
+    if (mode === 'login') {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast('Welcome back! 🎤', 'ok');
+      refreshAuth();
+    } else if (mode === 'signup') {
+      const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: REDIRECT } });
+      if (error) throw error;
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        throw new Error('User already registered');
+      }
+      if (data.session) { toast('Account ginawa! 🎉', 'ok'); refreshAuth(); }
+      else done('I-check ang email mo', `Nagpadala kami ng confirmation link sa <b>${esc(email)}</b>.<br>I-click ito, tapos bumalik dito para mag-login.<br><small>Wala sa inbox? Tingnan ang Spam/Promotions.</small>`);
+    } else if (mode === 'forgot') {
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: REDIRECT });
+      if (error) throw error;
+      done('Naipadala na!', `Kung may account ang <b>${esc(email)}</b>, makakatanggap ka ng link para mag-reset ng password.<br><small>Tingnan din ang Spam folder.</small>`);
+    } else if (mode === 'newpass') {
+      const { error } = await sb.auth.updateUser({ password });
+      if (error) throw error;
+      recovering = false;
+      history.replaceState(null, '', location.pathname);
+      toast('Napalitan na ang password ✅', 'ok');
+      refreshAuth();
+    }
+  } catch (err) {
+    showErr(friendly(err));
+  } finally {
+    btn.classList.remove('loading');
+  }
+});
+
 async function refreshAuth() {
+  if (recovering) { $('authView').style.display = 'flex'; $('mainView').style.display = 'none'; return; }
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { $('authView').style.display = 'block'; $('mainView').style.display = 'none'; return; }
+  if (!session) {
+    $('authView').style.display = 'flex';
+    $('mainView').style.display = 'none';
+    return;
+  }
   $('authView').style.display = 'none';
   $('mainView').style.display = 'block';
+  $('acctEmail').textContent = session.user.email || '';
   const { data: isAdmin } = await sb.rpc('is_admin');
   $('adminArea').style.display = isAdmin ? 'block' : 'none';
   $('notAdmin').style.display = isAdmin ? 'none' : 'block';
   if (isAdmin) loadLib();
 }
-$('loginBtn').onclick = async () => {
-  const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('pass').value });
-  if (error) toast(error.message === 'Email not confirmed' ? 'I-confirm muna ang email (check inbox)' : error.message, 'err', 4000);
-  else refreshAuth();
+$('logoutBtn').onclick = async () => { await sb.auth.signOut(); setMode('login'); refreshAuth(); };
+sb.auth.onAuthStateChange(ev => {
+  if (ev === 'PASSWORD_RECOVERY') { recovering = true; setMode('newpass'); refreshAuth(); return; }
+  if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') refreshAuth();
+});
+
+// ----- Palitan ang password (habang naka-login) -----
+function closePw() { $('pwModal').style.display = 'none'; }
+$('pwBtn').onclick = () => {
+  $('np1').value = ''; $('np2').value = ''; showErr('', false, $('pwErr'));
+  $('pwModal').style.display = 'flex';
+  setTimeout(() => $('np1').focus(), 50);
 };
-$('signupBtn').onclick = async () => {
-  const email = $('email').value.trim(), password = $('pass').value;
-  if (!email || password.length < 6) { toast('Ilagay ang email at password (min 6)', 'err'); return; }
-  const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.href } });
-  if (error) { toast(error.message, 'err', 4000); return; }
-  if (data.session) refreshAuth();
-  else toast('Account ginawa! I-confirm ang email mo, tapos mag-login.', 'ok', 6000);
-};
-$('logoutBtn').onclick = async () => { await sb.auth.signOut(); refreshAuth(); };
-sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') refreshAuth(); });
+$('pwCancel').onclick = closePw;
+$('pwModal').addEventListener('click', e => { if (e.target.id === 'pwModal') closePw(); });
+$('pwForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const a = $('np1').value, b = $('np2').value;
+  if (a.length < 6) return showErr('Kailangang 6 na character o higit pa.', false, $('pwErr'));
+  if (a !== b) return showErr('Hindi magkapareho ang dalawang password.', false, $('pwErr'));
+  $('pwSave').disabled = true;
+  const { error } = await sb.auth.updateUser({ password: a });
+  $('pwSave').disabled = false;
+  if (error) return showErr(friendly(error), false, $('pwErr'));
+  closePw();
+  toast('Napalitan na ang password ✅', 'ok');
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePw(); });
 
 // ================= FILE PICK =================
 const extOf = n => (n.split('.').pop() || '').toLowerCase();
@@ -207,4 +379,13 @@ $('lrcIn').onchange = async e => {
   if (error) toast(error.message, 'err'); else { toast('Lyrics na-save 📝', 'ok'); loadLib(); }
 };
 
+// Error galing sa email link (hal. expired na link)
+(function () {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const desc = h.get('error_description');
+  if (desc) {
+    history.replaceState(null, '', location.pathname);
+    setTimeout(() => showErr(/expired|invalid/i.test(desc) ? 'Expired o hindi na valid ang link. Humingi ng bago.' : desc), 300);
+  }
+})();
 refreshAuth();

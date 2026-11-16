@@ -2,7 +2,9 @@
 <html lang="fil">
 <head>
 <meta charset="UTF-8">
+<meta name="theme-color" content="#0b0716">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../assets/js/theme.js"></script>
 <title>Videoke — Admin</title>
 <link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="../assets/css/admin.css">
@@ -11,14 +13,61 @@
 <div class="app">
 
   <!-- AUTH -->
-  <div id="authView" class="auth card" style="display:none;position:relative">
-    <a class="close-x" href="../" style="position:absolute;top:10px;right:10px" title="Isara">✕</a>
-    <h2 style="text-align:center">🛠️ Videoke Admin</h2>
-    <input id="email" class="field" type="email" placeholder="Email" autocomplete="email">
-    <input id="pass" class="field" type="password" placeholder="Password (min 6)" autocomplete="current-password">
-    <button class="btn primary" style="width:100%" id="loginBtn">Login</button>
-    <button class="btn" style="width:100%;margin-top:8px" id="signupBtn">Gumawa ng account</button>
-    <p class="muted" style="font-size:13px;margin-bottom:0">Ang <b>unang account</b> na gagawin ang magiging admin. Pagkatapos mag-sign up, i-confirm ang email (check inbox/spam), tapos mag-login.</p>
+  <div id="authView" class="auth-wrap" data-mode="login" style="display:none">
+    <div class="auth-top">
+      <a class="close-x" href="../" title="Isara">✕</a>
+      <button class="theme-toggle" type="button">☀️</button>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-hero">
+        <div class="auth-logo">🎤</div>
+        <h1 class="neon">VIDEOKE</h1>
+        <p class="muted" id="authSub">Mag-login para i-manage ang song library</p>
+      </div>
+
+      <div class="auth-tabs" id="authTabs">
+        <button type="button" data-mode="login" class="on">Login</button>
+        <button type="button" data-mode="signup">Gumawa ng Account</button>
+      </div>
+
+      <form id="authForm" novalidate>
+        <label class="fl f-email">
+          <span>Email</span>
+          <div class="inp"><i>✉️</i><input id="email" type="email" autocomplete="email" placeholder="ikaw@email.com"></div>
+        </label>
+
+        <label class="fl f-pass">
+          <span id="passLbl">Password</span>
+          <div class="inp"><i>🔒</i><input id="pass" type="password" autocomplete="current-password" placeholder="••••••••"><button type="button" class="eye" data-eye="pass" aria-label="Ipakita ang password">👁</button></div>
+        </label>
+
+        <div class="strength f-strength" id="strength"><div class="meter"><b id="meterBar"></b></div><small id="meterTxt">Hindi bababa sa 6 na character</small></div>
+
+        <label class="fl f-pass2">
+          <span>Ulitin ang password</span>
+          <div class="inp"><i>🔒</i><input id="pass2" type="password" autocomplete="new-password" placeholder="••••••••"><button type="button" class="eye" data-eye="pass2" aria-label="Ipakita ang password">👁</button></div>
+        </label>
+
+        <div class="auth-err" id="authErr" role="alert"></div>
+
+        <button class="btn primary auth-submit" id="authSubmit" type="submit"><span class="lbl" id="submitLbl">Login</span><span class="spin"></span></button>
+
+        <div class="auth-links">
+          <button type="button" class="link f-forgot" id="forgotBtn">Nakalimutan ang password?</button>
+          <button type="button" class="link f-back" id="backBtn">← Bumalik sa Login</button>
+        </div>
+      </form>
+
+      <div id="authDone" class="auth-done" style="display:none">
+        <div class="big">📧</div>
+        <h2 id="doneTitle">I-check ang email mo</h2>
+        <p class="muted" id="doneMsg"></p>
+        <button class="btn" type="button" id="doneBack">← Bumalik sa Login</button>
+      </div>
+    </div>
+
+    <p class="auth-foot muted">Admin lang ang kailangang mag-login. Para kumanta, buksan lang ang Remote. 🎶</p>
   </div>
 
   <!-- MAIN -->
@@ -26,7 +75,9 @@
     <header>
       <div style="display:flex;align-items:center;gap:10px"><a class="close-x" href="../" title="Isara">✕</a><h1>🛠️ Videoke Admin</h1></div>
       <div style="display:flex;gap:8px;align-items:center">
-        
+        <span class="muted acct" id="acctEmail"></span>
+        <button class="theme-toggle" type="button">☀️</button>
+        <button class="btn small" id="pwBtn" title="Palitan ang password">🔑</button>
         <button class="btn small" id="logoutBtn">Logout</button>
       </div>
     </header>
@@ -60,6 +111,20 @@
       </div>
     </div>
   </div>
+</div>
+<div class="modal" id="pwModal" style="display:none">
+  <form class="modal-card" id="pwForm" novalidate>
+    <h2>🔑 Palitan ang password</h2>
+    <label class="fl"><span>Bagong password</span>
+      <div class="inp"><i>🔒</i><input id="np1" type="password" autocomplete="new-password" placeholder="••••••••"><button type="button" class="eye" data-eye="np1">👁</button></div></label>
+    <label class="fl"><span>Ulitin</span>
+      <div class="inp"><i>🔒</i><input id="np2" type="password" autocomplete="new-password" placeholder="••••••••"><button type="button" class="eye" data-eye="np2">👁</button></div></label>
+    <div class="auth-err" id="pwErr"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button type="button" class="btn" id="pwCancel">Kanselahin</button>
+      <button type="submit" class="btn primary" id="pwSave">I-save</button>
+    </div>
+  </form>
 </div>
 <input type="file" id="lrcIn" accept=".lrc,text/plain" style="display:none">
 

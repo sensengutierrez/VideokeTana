@@ -2,12 +2,14 @@
 <html lang="fil">
 <head>
 <meta charset="UTF-8">
+<meta name="theme-color" content="#0b0716">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="assets/js/theme.js"></script>
 <title>Videoke</title>
 <link rel="stylesheet" href="assets/css/style.css">
 <style>
   body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
-    background: radial-gradient(ellipse at top, #2b1250 0%, var(--bg) 60%); }
+    background: radial-gradient(ellipse at top, var(--glow) 0%, var(--bg) 60%); }
   .wrap { width: 100%; max-width: 900px; text-align: center; }
   h1 { font-size: clamp(42px, 9vw, 76px); margin: 0 0 6px; letter-spacing: 2px; }
   .sub { margin-bottom: 34px; }
@@ -21,6 +23,7 @@
 </style>
 </head>
 <body>
+<div style="position:fixed;top:16px;right:16px"><button class="theme-toggle" type="button">☀️</button></div>
 <div class="wrap">
   <h1 class="neon">🎤 VIDEOKE</h1>
   <div class="sub muted">Pambahay na videoke — TV, laptop, tablet at phone</div>

@@ -23,14 +23,14 @@ html, body { height: 100%; overflow: hidden; background: #000; }
 
 /* Idle */
 #idle { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6vw;
-  background: radial-gradient(ellipse at center, #2b1250 0%, #07040f 70%); }
+  background: radial-gradient(ellipse at center, var(--glow) 0%, var(--bg) 70%); color: var(--text); }
 #idle .left { text-align: left; max-width: 46vw; }
 #idle h1 { font-size: 6vw; margin: 0; }
 #idle .room { font-size: 2.4vw; margin-top: 2vh; }
 #idle .room b { font-family: ui-monospace, Menlo, monospace; font-size: 5vw; color: var(--gold); letter-spacing: .4vw; display: block; }
 #idle .hint { font-size: 1.6vw; color: var(--muted); margin-top: 2vh; }
 #idle .url { font-size: 1.2vw; color: var(--muted); margin-top: 1vh; word-break: break-all; }
-#qrBig { background: #fff; padding: 1.4vw; border-radius: 1.6vw; width: 30vw; max-width: 60vh; aspect-ratio: 1; }
+#qrBig { background: #fff; box-shadow: var(--shadow); padding: 1.4vw; border-radius: 1.6vw; width: 30vw; max-width: 60vh; aspect-ratio: 1; }
 #qrBig svg, #qrSmall svg { width: 100%; height: 100%; display: block; }
 
 /* Splash (song number) */
@@ -65,7 +65,16 @@ body.ui #topBtns { opacity: 1; }
 
 /* Start gate */
 #gate { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at center, #2b1250 0%, #07040f 70%); text-align: center; gap: 3vh; cursor: pointer; }
+  background: radial-gradient(ellipse at center, var(--glow) 0%, var(--bg) 70%); color: var(--text); text-align: center; gap: 3vh; cursor: pointer; }
 #gate h1 { font-size: 7vw; margin: 0; }
 #gate .tap { font-size: 2.4vw; padding: 1.6vh 4vw; border-radius: 999px; }
 #gate .muted { font-size: 1.5vw; }
+
+/* Overlays sa ibabaw ng video — laging dark para mabasa */
+#nextBar, #cornerQr, #nowTag, #splash, #pauseBadge, #volBadge, #audioStage { color: #f3eefe; }
+#nextBar, #cornerQr { border-color: #34245c; }
+#splash .a, #nextBar .muted { color: #a99bc9; }
+#splash .num { color: #ffd54a; }
+#cornerQr .rc { color: #ffd54a; }
+#idle .room b { color: var(--gold); }
+#aTitle .a, #noLrc { color: #c9bce6; }
