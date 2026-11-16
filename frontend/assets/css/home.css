@@ -1,0 +1,86 @@
+/* ===== Home: harap ng videoke machine ===== */
+.home { max-width: 560px; margin: 0 auto; padding: max(18px, env(safe-area-inset-top)) 18px 32px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+
+/* ---- display panel ---- */
+.panel { position: relative; overflow: hidden; padding: 0; display: grid; margin-bottom: 16px; }
+.panel::after { content: ""; position: absolute; inset: 0; pointer-events: none;            /* pinong scanline ng LCD */
+  background: repeating-linear-gradient(to bottom, rgba(255,255,255,.018) 0 1px, transparent 1px 3px); }
+.panel-now { padding: 18px 20px 20px; }
+.panel-new { padding: 14px 20px 16px; border-top: 1px dashed var(--display-line); }
+.panel-row { display: flex; justify-content: space-between; align-items: baseline; color: var(--display-muted); font-size: 13px; }
+.panel-link { color: var(--display-fg); text-decoration: none; font-weight: 600; }
+.panel-link:hover { text-decoration: underline; }
+.hero-num { font-size: clamp(68px, 23vw, 120px); line-height: 1; margin: 10px 0 12px; }
+.hero-title { color: var(--display-text); font-size: 15px; min-height: 2.8em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.new-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.new-list li { display: grid; grid-template-columns: 4.6em 1fr; align-items: baseline; gap: 10px; font-size: 14px; color: var(--display-text); }
+.new-list .dot { font-size: 17px; letter-spacing: .08em; }
+.nl-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- dalawang pangunahing gawain ---- */
+.actions { display: grid; gap: 12px; margin-bottom: 26px; }
+.act { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 18px; border-radius: var(--r-lg); text-decoration: none; color: var(--text);
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); margin: 0; }
+.act b { font-size: 20px; font-weight: 750; letter-spacing: -.015em; margin-top: 10px; }
+.act small { color: var(--muted); font-size: 14px; line-height: 1.45; max-width: 36ch; }
+.act-ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); }
+.act-ic .ic { width: 22px; height: 22px; }
+.act-tv { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.act-tv small { color: color-mix(in srgb, var(--accent-ink) 72%, transparent); }
+.act-tv .act-ic { background: color-mix(in srgb, var(--accent-ink) 14%, transparent); }
+.act-go { margin-top: 14px; display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: 15px; }
+.act-go .ic { width: 18px; height: 18px; transition: transform .2s; }
+.act-tv:hover .act-go .ic { transform: translateX(3px); }
+.act-tv:active { transform: scale(.99); }
+.join-row { display: flex; gap: 8px; margin-top: 14px; }
+.room-in { font-family: var(--font-dot); font-weight: 800; color: var(--accent); flex: 1; min-width: 0; font-size: 26px; text-align: center; letter-spacing: .3em; padding: 8px 10px; text-transform: uppercase; }
+.room-in::placeholder { color: var(--muted); opacity: .35; }
+.join-row .btn { padding-inline: 20px; }
+.join-scan { margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; font-size: 14px; text-decoration: none; align-self: flex-start; }
+.join-scan .ic { width: 18px; height: 18px; }
+.join-scan:hover { text-decoration: underline; }
+
+/* ---- paano gamitin (talagang sunod-sunod na hakbang) ---- */
+.how { margin-bottom: 24px; }
+.how h2 { font-size: 15px; font-weight: 700; margin: 0 0 12px; color: var(--muted); }
+.how ol { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 14px; }
+.how li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; column-gap: 12px; }
+.how li::before { content: counter(s); grid-row: span 2; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-dot); font-weight: 800; font-size: 17px; color: var(--accent); border: 1px solid var(--line); }
+.how b { font-size: 16px; }
+.how span { color: var(--muted); font-size: 14px; line-height: 1.45; }
+
+/* ---- iba pang page ---- */
+.links { display: grid; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow); }
+.links a { display: flex; align-items: center; gap: 14px; padding: 14px 16px; color: var(--text); text-decoration: none; transition: background .15s; }
+.links a + a { border-top: 1px solid var(--line); }
+.links a:hover { background: var(--surface-2); }
+.links a > .ic { width: 20px; height: 20px; color: var(--muted); flex-shrink: 0; }
+.links span { display: flex; flex-direction: column; }
+.links b { font-size: 16px; }
+.links small { color: var(--muted); font-size: 13px; }
+.foot { text-align: center; font-size: 12px; margin-top: 22px; }
+
+a:focus-visible, button:focus-visible, .field:focus-visible { outline: none; box-shadow: var(--focus); }
+
+/* ---- malaking screen ---- */
+@media (min-width: 900px) {
+  .home { max-width: 1040px; padding-top: 36px; }
+  .topbar { margin-bottom: 24px; }
+  .panel { grid-template-columns: 1.35fr 1fr; margin-bottom: 20px; }
+  .panel-now { padding: 30px 34px 32px; }
+  .panel-new { padding: 30px 30px; border-top: 0; border-left: 1px dashed var(--display-line); display: flex; flex-direction: column; }
+  .new-list { margin-top: 18px; gap: 14px; }
+  .new-list li { font-size: 15px; }
+  .hero-num { font-size: 150px; margin: 16px 0 14px; }
+  .hero-title { font-size: 17px; }
+  .actions { grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 36px; }
+  .act { padding: 24px 26px; }
+  .act b { font-size: 24px; }
+  .how ol { grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .how { margin-bottom: 32px; }
+  .links { grid-template-columns: repeat(3, 1fr); }
+  .links a + a { border-top: 0; border-left: 1px solid var(--line); }
+  .links a { padding: 18px 20px; }
+}

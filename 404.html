@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<!-- Pansamantala: lumang link (hal. /VideokeTana/remote/?room=ABCD) -> /VideokeTana/frontend/remote/?room=ABCD -->
+<html lang="fil" translate="no"><head><meta charset="UTF-8"><title>Videoke</title>
+<script>
+  var m = location.pathname.match(/^(\/[^\/]+\/)(.*)$/);
+  if (m && m[2].indexOf('frontend/') !== 0) location.replace(m[1] + 'frontend/' + m[2] + location.search + location.hash);
+</script>
+</head><body style="background:#14171c;color:#eee;font-family:sans-serif;padding:2em">Hindi makita ang page.</body></html>

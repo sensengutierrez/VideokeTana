@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fil" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="theme-color" content="#15171c">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="assets/js/icons.js?v=0.9.8"></script>
+<script src="assets/js/theme.js?v=0.9.8"></script>
+<script src="assets/js/prefs.js?v=0.9.8"></script>
+<script src="assets/js/i18n.js?v=0.9.8"></script>
+<script src="assets/js/wallpaper.js?v=0.9.8"></script>
+<title>Videoke</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css?v=0.9.8">
+<link rel="stylesheet" href="assets/css/home.css?v=0.9.8">
+</head>
+<body>
+<main class="home">
+  <header class="topbar">
+    <span class="wordmark"><i data-i="mic"></i>videoke</span>
+    <button class="theme-toggle"></button>
+  </header>
+
+  <!-- panel na parang harap ng videoke machine -->
+  <section class="display panel" aria-label="Song number display">
+    <div class="panel-now">
+      <div class="panel-row"><span>Song no.</span><span id="libCount"></span></div>
+      <div translate="no" class="dot hero-num" id="heroNum"><span class="ghost">88888</span></div>
+      <div class="hero-title" id="heroTitle" data-notr>Pumili ng kanta, i-type ang numero, kumanta.</div>
+    </div>
+    <div class="panel-new">
+      <div class="panel-row"><span>Bago sa library</span><a href="songbook/" class="panel-link">Songbook</a></div>
+      <ol class="new-list" id="newList">
+        <li><span class="dot">-----</span><span class="nl-t muted">Wala pang kanta</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <div class="actions">
+    <a href="host/" class="act act-tv">
+      <span class="act-ic"><i data-i="tv"></i></span>
+      <b>Buksan sa TV</b>
+      <small>Sa laptop, tablet o phone na tutugtog ng kanta. Pwede ring dito na mismo kumanta kahit iisang device lang.</small>
+      <span class="act-go">Simulan <i data-i="chevron"></i></span>
+    </a>
+    <form class="act act-join" id="joinForm" autocomplete="off">
+      <span class="act-ic"><i data-i="phone"></i></span>
+      <b>Sumali sa room</b>
+      <small>I-type ang room code na nasa TV para gawing remote at mic ang phone.</small>
+      <div class="join-row">
+        <input translate="no" class="field room-in" id="roomIn" maxlength="4" placeholder="ABCD" aria-label="Room code" autocapitalize="characters" spellcheck="false">
+        <button class="btn primary" type="submit">Sumali</button>
+      </div>
+      <a href="remote/" class="join-scan"><i data-i="qr"></i>I-scan ang QR code</a>
+    </form>
+  </div>
+
+  <section class="how" aria-label="Paano gamitin">
+    <h2>Paano gamitin</h2>
+    <ol>
+      <li><b>Buksan sa TV</b><span>Sa device na nakakonekta sa TV, pindutin ang Simulan.</span></li>
+      <li><b>I-scan ang QR</b><span>Sa phone, i-scan ang QR o i-type ang room code.</span></li>
+      <li><b>I-type ang numero</b><span>Hanapin ang kanta sa Songbook, i-type ang numero, Reserve.</span></li>
+    </ol>
+  </section>
+
+  <nav class="links">
+    <a href="songbook/"><i data-i="book"></i><span><b>Songbook</b><small>Lahat ng kanta at numero</small></span></a>
+    <a href="admin/"><i data-i="sliders"></i><span><b>Library</b><small>Magdagdag ng kanta</small></span></a>
+    <a href="settings/"><i data-i="gear"></i><span><b>Settings</b><small>Wika, tema, lyrics, tunog</small></span></a>
+  </nav>
+
+  <footer class="foot muted">Videoke 0.9.8, pambahay na videoke</footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js?v=0.9.8"></script>
+<script src="assets/js/common.js?v=0.9.8"></script>
+<script>
+// Display: random na kanta bawat 4 na segundo + listahan ng pinakabago
+(async () => {
+  try {
+    const { data, count } = await sb.from('songs').select('code, title, artist, created_at', { count: 'exact' }).limit(300);
+    if (!data || !data.length) return;
+    const n = count ?? data.length;
+    document.getElementById('libCount').textContent = n + (n === 1 ? ' kanta' : ' na kanta');
+    const newest = [...data].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '') || b.code - a.code).slice(0, 4);
+    document.getElementById('newList').innerHTML = newest.map(s =>
+      `<li><span class="dot">${s.code}</span><span class="nl-t" data-notr>${esc(s.title)}</span></li>`).join('');
+    let i = Math.floor(Math.random() * data.length);
+    const show = () => {
+      const s = data[i % data.length]; i++;
+      document.getElementById('heroNum').textContent = s.code;
+      document.getElementById('heroTitle').textContent = s.title + (s.artist ? ', ' + s.artist : '');
+    };
+    show();
+    if (data.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(show, 4000);
+  } catch (e) { /* offline: iwan ang default */ }
+})();
+// Sumali sa room mula rito
+const roomIn = document.getElementById('roomIn');
+roomIn.value = (localStorage.getItem('vk_last_room') || '').toUpperCase();
+roomIn.addEventListener('input', () => { roomIn.value = roomIn.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+document.getElementById('joinForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const r = cleanRoom(roomIn.value);
+  if (!ROOM_RE.test(r)) { toast('Ilagay ang 4 na letra o numero na room code na nasa TV', 'err'); roomIn.focus(); return; }
+  location.href = 'remote/?room=' + r;
+});
+</script>
+<script src="assets/js/screensaver.js?v=0.9.8"></script>
+</body>
+</html>

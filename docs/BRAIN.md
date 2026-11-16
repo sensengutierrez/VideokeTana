@@ -18,20 +18,22 @@ Ito ang alaala ng project: **ano** ang nagawa, **bakit**, at **paano**. Basahin 
 
 | Bahagi | Saan | Ginagawa |
 |---|---|---|
-| Host (TV) | `host/`, `assets/js/host.js` | Laging bukas na screen ng videoke: background, orasan, QR, reserved list, tumutugtog ng kanta, lyrics, pitch bar, score, sound effects, mic mixer |
-| Remote (phone) | `remote/`, `assets/js/remote.js` | Sumasali gamit ang QR/room code; numero, hanap, YouTube, pila, mic, soundboard |
-| Songbook | `songbook/` | Listahan ng lahat ng kanta at numero |
-| Library (admin) | `admin/` | Login, upload ng kanta + .lrc, YouTube add, background videos |
-| Settings | `settings/` | Lahat ng setting; naka-save sa `localStorage` ng bawat device |
+| Home | `frontend/index.html` | Display ng kanta, Buksan sa TV, Sumali sa room (room code), paano gamitin |
+| Host (TV) | `frontend/host/`, `host.js` | Laging bukas na screen ng videoke: background, orasan, QR, reserved list, tumutugtog ng kanta, lyrics, pitch bar, score, sound effects, mic mixer |
+| Remote (phone) | `frontend/remote/`, `remote.js` | Sumasali gamit ang QR/room code; numero, hanap, YouTube, pila, mic, soundboard |
+| Songbook | `frontend/songbook/` | Listahan ng lahat ng kanta at numero |
+| Library (admin) | `frontend/admin/` | Login, upload ng kanta + .lrc, YouTube add, background videos |
+| Settings | `frontend/settings/` | Lahat ng setting; naka-save sa `localStorage` ng bawat device |
 
 **Komunikasyon:** Supabase Realtime. Ang pila ay nasa table na `queue` (postgres_changes). Ang utos ng remote, estado ng TV, score at mic signaling ay broadcast sa channel na `room-<ROOM>` (events: `cmd`, `state`, `hello`, `score`, `rtc`).
 
-**Uri ng kanta:** `audio` (MP3 + LRC), `video` (MP4), `youtube` (`yt_id`). Code ng kanta ay kusang sunod-sunod mula 10001. Ang path na nagsisimula sa `site:` ay file sa repo (`demo/`); ang iba ay nasa Storage bucket na `songs`.
+**Uri ng kanta:** `audio` (MP3 + LRC), `video` (MP4), `youtube` (`yt_id`). Code ng kanta ay kusang sunod-sunod mula 10001. Ang path na nagsisimula sa `site:` ay file sa repo (`frontend/demo/`); ang iba ay nasa Storage bucket na `songs`.
 
 ## Mga desisyon at bakit
 
 | Desisyon | Bakit |
 |---|---|
+| Hiwalay na `frontend/` at `backend/` | Malinaw kung alin ang website at alin ang database/server code. Dine-deploy ng GitHub Actions ang `frontend/` lang. |
 | Static na web app (walang build step) sa GitHub Pages | Libre, madaling i-deploy, gumagana sa TV browser, laptop, tablet at phone. Pwedeng gawing native app balang araw. |
 | Supabase | Libreng database + storage + realtime sa iisang lugar; RLS para sa admin-only na upload. |
 | QR + 4 na letrang room code | Mabilis sumali ang phone nang walang account. |
@@ -46,20 +48,21 @@ Ito ang alaala ng project: **ano** ang nagawa, **bakit**, at **paano**. Basahin 
 
 ## Tuwing magre-release
 
-Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `index.html`, para makuha agad ng phone at TV ang bagong bersyon.
+Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `frontend/**/index.html`, at ang bersyon sa footer ng home at sa Settings → Tungkol sa app, para makuha agad ng phone at TV ang bagong bersyon.
 
 ## Mga file na dapat kilalanin
 
-- `assets/js/common.js`: Supabase client, `mediaUrl`, `itemInfo`, mga helper.
-- `assets/js/prefs.js`: lahat ng setting at ang default nila (`VK_PREFS.get/set`).
-- `assets/js/i18n.js`: diksyunaryo Tagalog→English at mga pattern para sa may numero. Kapag nagdagdag ng bagong text, idagdag din dito.
-- `assets/js/sfx.js`: 14 na sound effect (`VKSfx.play/stop`), may `solo` para hindi magpatong.
-- `assets/js/voice.js`: boses kapag pumindot (speechSynthesis), `VKVoice.key/act/say`.
-- `assets/js/pitch.js`: pitch bar (`VKPitch.load/sample/draw/accuracy`).
-- `assets/js/mic-host.js`: mixer ng mic sa TV + `pitch()` (autocorrelation, 80 hanggang 1000 Hz).
-- `assets/js/mic-remote.js`: phone bilang mic.
-- `supabase/schema.sql`: buong database.
-- Demo songs: ginawa ng `tools/synth.py` (wala sa repo). Lumilikha ng `.mp3`, `.lrc` at `.mel.json`.
+- `frontend/assets/js/common.js`: Supabase client, `mediaUrl`, `itemInfo`, mga helper.
+- `frontend/assets/js/prefs.js`: lahat ng setting at ang default nila (`VK_PREFS.get/set`).
+- `frontend/assets/js/i18n.js`: diksyunaryo Tagalog→English at mga pattern para sa may numero. Kapag nagdagdag ng bagong text, idagdag din dito.
+- `frontend/assets/js/sfx.js`: 14 na sound effect (`VKSfx.play/stop`), may `solo` para hindi magpatong.
+- `frontend/assets/js/voice.js`: boses kapag pumindot (speechSynthesis), `VKVoice.key/act/say`.
+- `frontend/assets/js/pitch.js`: pitch bar (`VKPitch.load/sample/draw/accuracy`).
+- `frontend/assets/js/mic-host.js`: mixer ng mic sa TV + `pitch()` (autocorrelation, 80 hanggang 1000 Hz).
+- `frontend/assets/js/mic-remote.js`: phone bilang mic.
+- `backend/supabase/schema.sql`: buong database.
+- `backend/supabase/functions/yt-search/index.ts`: YouTube search (Edge Function).
+- Demo songs: ginawa ng `backend/tools/synth.py` (`python3 backend/tools/synth.py <folder>`). Lumilikha ng `.mp3`, `.lrc` at `.mel.json`.
 
 ## Change log
 
@@ -78,6 +81,7 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `index.h
 | 0.9.2 | `?v=` sa lahat ng CSS/JS link | Lumang CSS ang nakuha ng phone (cache ng browser/GitHub Pages), kaya nagpapatong pa rin sa taas | Palitan ang `?v=` sa lahat ng HTML tuwing may release |
 | 0.9.6 | Highlight ng lyrics bawat salita; kasya sa iisang linya; QR sa kanang itaas; layout para sa nakahigang phone | Sabay na nagha-highlight ang dalawang linya kapag nahati ang mahabang lyric; tinatakpan ng lyrics ang pitch bar | Bawat salita ay may sariling `--p` (`setLine`), `fitLine` na nagpapaliit ng font, media query `max-height: 520px` |
 | 0.9.7 | Landscape mode sa phone/tablet: kusang nakahiga pagpindot ng Simulan, button na Landscape sa itaas, paalala kung hindi kaya ng browser, setting na Landscape/Auto | Hiling ng user; mas malaki ang lyrics at pitch bar kapag nakahiga | Fullscreen + `screen.orientation.lock('landscape')` (Android Chrome); `#rotateHint` bilang fallback (iPhone) |
+| 0.9.8 | `frontend/` + `backend/` na folders, GitHub Actions deploy, bagong home page (panel na parang videoke machine, Sumali sa room gamit ang code, Paano gamitin), source ng Edge Function at synth.py sa repo | Hiling ng user: maayos na front end/back end at magandang index | `git mv`; `.github/workflows/pages.yml`; redirect na `index.html`/`404.html` habang branch deploy pa |
 
 ## Susunod
 
@@ -85,5 +89,6 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `index.h
 - Sariling kanta mula sa device (IndexedDB, hindi ina-upload).
 - Language/category ng kanta (OPM, English, Korean, Japanese).
 - YouTube search: kailangan ang API key ng user (secret `YT_API_KEY`).
+- Gawin ng user: GitHub → Settings → Pages → Source: GitHub Actions.
 - Gawin ng user: Supabase Auth Site URL → `https://sensengutierrez.github.io/VideokeTana/admin/`.
 - Hindi pa na-test sa totoong device: mic sa iba't ibang router, boses (speechSynthesis), pitch detection gamit ang totoong boses.
