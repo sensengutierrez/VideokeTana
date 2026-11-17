@@ -37,7 +37,7 @@ iPhone at computer: buksan ang site at i-install (Add to Home Screen / Install a
 
 ## Deploy
 
-GitHub Pages → Settings → Pages → **Source: GitHub Actions**. Tuwing may push sa `main` na may binago sa `frontend/`, kusang nade-deploy ang site sa https://sensengutierrez.github.io/VideokeTana/.
+GitHub Pages → Settings → Pages → **Source: GitHub Actions**. Tuwing may push sa `main` na may binago sa `frontend/`, kusang nade-deploy ang site sa https://videoketana.tigomenote.com/ (dati: sensengutierrez.github.io/VideokeTana/).
 
 Habang "Deploy from a branch" pa ang setting, ililipat ka ng `index.html` at `404.html` sa ugat ng repo papunta sa `frontend/`.
 

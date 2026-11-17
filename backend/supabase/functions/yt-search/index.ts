@@ -4,6 +4,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const ALLOWED = [
+  "https://videoketana.tigomenote.com",
   "https://sensengutierrez.github.io",
   "http://localhost",
   "http://127.0.0.1",

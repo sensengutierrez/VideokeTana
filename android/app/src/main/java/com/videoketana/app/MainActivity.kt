@@ -45,8 +45,10 @@ import androidx.core.view.WindowInsetsControllerCompat
 class MainActivity : ComponentActivity() {
 
     companion object {
-        const val SITE = "https://sensengutierrez.github.io/VideokeTana/"
-        const val SITE_HOST = "sensengutierrez.github.io"
+        const val SITE = "https://videoketana.tigomenote.com/"
+        const val SITE_HOST = "videoketana.tigomenote.com"
+        // lumang address (inililipat ng GitHub sa bago)
+        val HOSTS = setOf(SITE_HOST, "sensengutierrez.github.io")
     }
 
     private lateinit var web: WebView
@@ -116,7 +118,7 @@ class MainActivity : ComponentActivity() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url
                 // sariling site at YouTube player: dito sa app; iba pa: sa browser
-                if (url.host == SITE_HOST || url.host?.endsWith("youtube.com") == true || url.host?.endsWith("youtube-nocookie.com") == true) return false
+                if ((url.host ?: "") in HOSTS || url.host?.endsWith("youtube.com") == true || url.host?.endsWith("youtube-nocookie.com") == true) return false
                 return try { startActivity(Intent(Intent.ACTION_VIEW, url)); true } catch (e: ActivityNotFoundException) { false }
             }
 
@@ -191,14 +193,14 @@ class MainActivity : ComponentActivity() {
     // Smart TV: diretso sa TV screen. Link (hal. QR ng room): ang link mismo. Iba: home.
     private fun startUrl(i: Intent?): String {
         val data = i?.data
-        if (data != null && data.host == SITE_HOST) return data.toString()
+        if (data != null && (data.host ?: "") in HOSTS) return data.toString()
         return if (isTv) SITE + "host/" else SITE + "app/"
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         val data = intent.data
-        if (data != null && data.host == SITE_HOST) web.loadUrl(data.toString())
+        if (data != null && (data.host ?: "") in HOSTS) web.loadUrl(data.toString())
     }
 
     private fun has(p: String) = ContextCompat.checkSelfPermission(this, p) == PackageManager.PERMISSION_GRANTED
