@@ -193,6 +193,8 @@
     'Mas malinaw na tunog sa itaas, gaya ng cymbals at boses ng kanta.': 'Brighter high sounds, like cymbals and the singer\'s voice.',
     'Boses sa TV': 'Voice on the TV', 'Kanta': 'Song', 'Linaw': 'Clarity', 'Bass': 'Bass', 'Treble': 'Treble',
     'Hindi mababago ang bass at treble ng YouTube na kanta. Sa sariling kanta lang ito gumagana.': 'Bass and treble cannot be changed for YouTube songs. They only work on your own songs.',
+    'May ibang TV na gumagamit ng room na ito': 'Another TV is using this room', 'Gamitin dito': 'Use it here', 'Naipit': 'Stuck',
+    'Binuksan ang room na ito sa ibang tab o device, kaya doon na tutugtog ang mga kanta. Isara ang tab na ito, o gamitin ulit dito.': 'This room was opened in another tab or device, so songs will play there. Close this tab, or use it here again.',
     'Boses kapag pumindot': 'Voice when tapping', 'Binabasa nang malakas ang numerong pinipindot at ang mga aksyon, gaya ng "Naka-reserve".': 'Reads out the numbers you press and actions like "Reserved".',
     'Soundboard': 'Soundboard', 'Hindi magpapatong-patong': 'No overlap', 'Isang tunog lang sa isang pagkakataon.': 'Only one sound at a time.',
 

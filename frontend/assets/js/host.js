@@ -79,6 +79,7 @@ function flash(el, text, ms = 1400) {
 
 // ================= QUEUE =================
 async function loadQueue() {
+  if (standby) return;
   const { data, error } = await queueSelect(ROOM);
   if (error) { toast('Error sa pila: ' + error.message, 'err'); return; }
   queue = sortQueue(data || []);
@@ -96,8 +97,14 @@ let loadTimer = null;
 function loadQueueSoon() { clearTimeout(loadTimer); loadTimer = setTimeout(loadQueue, 150); }
 
 async function startNext() {
-  if (starting || current || scoring) return;
+  if (starting || current || scoring || standby) return;
   const next = queue.find(q => q.status === 'playing') || queue.find(q => q.status === 'waiting');
+  // mga naipit sa "Kinakanta" (hal. galing sa ibang tab na nagsara): ibalik sa pila
+  const stuck = queue.filter(q => q.status === 'playing' && q !== next);
+  if (stuck.length) {
+    stuck.forEach(q => { q.status = 'waiting'; });
+    Promise.all(stuck.map(q => sb.from('queue').update({ status: 'waiting' }).eq('id', q.id))).catch(() => {});
+  }
   if (!next) { show('idle'); broadcastState(); return; }
   starting = true;
   current = next;
@@ -487,15 +494,42 @@ function broadcastState() {
 }
 
 // ================= REALTIME =================
+// ---- Iisang TV lang bawat room ----
+// Kapag may dalawang bukas na TV page sa iisang room (hal. dalawang tab), pareho silang kumukuha ng kanta sa pila
+// at naiipit ang mga kanta sa "Kinakanta". Ang pinakabagong binuksang TV ang gagamitin; ang luma ay naghihintay.
+const HOST_ID = Math.random().toString(36).slice(2, 10);
+let hostSince = 0, standby = false;
+function announceHost() {
+  if (channel && started && !standby) channel.send({ type: 'broadcast', event: 'host', payload: { id: HOST_ID, since: hostSince } });
+}
+function onOtherHost(p) {
+  if (!p || p.id === HOST_ID || !started || standby) return;
+  if (p.since > hostSince) goStandby(); else announceHost();
+}
+function goStandby() {
+  standby = true;
+  stopMedia(); current = null; starting = false;
+  try { VKMicHost.closeAll(); } catch (e) {}
+  show('idle');
+  $('standby').hidden = false;
+}
+function takeOver() {
+  standby = false; hostSince = Date.now();
+  $('standby').hidden = true;
+  announceHost(); loadQueue(); broadcastState();
+}
+setInterval(announceHost, 10000);
+
 function connect() {
   if (channel) sb.removeChannel(channel);
   channel = sb.channel('room-' + ROOM, { config: { broadcast: { self: false } } })
-    .on('broadcast', { event: 'cmd' }, ({ payload }) => handleCmd(payload.action, payload.value))
-    .on('broadcast', { event: 'hello' }, () => broadcastState())
-    .on('broadcast', { event: 'rtc' }, ({ payload }) => { if (payload && payload.to === 'host') VKMicHost.handle(payload); })
+    .on('broadcast', { event: 'cmd' }, ({ payload }) => { if (!standby) handleCmd(payload.action, payload.value); })
+    .on('broadcast', { event: 'hello' }, () => { if (!standby) broadcastState(); })
+    .on('broadcast', { event: 'host' }, ({ payload }) => onOtherHost(payload))
+    .on('broadcast', { event: 'rtc' }, ({ payload }) => { if (!standby && payload && payload.to === 'host') VKMicHost.handle(payload); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'queue' }, () => loadQueueSoon())
     .subscribe(status => {
-      if (status === 'SUBSCRIBED') { loadQueue(); broadcastState(); }
+      if (status === 'SUBSCRIBED') { loadQueue(); if (!standby) broadcastState(); announceHost(); }
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') toast('Nawala ang koneksyon, kumokonekta ulit...', 'err');
     });
 }
@@ -509,6 +543,7 @@ function toggleFs() {
   else document.documentElement.requestFullscreen().catch(() => {});
 }
 $('btnFs').onclick = toggleFs;
+$('takeOver').onclick = takeOver;
 
 // QR habang may kanta: nakatago, lumalaki kapag pinindot ang QR button
 let qrTimer = null;
@@ -604,7 +639,7 @@ $('gate').onclick = () => {
     return;
   }
   eqInit();
-  started = true;
+  started = true; hostSince = Date.now(); setTimeout(announceHost, 1500);
   $('gate').style.display = 'none';
   if (isTouch && VK_PREFS.get().tvOrient === 'landscape') goLandscape();
   keepAwake();

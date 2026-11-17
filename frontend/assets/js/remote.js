@@ -337,7 +337,7 @@ function renderQueue() {
         <div class="t">${esc(i.title)}</div>
         <div class="a">${i.source === 'youtube' ? 'YouTube' : esc(i.code)}${i.artist && i.source !== 'youtube' ? ', ' + esc(i.artist) : ''}${q.singer ? '. Kakanta: ' + esc(q.singer) : ''}</div>
       </div>
-      ${playing ? '<span class="now-lbl">Kinakanta</span>' : `<div class="acts">${pos > 1 ? `<button class="btn small icon" data-top="${q.id}" title="Unahin" aria-label="Unahin">${ICON('up')}</button>` : ''}<button class="btn small icon danger" data-del="${q.id}" title="Alisin" aria-label="Alisin">${ICON('x')}</button></div>`}
+      ${playing ? `<div class="acts"><span class="now-lbl">${state && state.now && state.now.id === q.id ? 'Kinakanta' : 'Naipit'}</span><button class="btn small icon danger" data-del="${q.id}" title="Alisin" aria-label="Alisin">${ICON('x')}</button></div>` : `<div class="acts">${pos > 1 ? `<button class="btn small icon" data-top="${q.id}" title="Unahin" aria-label="Unahin">${ICON('up')}</button>` : ''}<button class="btn small icon danger" data-del="${q.id}" title="Alisin" aria-label="Alisin">${ICON('x')}</button></div>`}
     </div>`;
   }).join('');
 }
