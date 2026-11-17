@@ -210,6 +210,9 @@ fun HomeScreen(go: (Screen) -> Unit) {
             Tile("book", tr("Songbook", "Songbook"), tr("Lahat ng kanta", "All songs"), Modifier.weight(1f)) { go(Screen.Songbook) }
             Tile("gear", tr("Settings", "Settings"), tr("Wika, tema, tunog", "Language, theme, sound"), Modifier.weight(1f)) { go(Screen.Settings) }
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Tile("plus", tr("Library", "Library"), tr("Upload, YouTube, lisensya", "Upload, YouTube, licenses"), Modifier.weight(1f)) { go(Screen.Library) }
+        }
         Text("VideokeTana ${com.videoketana.app.BuildConfig.VERSION_NAME}", color = c.muted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
     }

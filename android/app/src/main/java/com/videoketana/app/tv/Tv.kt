@@ -47,6 +47,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -135,6 +136,8 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var lyricOffset by remember { mutableStateOf(0.0) }
     var view by remember { mutableStateOf(LyricView("", 0f, "", 0)) }
     var busy by remember { mutableStateOf(false) }
+    var ytPlaying by remember { mutableStateOf(false) }   // true kapag talagang tumutugtog na ang YouTube
+    var ytTry by remember { mutableIntStateOf(0) }        // dagdag bawat bagong YouTube na kanta
     val hostId = remember { Random.nextLong().toString(36) }
     var hostSince by remember { mutableStateOf(System.currentTimeMillis()) }
 
@@ -239,6 +242,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                             mode = "youtube"
                             val id = next.ytId ?: s?.ytId
                             if (id == null) { busy = false; finish("error"); return@sn }
+                            ytPlaying = false; ytTry++
                             yt.load(id, volume)
                         }
                     }
@@ -345,16 +349,42 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
         // YouTube player (laging nakahanda para mabilis magsimula)
         DisposableEffect(Unit) {
-            yt.onState = { st -> if (st == 0 && mode == "youtube") scope.launch { finish("ended") } }
+            yt.onState = { st ->
+                if (st == 1) ytPlaying = true
+                if (st == 0 && mode == "youtube") scope.launch { finish("ended") }
+            }
             yt.onError = { code ->
                 if (mode == "youtube") {
-                    Toast.makeText(ctx, tr("Ayaw ipa-play ng YouTube ang video na ito sa labas ng YouTube (error $code). Lilipat sa susunod.", "YouTube does not allow this video outside YouTube (error $code). Moving to the next song."), Toast.LENGTH_LONG).show()
+                    val msg = when (code) {
+                        "noapi", "page" -> tr("Hindi ma-load ang YouTube player. Tingnan ang internet. Lilipat sa susunod.", "Could not load the YouTube player. Check the internet. Moving to the next song.")
+                        else -> tr("Ayaw ipa-play ng YouTube ang video na ito sa labas ng YouTube (error $code). Lilipat sa susunod.", "YouTube does not allow this video outside YouTube (error $code). Moving to the next song.")
+                    }
+                    Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
+                    if (code == "noapi" || code == "page") yt.reload()
                     scope.launch { delay(1500); finish("error") }
-                }
+                } else if (code == "noapi" || code == "page") scope.launch { delay(5000); yt.reload() }
             }
             onDispose { }
         }
-        AndroidView(factory = { c -> yt.create(c) }, modifier = if (mode == "youtube") Modifier.fillMaxSize() else Modifier.size(1.dp))
+        // bantay: kung hindi nagsimula ang YouTube sa loob ng 25s, lumipat sa susunod
+        LaunchedEffect(ytTry, mode) {
+            if (mode != "youtube") return@LaunchedEffect
+            delay(25_000)
+            if (mode == "youtube" && !ytPlaying) {
+                Toast.makeText(ctx, tr("Hindi nagsimula ang YouTube video. Lilipat sa susunod.", "The YouTube video did not start. Moving to the next song."), Toast.LENGTH_LONG).show()
+                yt.reload()
+                finish("error")
+            }
+        }
+        // laging buong laki ang WebView (kung 1dp, minsan itim lang ang lumalabas); itinatago lang kapag hindi YouTube
+        AndroidView(factory = { c -> yt.create(c) }, modifier = Modifier.fillMaxSize().alpha(if (mode == "youtube") 1f else 0f))
+        if (mode == "youtube" && !ytPlaying) Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                current?.let { Text(it.title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 2) }
+                Spacer(Modifier.height(10.dp))
+                Text(tr("Kinukuha ang video sa YouTube...", "Loading the video from YouTube..."), color = DIM, fontSize = 15.sp)
+            }
+        }
 
         // video ng sariling kanta
         if (mode == "video") AndroidView(

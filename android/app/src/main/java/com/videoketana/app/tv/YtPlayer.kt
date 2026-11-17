@@ -7,6 +7,8 @@ import android.os.Handler
 import android.os.Looper
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.videoketana.app.data.Config
@@ -19,7 +21,7 @@ class YtController {
     var web: WebView? = null
     var onReady: () -> Unit = {}
     var onState: (Int) -> Unit = {}          // 0 = tapos, 1 = tumutugtog, 2 = naka-pause
-    var onError: (Int) -> Unit = {}
+    var onError: (String) -> Unit = {}       // YouTube code (hal. 150) o "noapi" / "page"
     private val main = Handler(Looper.getMainLooper())
 
     private fun js(s: String) { main.post { web?.evaluateJavascript(s, null) } }
@@ -37,7 +39,7 @@ class YtController {
                 when (name) {
                     "ready" -> onReady()
                     "state" -> onState(data.toIntOrNull() ?: -1)
-                    "error" -> onError(data.toIntOrNull() ?: 0)
+                    "error" -> onError(data)
                 }
             }
         }
@@ -49,12 +51,19 @@ class YtController {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.mediaPlaybackRequiresUserGesture = false
-        webViewClient = WebViewClient()
+        webViewClient = object : WebViewClient() {
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                if (request.isForMainFrame) main.post { onError("page") }
+            }
+        }
         webChromeClient = WebChromeClient()
         addJavascriptInterface(Bridge(), "AndroidYT")
-        loadUrl(Config.SITE + "yt.html")
+        loadUrl(Config.SITE + "yt.html?v=3")
         web = this
     }
+
+    /** Bagong load ng player page (kapag pumalya ang una). */
+    fun reload() { main.post { web?.loadUrl(Config.SITE + "yt.html?v=3&t=" + System.currentTimeMillis()) } }
 
     fun destroy() { web?.destroy(); web = null }
 }

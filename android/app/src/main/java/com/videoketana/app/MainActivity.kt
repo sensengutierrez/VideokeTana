@@ -41,6 +41,7 @@ sealed class Screen {
     object Tv : Screen()
     object Songbook : Screen()
     object Settings : Screen()
+    object Library : Screen()
     data class Remote(val room: String) : Screen()
 }
 
@@ -104,6 +105,7 @@ fun App(isTv: Boolean, linkRoom: String?, consumeLink: () -> Unit) {
                 Screen.Tv -> TvScreen(onClose = { screen = Screen.Home }, isTv = isTv)
                 Screen.Songbook -> SongbookScreen(go)
                 Screen.Settings -> SettingsScreen(go)
+                Screen.Library -> com.videoketana.app.ui.LibraryScreen(go)
                 is Screen.Remote -> RemoteScreen(s.room, go)
             }
         }
@@ -113,6 +115,6 @@ fun App(isTv: Boolean, linkRoom: String?, consumeLink: () -> Unit) {
 
 /** Para matandaan ang screen kapag umikot ang phone. */
 val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, String>(
-    save = { s -> when (s) { Screen.Home -> "home"; Screen.Tv -> "tv"; Screen.Songbook -> "book"; Screen.Settings -> "set"; is Screen.Remote -> "r:" + s.room } },
-    restore = { v -> when { v == "tv" -> Screen.Tv; v == "book" -> Screen.Songbook; v == "set" -> Screen.Settings; v.startsWith("r:") -> Screen.Remote(v.drop(2)); else -> Screen.Home } }
+    save = { s -> when (s) { Screen.Home -> "home"; Screen.Tv -> "tv"; Screen.Songbook -> "book"; Screen.Settings -> "set"; Screen.Library -> "lib"; is Screen.Remote -> "r:" + s.room } },
+    restore = { v -> when { v == "tv" -> Screen.Tv; v == "book" -> Screen.Songbook; v == "set" -> Screen.Settings; v == "lib" -> Screen.Library; v.startsWith("r:") -> Screen.Remote(v.drop(2)); else -> Screen.Home } }
 )

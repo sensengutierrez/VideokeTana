@@ -13,24 +13,42 @@
 <body>
 <div id="p"></div>
 <script>
-var player = null, ready = false, pending = null;
+var player = null, ready = false, pending = null, want = null, kick = null, apiOk = false;
 function send(e, d) { try { AndroidYT.event(e, String(d == null ? '' : d)); } catch (x) {} }
-var tag = document.createElement('script'); tag.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
+// kung hindi ma-load ang YouTube API sa loob ng 12s, sabihin sa app
+setTimeout(function () { if (!apiOk) send('error', 'noapi'); }, 12000);
+var tag = document.createElement('script'); tag.onerror = function () { send('error', 'noapi'); }; tag.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
 function onYouTubeIframeAPIReady() {
+  apiOk = true;
   player = new YT.Player('p', {
     width: '100%', height: '100%',
-    playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, fs: 0, disablekb: 1 },
+    playerVars: { origin: location.origin, widget_referrer: location.href, autoplay: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, fs: 0, disablekb: 1 },
     events: {
       onReady: function () { ready = true; send('ready'); if (pending) { load(pending.id, pending.v); pending = null; } },
-      onStateChange: function (e) { send('state', e.data); },
+      onStateChange: function (e) {
+        send('state', e.data);
+        if (e.data === 1) { clearTimeout(kick); if (player.isMuted() && want && want.v > 0) { player.unMute(); player.setVolume(want.v); } }
+      },
       onError: function (e) { send('error', e.data); }
     }
   });
 }
 function load(id, v) {
   if (!ready) { pending = { id: id, v: v }; return; }
+  want = { id: id, v: v };
   player.loadVideoById(id);
   if (v != null) player.setVolume(v);
+  // kung hindi nagsimula (naharang ang autoplay), subukan ulit; huli, i-mute muna para payagan
+  clearTimeout(kick);
+  kick = setTimeout(function () {
+    var st = player.getPlayerState();
+    if (st === 1) return;
+    player.playVideo();
+    kick = setTimeout(function () {
+      if (player.getPlayerState() === 1) return;
+      player.mute(); player.playVideo();
+    }, 2500);
+  }, 2000);
 }
 function cmd(c, a) {
   if (!ready) return;
@@ -38,7 +56,7 @@ function cmd(c, a) {
   else if (c === 'play') player.playVideo();
   else if (c === 'seek') player.seekTo(a || 0, true);
   else if (c === 'vol') player.setVolume(a);
-  else if (c === 'stop') player.stopVideo();
+  else if (c === 'stop') { clearTimeout(kick); want = null; player.stopVideo(); }
 }
 </script>
 </body>

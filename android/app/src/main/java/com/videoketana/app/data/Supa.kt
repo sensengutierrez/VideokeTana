@@ -30,7 +30,8 @@ data class Song(
     val lrcPath: String?,
     val ytId: String?,
     val category: String?,
-    val createdAt: String?
+    val createdAt: String?,
+    val licenseNote: String? = null
 ) {
     companion object {
         fun from(o: JSONObject) = Song(
@@ -43,7 +44,8 @@ data class Song(
             lrcPath = o.optStr("lrc_path"),
             ytId = o.optStr("yt_id"),
             category = o.optStr("category"),
-            createdAt = o.optStr("created_at")
+            createdAt = o.optStr("created_at"),
+            licenseNote = o.optStr("license_note")
         )
     }
 }
@@ -118,7 +120,7 @@ object Supa {
         return "${Config.SUPABASE_URL}/storage/v1/object/public/songs/" + path.split("/").joinToString("/") { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
     }
 
-    private const val SONG_COLS = "id,code,title,artist,kind,media_path,lrc_path,yt_id,category,created_at"
+    private const val SONG_COLS = "id,code,title,artist,kind,media_path,lrc_path,yt_id,category,created_at,license_note"
 
     suspend fun songs(query: String = "", limit: Int = 300): List<Song> {
         val p = mutableMapOf("select" to SONG_COLS, "order" to "code.asc", "limit" to "$limit")

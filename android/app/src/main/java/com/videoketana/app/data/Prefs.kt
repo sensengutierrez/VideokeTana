@@ -85,6 +85,10 @@ object Prefs {
         set(v) = sp.edit().putString("favs", v.joinToString(",")).apply()
     fun int(k: String, def: Int = 0) = sp.getInt(k, def)
     fun putInt(k: String, v: Int) = sp.edit().putInt(k, v).apply()
+    fun str(k: String) = sp.getString(k, "") ?: ""
+    fun putStr(k: String, v: String) = sp.edit().putString(k, v).apply()
+    fun long(k: String) = sp.getLong(k, 0L)
+    fun putLong(k: String, v: Long) = sp.edit().putLong(k, v).apply()
     var skipUpdate: Int
         get() = sp.getInt("skipUpdate", 0)
         set(v) = sp.edit().putInt("skipUpdate", v).apply()
