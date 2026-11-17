@@ -13,7 +13,7 @@
 <body>
 <div id="p"></div>
 <script>
-var player = null, ready = false, pending = null, want = null, kick = null, apiOk = false;
+var player = null, ready = false, pending = null, want = null, kick = null, apiOk = false, rate = 1;
 function send(e, d) { try { AndroidYT.event(e, String(d == null ? '' : d)); } catch (x) {} }
 // kung hindi ma-load ang YouTube API sa loob ng 12s, sabihin sa app
 setTimeout(function () { if (!apiOk) send('error', 'noapi'); }, 12000);
@@ -27,7 +27,7 @@ function onYouTubeIframeAPIReady() {
       onReady: function () { ready = true; send('ready'); if (pending) { load(pending.id, pending.v); pending = null; } },
       onStateChange: function (e) {
         send('state', e.data);
-        if (e.data === 1) { clearTimeout(kick); if (player.isMuted() && want && want.v > 0) { player.unMute(); player.setVolume(want.v); } }
+        if (e.data === 1) { clearTimeout(kick); if (player.getPlaybackRate() !== rate) player.setPlaybackRate(rate); if (player.isMuted() && want && want.v > 0) { player.unMute(); player.setVolume(want.v); } }
       },
       onError: function (e) { send('error', e.data); }
     }
@@ -51,11 +51,13 @@ function load(id, v) {
   }, 2000);
 }
 function cmd(c, a) {
+  if (c === 'rate') rate = a || 1;
   if (!ready) return;
   if (c === 'pause') player.pauseVideo();
   else if (c === 'play') player.playVideo();
   else if (c === 'seek') player.seekTo(a || 0, true);
   else if (c === 'vol') player.setVolume(a);
+  else if (c === 'rate') { rate = a || 1; player.setPlaybackRate(rate); }
   else if (c === 'stop') { clearTimeout(kick); want = null; player.stopVideo(); }
 }
 </script>

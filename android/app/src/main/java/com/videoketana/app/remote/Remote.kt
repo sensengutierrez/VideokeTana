@@ -282,10 +282,11 @@ private fun NowCard(now: NowState?, hostSeen: Boolean, room: String, onCmd: (Str
             }
             // Key at Tempo (kapag ang TV ay ang app at sariling kanta ang tumutugtog)
             val fx = now?.fx
-            if (fx != null && fx.has("musicKey") && now?.source != "youtube") {
+            val isYt = now?.source == "youtube"
+            if (fx != null && fx.has("musicKey") && (!isYt || fx.optBoolean("ytTempo"))) {
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Stepper("Key", fx.optInt("musicKey"), -6, 6, Modifier.weight(1f)) { onFx("musicKey", it) }
+                    if (!isYt) Stepper("Key", fx.optInt("musicKey"), -6, 6, Modifier.weight(1f)) { onFx("musicKey", it) }
                     Stepper("Tempo", fx.optInt("musicTempo"), -5, 5, Modifier.weight(1f)) { onFx("musicTempo", it) }
                 }
             }
@@ -351,12 +352,15 @@ private fun SoundSheet(fx: JSONObject?, source: String, send: (String, Int) -> U
         Spacer(Modifier.height(16.dp))
         Text(tr("Kanta", "Song"), color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         val yt = source == "youtube"
-        FxSlider("Bass", "musicBass", -12, 12, fx, send, unit = " dB", enabled = !yt)
-        FxSlider("Treble", "musicTreble", -12, 12, fx, send, unit = " dB", enabled = !yt)
+        val ytEq = fx?.optBoolean("ytEq") == true
+        val ytTempo = fx?.optBoolean("ytTempo") == true
+        FxSlider("Bass", "musicBass", -12, 12, fx, send, unit = " dB", enabled = !yt || ytEq)
+        FxSlider("Treble", "musicTreble", -12, 12, fx, send, unit = " dB", enabled = !yt || ytEq)
         FxSlider(tr("Key (tono ng kanta)", "Key (song pitch)"), "musicKey", -6, 6, fx, send, unit = "", enabled = !yt && fx?.has("musicKey") == true)
-        FxSlider(tr("Tempo (bilis)", "Tempo (speed)"), "musicTempo", -5, 5, fx, send, unit = "", enabled = !yt && fx?.has("musicTempo") == true)
+        FxSlider(tr("Tempo (bilis)", "Tempo (speed)"), "musicTempo", -5, 5, fx, send, unit = "", enabled = fx?.has("musicTempo") == true && (!yt || ytTempo))
         Text(when {
-            yt -> tr("Hindi mababago ang tunog ng YouTube na kanta. Sa sariling kanta lang ito gumagana.", "YouTube songs cannot be changed. This only works on your own songs.")
+            yt && (ytEq || ytTempo) -> tr("YouTube: gumagana ang bass, treble at tempo (kung papayagan ng TV), pero hindi ang key.", "YouTube: bass, treble and tempo work (if the TV allows it), but not key.")
+            yt -> tr("Hindi mababago ang tunog ng YouTube na kanta sa TV na ito. Sa sariling kanta lang ito gumagana.", "YouTube songs cannot be changed on this TV. This only works on your own songs.")
             fx != null && !fx.has("musicKey") -> tr("Gumagana ang Key kapag ang TV ay ang VideokeTana app.", "Key works when the TV is the VideokeTana app.")
             else -> ""
         }, color = c.muted, fontSize = 12.sp)

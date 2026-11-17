@@ -153,23 +153,32 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var key by remember { mutableIntStateOf(0) }       // bawat kanta: nagsisimula sa 0
     var tempo by remember { mutableIntStateOf(0) }
     var eq by remember { mutableStateOf<android.media.audiofx.Equalizer?>(null) }
+    // pang-YouTube: equalizer sa buong tunog ng app (session 0). Luma na ito sa Android at hindi lahat ng device ay sumusunod.
+    val geq = remember { try { android.media.audiofx.Equalizer(0, 0).apply { enabled = false } } catch (e: Throwable) { null } }
+    fun setBands(e: android.media.audiofx.Equalizer) {
+        val lo = e.bandLevelRange[0].toInt(); val hi = e.bandLevelRange[1].toInt()
+        for (b in 0 until e.numberOfBands) {
+            val f = e.getCenterFreq(b.toShort()) / 1000      // Hz
+            val db = when { f < 250 -> bass; f > 3500 -> treble; else -> 0 }
+            e.setBandLevel(b.toShort(), (db * 100).coerceIn(lo, hi).toShort())
+        }
+    }
     fun applyFx() {
+        if (mode == "youtube") {
+            yt.rate(1f + tempo * 0.05f)
+            try { geq?.let { g -> setBands(g); g.enabled = bass != 0 || treble != 0 } } catch (e: Throwable) { }
+            return
+        }
+        try { geq?.enabled = false } catch (e: Throwable) { }
         exo.playbackParameters = androidx.media3.common.PlaybackParameters(1f + tempo * 0.05f, Math.pow(2.0, key / 12.0).toFloat())
         try {
             if (eq == null && exo.audioSessionId != 0) eq = android.media.audiofx.Equalizer(0, exo.audioSessionId).apply { enabled = true }
-            eq?.let { e ->
-                val lo = e.bandLevelRange[0].toInt(); val hi = e.bandLevelRange[1].toInt()
-                for (b in 0 until e.numberOfBands) {
-                    val f = e.getCenterFreq(b.toShort()) / 1000      // Hz
-                    val db = when { f < 250 -> bass; f > 3500 -> treble; else -> 0 }
-                    e.setBandLevel(b.toShort(), (db * 100).coerceIn(lo, hi).toShort())
-                }
-            }
+            eq?.let { setBands(it) }
         } catch (ex: Exception) { }
     }
     fun fxJson() = JSONObject().put("musicBass", bass).put("musicTreble", treble).put("musicKey", key).put("musicTempo", tempo)
         .put("micVolume", Prefs.int("micVolume", 100)).put("micEcho", Prefs.int("micEcho", 30)).put("micReverb", Prefs.int("micReverb", 20)).put("micClarity", Prefs.int("micClarity", 30))
-        .put("eq", true)
+        .put("eq", true).put("ytTempo", true).put("ytEq", geq != null)
 
     fun broadcastState() {
         if (standby) return
@@ -243,7 +252,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                             val id = next.ytId ?: s?.ytId
                             if (id == null) { busy = false; finish("error"); return@sn }
                             ytPlaying = false; ytTry++
+                            key = 0; tempo = 0
                             yt.load(id, volume)
+                            applyFx()
                         }
                     }
                 }
@@ -271,8 +282,8 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 when (k) {
                     "musicBass" -> { bass = v.coerceIn(-12, 12); Prefs.putInt(k, bass) }
                     "musicTreble" -> { treble = v.coerceIn(-12, 12); Prefs.putInt(k, treble) }
-                    "musicKey" -> { key = v.coerceIn(-6, 6); note = "Key " + (if (key > 0) "+" else "") + key }
-                    "musicTempo" -> { tempo = v.coerceIn(-5, 5); note = "Tempo " + (if (tempo > 0) "+" else "") + tempo }
+                    "musicKey" -> if (mode != "youtube") { key = v.coerceIn(-6, 6); note = "Key " + (if (key > 0) "+" else "") + key }
+                    "musicTempo" -> { tempo = v.coerceIn(-5, 5); note = "Tempo " + (if (tempo > 0) "+" else "") + tempo + if (mode == "youtube") "  (x" + "%.2f".format(1f + tempo * 0.05f) + ")" else "" }
                     "micVolume", "micEcho", "micReverb", "micClarity" -> Prefs.putInt(k, v)
                 }
                 applyFx()
@@ -333,7 +344,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             }
         }
         exo.addListener(l)
-        onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); yt.destroy() }
+        onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); yt.destroy(); try { geq?.release() } catch (e: Throwable) {} }
     }
 
     // ---- lyrics habang tumutugtog ----

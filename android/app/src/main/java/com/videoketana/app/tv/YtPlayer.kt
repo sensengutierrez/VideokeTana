@@ -31,6 +31,7 @@ class YtController {
     fun seek(sec: Int) = js("cmd('seek', $sec)")
     fun volume(v: Int) = js("cmd('vol', $v)")
     fun stop() = js("cmd('stop')")
+    fun rate(r: Float) = js("cmd('rate', ${"%.2f".format(java.util.Locale.US, r)})")
 
     inner class Bridge {
         @JavascriptInterface
@@ -58,12 +59,12 @@ class YtController {
         }
         webChromeClient = WebChromeClient()
         addJavascriptInterface(Bridge(), "AndroidYT")
-        loadUrl(Config.SITE + "yt.html?v=3")
+        loadUrl(Config.SITE + "yt.html?v=4")
         web = this
     }
 
     /** Bagong load ng player page (kapag pumalya ang una). */
-    fun reload() { main.post { web?.loadUrl(Config.SITE + "yt.html?v=3&t=" + System.currentTimeMillis()) } }
+    fun reload() { main.post { web?.loadUrl(Config.SITE + "yt.html?v=4&t=" + System.currentTimeMillis()) } }
 
     fun destroy() { web?.destroy(); web = null }
 }
