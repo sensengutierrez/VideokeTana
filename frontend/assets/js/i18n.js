@@ -188,6 +188,11 @@
     'Lahat ng kanta at numero': 'All songs and numbers', 'Magdagdag ng kanta': 'Add songs', 'Wika, tema, lyrics, tunog': 'Language, theme, lyrics, sound',
     'Videoke 0.9.8, pambahay na videoke': 'Videoke 0.9.8, a home videoke',
     'QR code ng room': 'Room QR code', 'I-scan para sumali. Pindutin para isara.': 'Scan to join. Tap to close.',
+    'Tunog ng kanta at mic': 'Song sound and mic', 'Bass ng kanta': 'Song bass', 'Treble ng kanta': 'Song treble',
+    'Para sa sariling kanta (MP3/MP4) lang. Hindi mababago ang tunog ng YouTube na kanta.': 'For your own songs (MP3/MP4) only. YouTube songs cannot be changed.',
+    'Mas malinaw na tunog sa itaas, gaya ng cymbals at boses ng kanta.': 'Brighter high sounds, like cymbals and the singer\'s voice.',
+    'Boses sa TV': 'Voice on the TV', 'Kanta': 'Song', 'Linaw': 'Clarity', 'Bass': 'Bass', 'Treble': 'Treble',
+    'Hindi mababago ang bass at treble ng YouTube na kanta. Sa sariling kanta lang ito gumagana.': 'Bass and treble cannot be changed for YouTube songs. They only work on your own songs.',
     'Boses kapag pumindot': 'Voice when tapping', 'Binabasa nang malakas ang numerong pinipindot at ang mga aksyon, gaya ng "Naka-reserve".': 'Reads out the numbers you press and actions like "Reserved".',
     'Soundboard': 'Soundboard', 'Hindi magpapatong-patong': 'No overlap', 'Isang tunog lang sa isang pagkakataon.': 'Only one sound at a time.',
 

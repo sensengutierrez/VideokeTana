@@ -5,16 +5,16 @@
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#15171c">
-<script src="../assets/js/icons.js?v=0.9.12"></script>
-<script src="../assets/js/theme.js?v=0.9.12"></script>
-<script src="../assets/js/prefs.js?v=0.9.12"></script>
-<script src="../assets/js/i18n.js?v=0.9.12"></script>
-<script src="../assets/js/wallpaper.js?v=0.9.12"></script>
+<script src="../assets/js/icons.js?v=0.9.14"></script>
+<script src="../assets/js/theme.js?v=0.9.14"></script>
+<script src="../assets/js/prefs.js?v=0.9.14"></script>
+<script src="../assets/js/i18n.js?v=0.9.14"></script>
+<script src="../assets/js/wallpaper.js?v=0.9.14"></script>
 <title>Videoke Remote</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/style.css?v=0.9.12">
-<link rel="stylesheet" href="../assets/css/remote.css?v=0.9.12">
+<link rel="stylesheet" href="../assets/css/style.css?v=0.9.14">
+<link rel="stylesheet" href="../assets/css/remote.css?v=0.9.14">
 </head>
 <body>
 <div class="app">
@@ -149,6 +149,17 @@
         <span><b>Linisin ang boses</b><small>Binabawasan ang ingay sa paligid at ang echo. I-off kung gusto mo ng mas natural na tunog.</small></span>
         <span class="switch"><input type="checkbox" id="micClean" checked><span></span></span>
       </label>
+      <section class="fx" id="fxBox">
+        <h3>Boses sa TV</h3>
+        <label class="fx-row"><span>Lakas ng mic</span><input type="range" data-fx="micVolume" min="0" max="150" step="5"><output></output></label>
+        <label class="fx-row"><span>Echo</span><input type="range" data-fx="micEcho" min="0" max="100" step="5"><output></output></label>
+        <label class="fx-row"><span>Reverb</span><input type="range" data-fx="micReverb" min="0" max="100" step="5"><output></output></label>
+        <label class="fx-row"><span>Linaw</span><input type="range" data-fx="micClarity" min="0" max="100" step="5"><output></output></label>
+        <h3>Kanta</h3>
+        <label class="fx-row eq"><span>Bass</span><input type="range" data-fx="musicBass" min="-12" max="12" step="1"><output></output></label>
+        <label class="fx-row eq"><span>Treble</span><input type="range" data-fx="musicTreble" min="-12" max="12" step="1"><output></output></label>
+        <p class="fx-note" id="eqNote" hidden>Hindi mababago ang bass at treble ng YouTube na kanta. Sa sariling kanta lang ito gumagana.</p>
+      </section>
       <ul class="mic-tips">
         <li>Hawakan ang phone malapit sa bibig, parang tunay na mic.</li>
         <li>Ilayo sa speaker ng TV. Kapag umugong, hinaan ang mic o ang TV.</li>
@@ -167,11 +178,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../assets/js/config.js?v=0.9.12"></script>
-<script src="../assets/js/common.js?v=0.9.12"></script>
-<script src="../assets/js/voice.js?v=0.9.12"></script>
-<script src="../assets/js/mic-remote.js?v=0.9.12"></script>
-<script src="../assets/js/remote.js?v=0.9.12"></script>
-<script src="../assets/js/screensaver.js?v=0.9.12"></script>
+<script src="../assets/js/config.js?v=0.9.14"></script>
+<script src="../assets/js/common.js?v=0.9.14"></script>
+<script src="../assets/js/voice.js?v=0.9.14"></script>
+<script src="../assets/js/mic-remote.js?v=0.9.14"></script>
+<script src="../assets/js/remote.js?v=0.9.14"></script>
+<script src="../assets/js/screensaver.js?v=0.9.14"></script>
 </body>
 </html>

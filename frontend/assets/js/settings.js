@@ -72,6 +72,7 @@ function render() {
 
 function showVal(key, v) {
   const e = document.querySelector(`[data-show="${key}"]`);
+  if (e && /^music/.test(key)) { e.textContent = (+v > 0 ? '+' : '') + v + ' dB'; return; }
   if (e) e.textContent = key === 'glass' ? (+v === 0 ? 'Buo (walang transparency)' : v + '% see-through') : v + '%';
 }
 

@@ -144,7 +144,7 @@ $('roomChip').onclick = () => { if (confirm('Lumipat ng room?')) showJoin(); };
 function connect() {
   if (channel) sb.removeChannel(channel);
   channel = sb.channel('room-' + ROOM, { config: { broadcast: { self: false } } })
-    .on('broadcast', { event: 'state' }, ({ payload }) => { state = payload; hostSeen = true; renderNow(); renderQueue(); })
+    .on('broadcast', { event: 'state' }, ({ payload }) => { state = payload; hostSeen = true; renderNow(); renderQueue(); renderFx(); })
     .on('broadcast', { event: 'rtc' }, ({ payload }) => VKMicRemote.handle(payload))
     .on('broadcast', { event: 'score' }, ({ payload }) => {
       toast(`Score${payload.singer ? ' ni ' + payload.singer : ''}: ${payload.score}`, 'ok', 4000);
@@ -177,6 +177,32 @@ document.querySelectorAll('.ctrls button').forEach(b => b.onclick = () => {
   if (c === 'skip' && state && state.now && !confirm('I-skip ang kanta?')) return;
   sendCmd(c);
 });
+
+// ----- Tunog sa TV mula sa phone: mic effects at bass/treble ng kanta -----
+const fxDrag = new Set();
+function fxLabel(k, v) { return /^music/.test(k) ? (v > 0 ? '+' : '') + v + ' dB' : v + (k === 'micVolume' ? '%' : ''); }
+document.querySelectorAll('[data-fx]').forEach(inp => {
+  const k = inp.dataset.fx, out = inp.nextElementSibling;
+  let t = null;
+  const send = () => channel && channel.send({ type: 'broadcast', event: 'cmd', payload: { action: 'fx', value: { key: k, value: +inp.value } } });
+  inp.addEventListener('input', () => {
+    fxDrag.add(k); out.textContent = fxLabel(k, +inp.value);
+    clearTimeout(t); t = setTimeout(send, 120);
+  });
+  inp.addEventListener('change', () => { send(); setTimeout(() => fxDrag.delete(k), 800); });
+});
+function renderFx() {
+  const fx = state && state.fx;
+  $('fxBox').classList.toggle('off', !fx);
+  if (!fx) return;
+  document.querySelectorAll('[data-fx]').forEach(inp => {
+    const k = inp.dataset.fx;
+    if (!fxDrag.has(k) && fx[k] != null) { inp.value = fx[k]; inp.nextElementSibling.textContent = fxLabel(k, fx[k]); }
+  });
+  const yt = state.now && state.now.source === 'youtube';
+  document.querySelectorAll('.fx-row.eq input').forEach(i => { i.disabled = !fx.eq; });
+  $('eqNote').hidden = !yt;
+}
 
 // ----- Sound effects / soundboard sa TV -----
 let sfxAt = 0;

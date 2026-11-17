@@ -86,6 +86,7 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `fronten
 | 0.9.10 | QR habang may kanta: button na may room code sa hanay ng mga button sa itaas; pindutin para lumaki sa gitna (sarado pagkalipas ng 20 s, o pindutin/Esc) | Nakaka-distract ang QR sa kanang itaas habang kumakanta | `#btnQr`, `body.qr-open` ay ginagawang malaking overlay ang `#cornerQr` |
 | 0.9.11 | Mas mababang delay ng phone mic + sukat ng delay sa mic chip ng TV | Hiling ng user na walang delay | Opus 10 ms packet, FEC, walang DTX (SDP ng sagot ng TV); priority high sa sender; jitter buffer 0 (dati na); `getStats` para sa delay. Sa test sa iisang computer: mga 115 ms |
 | 0.9.12 | Hindi na tinatakpan ng mga button sa itaas ang kinakanta at pila | Natatakpan ang pangalan ng kanta kapag lumabas ang mga button | `fitTopBtns()`: kapag nagpapatong, icon lang ang mga button; kung kulang pa, ibinababa ang pila (`tb-push`) |
+| 0.9.14 | Kontrol ng tunog mula sa phone (Mic tab): lakas ng mic, echo, reverb, linaw, at bass/treble ng kanta; bass/treble din sa Settings | Hiling ng user; hindi mabago ang echo mula sa phone | `cmd fx` → `VK_PREFS.set` sa TV; `state.fx` pabalik sa phone. Bass/treble: Web Audio (lowshelf 120 Hz, highshelf 4 kHz) sa `aud`/`vid` na may `crossOrigin=anonymous`. Hindi kaya sa YouTube (cross-origin na player) |
 
 ## Susunod
 

@@ -4,6 +4,8 @@
   const DEFAULTS = {
     // wika at boses
     lang: 'fil', ttsVoice: false,
+    // tunog ng kanta (sariling kanta lang; dB)
+    musicBass: 0, musicTreble: 0,
     // TV screen sa phone/tablet: 'landscape' (nakahiga) o 'auto'
     tvOrient: 'landscape',
     // pitch bar (para sa kantang may melody)

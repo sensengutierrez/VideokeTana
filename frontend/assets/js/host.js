@@ -439,14 +439,51 @@ function handleCmd(action, value) {
     case 'setvol': volume = Math.max(0, Math.min(100, parseInt(value, 10) || 0)); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
     case 'refresh': loadQueue(); break;
     case 'scene': nextScene(); break;
+    case 'fx': {   // mula sa phone: echo, reverb, lakas ng mic, bass, treble
+      const k = value && value.key, r = FX_KEYS[k];
+      if (!r) break;
+      VK_PREFS.set(k, Math.max(r[0], Math.min(r[1], Math.round(+value.value || 0))));
+      clearTimeout(handleCmd.fxT); handleCmd.fxT = setTimeout(broadcastState, 300);
+      break;
+    }
   }
   broadcastState();
+}
+
+// ---- Bass at treble ng kanta (sariling MP3/MP4 lang; hindi kaya sa YouTube) ----
+let eqAC = null, eqBass = null, eqTreble = null;
+[aud, vid].forEach(el => { el.crossOrigin = 'anonymous'; });   // kailangan para madaanan ng Web Audio
+function eqInit() {
+  if (eqAC) { if (eqAC.state === 'suspended') eqAC.resume().catch(() => {}); return; }
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    eqAC = new AC({ latencyHint: 'playback' });
+    eqBass = eqAC.createBiquadFilter(); eqBass.type = 'lowshelf'; eqBass.frequency.value = 120;
+    eqTreble = eqAC.createBiquadFilter(); eqTreble.type = 'highshelf'; eqTreble.frequency.value = 4000;
+    eqBass.connect(eqTreble).connect(eqAC.destination);
+    [aud, vid].forEach(el => eqAC.createMediaElementSource(el).connect(eqBass));
+    eqApply();
+  } catch (e) { console.warn('EQ', e); eqAC = null; }
+}
+function eqApply() {
+  if (!eqAC) return;
+  const p = VK_PREFS.get(), t = eqAC.currentTime;
+  eqBass.gain.setTargetAtTime(Math.max(-12, Math.min(12, +p.musicBass || 0)), t, 0.05);
+  eqTreble.gain.setTargetAtTime(Math.max(-12, Math.min(12, +p.musicTreble || 0)), t, 0.05);
+}
+window.addEventListener('vkprefs', eqApply);
+const FX_KEYS = { micVolume: [0, 150], micEcho: [0, 100], micReverb: [0, 100], micClarity: [0, 100], musicBass: [-12, 12], musicTreble: [-12, 12] };
+function fxState() {
+  const p = VK_PREFS.get(), o = {};
+  Object.keys(FX_KEYS).forEach(k => { o[k] = +p[k] || 0; });
+  o.eq = !!eqAC && (mode === 'audio' || mode === 'video');
+  return o;
 }
 
 function broadcastState() {
   if (!channel) return;
   const now = current ? { ...itemInfo(current), singer: current.singer || '', id: current.id } : null;
-  channel.send({ type: 'broadcast', event: 'state', payload: { now, paused, volume, room: ROOM } });
+  channel.send({ type: 'broadcast', event: 'state', payload: { now, paused, volume, room: ROOM, fx: fxState() } });
 }
 
 // ================= REALTIME =================
@@ -566,6 +603,7 @@ $('gate').onclick = () => {
     if (mode === 'audio') aud.play().catch(() => {});
     return;
   }
+  eqInit();
   started = true;
   $('gate').style.display = 'none';
   if (isTouch && VK_PREFS.get().tvOrient === 'landscape') goLandscape();

@@ -5,16 +5,16 @@
 <meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#15171c">
-<script src="../assets/js/icons.js?v=0.9.12"></script>
-<script src="../assets/js/theme.js?v=0.9.12"></script>
-<script src="../assets/js/prefs.js?v=0.9.12"></script>
-<script src="../assets/js/i18n.js?v=0.9.12"></script>
-<script src="../assets/js/wallpaper.js?v=0.9.12"></script>
+<script src="../assets/js/icons.js?v=0.9.14"></script>
+<script src="../assets/js/theme.js?v=0.9.14"></script>
+<script src="../assets/js/prefs.js?v=0.9.14"></script>
+<script src="../assets/js/i18n.js?v=0.9.14"></script>
+<script src="../assets/js/wallpaper.js?v=0.9.14"></script>
 <title>Videoke Settings</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/style.css?v=0.9.12">
-<link rel="stylesheet" href="../assets/css/settings.css?v=0.9.12">
+<link rel="stylesheet" href="../assets/css/style.css?v=0.9.14">
+<link rel="stylesheet" href="../assets/css/settings.css?v=0.9.14">
 </head>
 <body>
 <div class="app">
@@ -187,7 +187,19 @@
 
   <!-- MIC -->
   <section id="s-mic">
-    <h2>Mic (phone bilang mic)</h2>
+    <h2>Tunog ng kanta at mic</h2>
+    <div class="group">
+      <div class="set col">
+        <div class="set-txt"><b>Bass ng kanta</b><small>Para sa sariling kanta (MP3/MP4) lang. Hindi mababago ang tunog ng YouTube na kanta.</small></div>
+        <div class="range-row"><span class="muted">-12</span><input type="range" data-pref="musicBass" data-num min="-12" max="12" step="1"><span class="muted">+12</span></div>
+        <div class="range-val" data-show="musicBass"></div>
+      </div>
+      <div class="set col">
+        <div class="set-txt"><b>Treble ng kanta</b><small>Mas malinaw na tunog sa itaas, gaya ng cymbals at boses ng kanta.</small></div>
+        <div class="range-row"><span class="muted">-12</span><input type="range" data-pref="musicTreble" data-num min="-12" max="12" step="1"><span class="muted">+12</span></div>
+        <div class="range-val" data-show="musicTreble"></div>
+      </div>
+    </div>
     <div class="group">
       <div class="set col">
         <div class="set-txt"><b>Lakas ng mic</b><small>Para sa lahat ng phone na naka-mic. Hinaan kapag umuugong ang speaker.</small></div>
@@ -310,9 +322,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../assets/js/config.js?v=0.9.12"></script>
-<script src="../assets/js/common.js?v=0.9.12"></script>
-<script src="../assets/js/screensaver.js?v=0.9.12"></script>
-<script src="../assets/js/settings.js?v=0.9.12"></script>
+<script src="../assets/js/config.js?v=0.9.14"></script>
+<script src="../assets/js/common.js?v=0.9.14"></script>
+<script src="../assets/js/screensaver.js?v=0.9.14"></script>
+<script src="../assets/js/settings.js?v=0.9.14"></script>
 </body>
 </html>
