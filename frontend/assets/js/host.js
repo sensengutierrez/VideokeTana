@@ -144,7 +144,9 @@ async function finishCurrent(reason = 'skip') {
   $('pauseBadge').style.display = 'none';
   if (done) {
     queue = queue.filter(q => q.id !== done.id);
-    sb.from('queue').delete().eq('id', done.id);
+    // await: ang query ng supabase-js ay hindi tumatakbo hangga't hindi hinihintay (dati, hindi nabubura ang tapos na kanta)
+    const { error } = await sb.from('queue').delete().eq('id', done.id);
+    if (error) toast('Hindi naalis sa pila: ' + error.message, 'err');
     if (reason === 'ended' && VK_PREFS.get().scoreMode !== 'off') await showScore(done);
   }
   startNext();
@@ -954,7 +956,7 @@ $('sQueue').addEventListener('click', async e => {
     const min = Math.min(...queue.filter(q => q.status === 'waiting').map(q => q.sort_order));
     await sb.from('queue').update({ sort_order: min - 1 }).eq('id', up.dataset.sup); loadQueue();
   }
-  if (del) { await sb.from('queue').delete().eq('id', del.dataset.sdel).eq('status', 'waiting'); loadQueue(); }
+  if (del) { await sb.from('queue').delete().eq('id', del.dataset.sdel); loadQueue(); }
 });
 
 // mic ng device na ito

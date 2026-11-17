@@ -276,6 +276,7 @@
     [/^Hindi na-reserve: (.+)$/, (m, e) => `Could not reserve: ${e}`],
     [/^Hindi ma-play: (.+)$/, (m, e) => `Cannot play: ${e}`],
     [/^Hindi ma-export: (.+)$/, (m, e) => `Could not export: ${e}`],
+    [/^Hindi naalis sa pila: (.+)$/, (m, e) => `Could not remove from the queue: ${e}`],
     [/^Error sa pila: (.+)$/, (m, e) => `Queue error: ${e}`],
     [/^Intro, (\d+)$/, (m, n) => `Intro, ${n}`],
     [/^(\d+)% see-through$/, (m, n) => `${n}% see-through`],

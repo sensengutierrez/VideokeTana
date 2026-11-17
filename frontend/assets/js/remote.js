@@ -353,7 +353,7 @@ $('queueList').addEventListener('click', async e => {
   }
   if (del) {
     if (!confirm('Alisin sa pila?')) return;
-    const { error } = await sb.from('queue').delete().eq('id', del.dataset.del).eq('status', 'waiting');
+    const { error } = await sb.from('queue').delete().eq('id', del.dataset.del);
     if (error) toast(error.message, 'err'); else { toast('Inalis sa pila', 'ok'); loadQueue(); }
   }
 });
