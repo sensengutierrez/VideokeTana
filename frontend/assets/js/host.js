@@ -603,7 +603,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 
 // ================= SOUND EFFECTS mula sa remote =================
 const SFX_LABEL = { applause: 'Palakpak', cheers: 'Cheers', drumroll: 'Drum roll', ding: 'Ding', horn: 'Busina', boom: 'Boom',
-  wow: 'Wow', aww: 'Aww', boo: 'Boo', laugh: 'Tawa', angry: 'Galit', omg: 'OMG', wownaman: 'Wow naman', galing: 'Ang galing' };
+  wow: 'Wow', aww: 'Aww', boo: 'Boo', laugh: 'Tawa', angry: 'Galit', omg: 'OMG', faah: 'FAAH!', wownaman: 'Wow naman', galing: 'Ang galing' };
 let lastSfx = 0;
 function playSfx(v) {
   const p = VK_PREFS.get();

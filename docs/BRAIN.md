@@ -82,6 +82,7 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `fronten
 | 0.9.6 | Highlight ng lyrics bawat salita; kasya sa iisang linya; QR sa kanang itaas; layout para sa nakahigang phone | Sabay na nagha-highlight ang dalawang linya kapag nahati ang mahabang lyric; tinatakpan ng lyrics ang pitch bar | Bawat salita ay may sariling `--p` (`setLine`), `fitLine` na nagpapaliit ng font, media query `max-height: 520px` |
 | 0.9.7 | Landscape mode sa phone/tablet: kusang nakahiga pagpindot ng Simulan, button na Landscape sa itaas, paalala kung hindi kaya ng browser, setting na Landscape/Auto | Hiling ng user; mas malaki ang lyrics at pitch bar kapag nakahiga | Fullscreen + `screen.orientation.lock('landscape')` (Android Chrome); `#rotateHint` bilang fallback (iPhone) |
 | 0.9.8 | `frontend/` + `backend/` na folders, GitHub Actions deploy, bagong home page (panel na parang videoke machine, Sumali sa room gamit ang code, Paano gamitin), source ng Edge Function at synth.py sa repo | Hiling ng user: maayos na front end/back end at magandang index | `git mv`; `.github/workflows/pages.yml`; redirect na `index.html`/`404.html` habang branch deploy pa |
+| 0.9.9 | Live na puntos ng tono sa pitch bar (% at tama/lahat), FAAH! sa soundboard | Ikinumpara ng user sa ibang videoke app | `pitch.js` draw; sariling sigaw gamit ang boses ng device (hindi kinopyang audio) |
 
 ## Susunod
 

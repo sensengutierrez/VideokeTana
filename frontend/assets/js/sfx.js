@@ -129,6 +129,7 @@
     },
     omg(t) { noise(t, 0.35, 0.12, 'bandpass', 1500, 1.5); setTimeout(() => say('Oh my God!', 0.85, 1.2), 250); },
     wownaman(t) { setTimeout(() => say('Wow naman!', 0.9, 1.3), 30); FX.wow(t + 0.6); },
+    faah(t) { noise(t, 0.6, 0.18, 'bandpass', 900, 0.8); setTimeout(() => say('Faaaah!', 0.7, 0.8), 30); },
     galing(t) { setTimeout(() => say('Ang galing!', 0.95, 1.1), 30); FX.applause(t + 0.6, { size: 0.6 }); }
   };
 
@@ -138,7 +139,7 @@
     if (window.speechSynthesis) speechSynthesis.cancel();
   }
   window.VKSfx = {
-    NAMES: ['applause', 'cheers', 'drumroll', 'ding', 'horn', 'boom', 'wow', 'aww', 'boo', 'laugh', 'angry', 'omg', 'wownaman', 'galing'],
+    NAMES: ['applause', 'cheers', 'drumroll', 'ding', 'horn', 'boom', 'wow', 'aww', 'boo', 'laugh', 'angry', 'omg', 'faah', 'wownaman', 'galing'],
     unlock() { ctx(); if (window.speechSynthesis) speechSynthesis.getVoices(); },
     setVolume(v) { vol = Math.max(0, Math.min(1, v)); if (master) master.gain.value = vol * 0.9; },
     stop() { if (ac) stop(); },

@@ -68,6 +68,15 @@
         g.beginPath(); g.moveTo(x0 + r, y - r); g.arcTo(x0 + w, y - r, x0 + w, y + r, r); g.arcTo(x0 + w, y + r, x0, y + r, r);
         g.arcTo(x0, y + r, x0, y - r, r); g.arcTo(x0, y - r, x0 + w, y - r, r); g.fill();
       }
+      // puntos habang kumakanta: porsyento ng tamang tono
+      if (stat.n > 0) {
+        const pct = Math.round(stat.hit / stat.n * 100), fs = Math.max(12, H * 0.2);
+        g.font = `800 ${fs}px "Doto", "Bricolage Grotesque", monospace`; g.textBaseline = 'top'; g.textAlign = 'left';
+        g.fillStyle = 'rgba(8,10,14,.72)'; g.fillRect(0, 0, Math.min(px - 4, fs * 4.6), fs * 1.9 + H * 0.1);
+        g.fillStyle = '#62e3d2'; g.fillText(pct + '%', H * 0.1, H * 0.08);
+        g.font = `600 ${fs * 0.5}px "Bricolage Grotesque", sans-serif`; g.fillStyle = 'rgba(255,255,255,.6)';
+        g.fillText((window.vkLang === 'en' ? 'Pitch' : 'Tono') + `  ${stat.hit}/${stat.n}`, H * 0.1, H * 0.1 + fs * 1.05);
+      }
       // playhead
       g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(px - 1, H * 0.06, 2, H * 0.88);
       // tono ng kumakanta

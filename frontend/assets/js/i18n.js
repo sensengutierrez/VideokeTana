@@ -251,7 +251,7 @@
     [/^Kumakanta: (.+)$/, (m, w) => `Singing: ${w}`],
     [/^(.*), Kumakanta: (.+)$/, (m, a, w) => `${a}, singing: ${w}`],
     [/^Kakanta: (.+)$/, (m, w) => `Singer: ${w}`],
-    [/^(Palakpak|Drum roll|Busina|Ding|Cheers|Boo|Wow|OMG|Boom|Tawa|Aww|Galit|Wow naman|Ang galing)( mula kay (.+))?$/, (m, s, x, w) => `${SFX_EN[s] || s}${w ? ' from ' + w : ''}`],
+    [/^(Palakpak|Drum roll|Busina|Ding|Cheers|Boo|Wow|OMG|Boom|Tawa|Aww|Galit|Wow naman|Ang galing|FAAH!)( mula kay (.+))?$/, (m, s, x, w) => `${SFX_EN[s] || s}${w ? ' from ' + w : ''}`],
     [/^I-edit ang (\d+)$/, (m, n) => `Edit ${n}`],
     [/^Naidagdag\. Song no\. (\d+)$/, (m, n) => `Added. Song no. ${n}`],
     [/^Na-upload, song no\. (\d+)$/, (m, n) => `Uploaded, song no. ${n}`],
