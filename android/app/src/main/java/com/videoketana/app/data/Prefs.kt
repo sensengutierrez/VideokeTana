@@ -24,6 +24,9 @@ object Prefs {
         private set
     var wallDim by mutableStateOf(45)
         private set
+    // estilo ng numero at orasan: dot (LCD na tuldok), seg (7-segment), bold, thin
+    var displayFont by mutableStateOf("dot")
+        private set
 
     fun init(c: Context) {
         sp = c.getSharedPreferences("videoketana", Context.MODE_PRIVATE)
@@ -32,7 +35,12 @@ object Prefs {
         wallpaper = sp.getString("wallpaper", "") ?: ""
         glass = sp.getInt("glass", 0)
         wallDim = sp.getInt("wallDim", 45)
+        displayFont = sp.getString("displayFont", "dot") ?: "dot"
     }
+    fun changeDisplayFont(v: String) { displayFont = v; sp.edit().putString("displayFont", v).apply() }
+    var tvLandscape: Boolean
+        get() = sp.getBoolean("tvLandscape", true)
+        set(v) = sp.edit().putBoolean("tvLandscape", v).apply()
     fun changeWallpaper(path: String) { wallpaper = path; wallVersion++; sp.edit().putString("wallpaper", path).apply() }
     fun changeGlass(v: Int) { glass = v; sp.edit().putInt("glass", v).apply() }
     fun changeWallDim(v: Int) { wallDim = v; sp.edit().putInt("wallDim", v).apply() }

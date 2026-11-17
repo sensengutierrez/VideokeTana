@@ -142,6 +142,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var score by remember { mutableStateOf(Prefs.scoreOn) }
     var checking by remember { mutableStateOf(false) }
     var standby by remember { mutableStateOf(Prefs.standby) }
+    var tvLand by remember { mutableStateOf(Prefs.tvLandscape) }
     var after by remember { mutableStateOf(Prefs.standbyAfter) }
     var sbColor by remember { mutableStateOf(Prefs.standbyColor) }
     val pickWall = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
@@ -161,6 +162,28 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                 SetRow(tr("Tema", "Theme"), "") {
                     Seg(listOf("dark" to tr("Dark", "Dark"), "light" to tr("Light", "Light")), if (Prefs.dark) "dark" else "light") { Prefs.changeDark(it == "dark") }
                 }
+            }
+            Group(tr("Estilo ng numero at orasan", "Number and clock style")) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(tr("Para sa orasan, song number at room code.", "For the clock, song numbers and room code."), color = c.muted, style = VkType.small)
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("dot" to "LCD", "seg" to "Digital", "bold" to tr("Makapal", "Bold"), "thin" to tr("Manipis", "Thin")).forEach { (v, label) ->
+                            val on = Prefs.displayFont == v
+                            Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(androidx.compose.ui.graphics.Color.Black)
+                                .border(if (on) 2.dp else 1.dp, if (on) c.accent else c.line, RoundedCornerShape(14.dp))
+                                .clickable { Prefs.changeDisplayFont(v) }.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                // halimbawa ng bawat estilo
+                                DotText("8:30", 22.dp, androidx.compose.ui.graphics.Color(0xFF62E3D2), ghost = false, style = v)
+                                Spacer(Modifier.height(6.dp))
+                                Text(label, color = if (on) c.accent else androidx.compose.ui.graphics.Color(0xFFB9C0CA), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+            Group(tr("TV screen sa phone o tablet", "TV screen on a phone or tablet")) {
+                Toggle(tr("Pahiga (landscape)", "Landscape"), tr("Kusang nakahiga ang screen pagbukas ng Buksan sa TV.", "The screen turns sideways when you open the TV screen."), tvLand) { tvLand = it; Prefs.tvLandscape = it }
             }
             Group(tr("Wallpaper at transparency", "Wallpaper and transparency")) {
                 SetRow(tr("Wallpaper", "Wallpaper"), if (Prefs.wallpaper.isEmpty()) tr("Sariling larawan bilang background. Nasa device lang, hindi ina-upload.", "Your own picture as the background. Stays on this device.") else tr("Naka-set ang sariling larawan.", "Your picture is set.")) {
@@ -273,8 +296,8 @@ fun Seg(options: List<Pair<String, String>>, value: String, onPick: (String) -> 
     Row(Modifier.clip(RoundedCornerShape(10.dp)).border(1.dp, c.line, RoundedCornerShape(10.dp))) {
         options.forEach { (v, label) ->
             val on = v == value
-            Box(Modifier.background(if (on) c.text else c.surface).clickable { onPick(v) }.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Text(label, color = if (on) c.bg else c.muted, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Box(Modifier.background(if (on) c.accent else c.surface).clickable { onPick(v) }.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Text(label, color = if (on) c.accentInk else c.muted, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
         }
     }

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- YouTube player para sa VideokeTana Android app (TV screen).
+     Nasa sariling site ito para may tamang origin ang player (kung wala, "This video is unavailable" / error 152).
+     Kinokontrol ng app gamit ang load()/cmd(); ibinabalik ang mga event sa AndroidYT.event(). -->
+<html lang="fil" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>VideokeTana player</title>
+<style>html, body { margin: 0; height: 100%; background: #000; overflow: hidden; } #p { width: 100%; height: 100%; }</style>
+</head>
+<body>
+<div id="p"></div>
+<script>
+var player = null, ready = false, pending = null;
+function send(e, d) { try { AndroidYT.event(e, String(d == null ? '' : d)); } catch (x) {} }
+var tag = document.createElement('script'); tag.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(tag);
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player('p', {
+    width: '100%', height: '100%',
+    playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, fs: 0, disablekb: 1 },
+    events: {
+      onReady: function () { ready = true; send('ready'); if (pending) { load(pending.id, pending.v); pending = null; } },
+      onStateChange: function (e) { send('state', e.data); },
+      onError: function (e) { send('error', e.data); }
+    }
+  });
+}
+function load(id, v) {
+  if (!ready) { pending = { id: id, v: v }; return; }
+  player.loadVideoById(id);
+  if (v != null) player.setVolume(v);
+}
+function cmd(c, a) {
+  if (!ready) return;
+  if (c === 'pause') player.pauseVideo();
+  else if (c === 'play') player.playVideo();
+  else if (c === 'seek') player.seekTo(a || 0, true);
+  else if (c === 'vol') player.setVolume(a);
+  else if (c === 'stop') player.stopVideo();
+}
+</script>
+</body>
+</html>

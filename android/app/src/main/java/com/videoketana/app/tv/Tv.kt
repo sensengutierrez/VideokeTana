@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -72,11 +73,6 @@ import androidx.media3.ui.PlayerView
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.options.IFramePlayerOptions
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView
 import com.videoketana.app.data.Config
 import com.videoketana.app.data.Prefs
 import com.videoketana.app.data.QItem
@@ -142,11 +138,10 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var hostSince by remember { mutableStateOf(System.currentTimeMillis()) }
 
     val exo = remember { ExoPlayer.Builder(ctx).build() }
-    var yt by remember { mutableStateOf<YouTubePlayer?>(null) }
-    var ytView by remember { mutableStateOf<YouTubePlayerView?>(null) }
+    val yt = remember { YtController() }
     var rt by remember { mutableStateOf<Realtime?>(null) }
 
-    fun applyVolume() { exo.volume = volume / 100f; yt?.setVolume(volume) }
+    fun applyVolume() { exo.volume = volume / 100f; yt.volume(volume) }
 
     // ---- tunog ng kanta: bass, treble (Equalizer ng Android), key at tempo (ExoPlayer) ----
     var bass by remember { mutableIntStateOf(Prefs.int("musicBass")) }
@@ -181,7 +176,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
     fun stopMedia() {
         exo.stop(); exo.clearMediaItems()
-        yt?.pause()
+        yt.stop()
         lyrics = emptyList(); view = LyricView("", 0f, "", 0)
     }
 
@@ -243,7 +238,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                             mode = "youtube"
                             val id = next.ytId ?: s?.ytId
                             if (id == null) { busy = false; finish("error"); return@sn }
-                            yt?.let { it.loadVideo(id, 0f); applyVolume() }
+                            yt.load(id, volume)
                         }
                     }
                 }
@@ -257,10 +252,10 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         when (action) {
             "toggle", "pause", "play" -> {
                 paused = when (action) { "pause" -> true; "play" -> false; else -> !paused }
-                if (mode == "youtube") { if (paused) yt?.pause() else yt?.play() } else exo.playWhenReady = !paused
+                if (mode == "youtube") { if (paused) yt.pause() else yt.play() } else exo.playWhenReady = !paused
             }
             "skip" -> scope.launch { finish("skip") }
-            "restart" -> { if (mode == "youtube") yt?.seekTo(0f) else exo.seekTo(0) }
+            "restart" -> { if (mode == "youtube") yt.seek(0) else exo.seekTo(0) }
             "volup" -> { volume = (volume + 10).coerceAtMost(100); applyVolume(); note = "Volume $volume" }
             "voldown" -> { volume = (volume - 10).coerceAtLeast(0); applyVolume(); note = "Volume $volume" }
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
@@ -289,6 +284,18 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             }
         }
         broadcastState()
+    }
+
+    // ---- sa phone/tablet: buong screen at pahiga ----
+    DisposableEffect(Unit) {
+        val act = ctx as? android.app.Activity
+        val ctl = act?.let { androidx.core.view.WindowInsetsControllerCompat(it.window, it.window.decorView) }
+        ctl?.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        ctl?.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        if (!isTv && Prefs.tvLandscape) act?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        onDispose {
+            if (!isTv) { act?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED; ctl?.show(androidx.core.view.WindowInsetsCompat.Type.systemBars()) }
+        }
     }
 
     // ---- Realtime ----
@@ -321,7 +328,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             }
         }
         exo.addListener(l)
-        onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); ytView?.release() }
+        onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); yt.destroy() }
     }
 
     // ---- lyrics habang tumutugtog ----
@@ -336,31 +343,17 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         Background(mode == "idle" || mode == "audio")
 
         // YouTube player (laging nakahanda para mabilis magsimula)
-        AndroidView(
-            factory = { c ->
-                YouTubePlayerView(c).apply {
-                    layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                    enableAutomaticInitialization = false
-                    initialize(object : AbstractYouTubePlayerListener() {
-                        override fun onReady(youTubePlayer: YouTubePlayer) {
-                            yt = youTubePlayer
-                            val q = current; val id = q?.ytId ?: q?.song?.ytId
-                            if (mode == "youtube" && id != null) { youTubePlayer.loadVideo(id, 0f); youTubePlayer.setVolume(volume) }
-                        }
-                        override fun onStateChange(youTubePlayer: YouTubePlayer, state: PlayerConstants.PlayerState) {
-                            if (state == PlayerConstants.PlayerState.ENDED && mode == "youtube") scope.launch { finish("ended") }
-                        }
-                        override fun onError(youTubePlayer: YouTubePlayer, error: PlayerConstants.PlayerError) {
-                            if (mode != "youtube") return
-                            Toast.makeText(ctx, tr("Ayaw ipa-play ng YouTube ang video na ito sa labas ng YouTube. Lilipat sa susunod.", "YouTube does not allow this video outside YouTube. Moving to the next song."), Toast.LENGTH_LONG).show()
-                            scope.launch { delay(1500); finish("error") }
-                        }
-                    }, IFramePlayerOptions.Builder().controls(0).build())
-                    ytView = this
+        DisposableEffect(Unit) {
+            yt.onState = { st -> if (st == 0 && mode == "youtube") scope.launch { finish("ended") } }
+            yt.onError = { code ->
+                if (mode == "youtube") {
+                    Toast.makeText(ctx, tr("Ayaw ipa-play ng YouTube ang video na ito sa labas ng YouTube (error $code). Lilipat sa susunod.", "YouTube does not allow this video outside YouTube (error $code). Moving to the next song."), Toast.LENGTH_LONG).show()
+                    scope.launch { delay(1500); finish("error") }
                 }
-            },
-            modifier = if (mode == "youtube") Modifier.fillMaxSize() else Modifier.size(1.dp)
-        )
+            }
+            onDispose { }
+        }
+        AndroidView(factory = { c -> yt.create(c) }, modifier = if (mode == "youtube") Modifier.fillMaxSize() else Modifier.size(1.dp))
 
         // video ng sariling kanta
         if (mode == "video") AndroidView(
@@ -452,23 +445,15 @@ private fun Clock(height: androidx.compose.ui.unit.Dp) {
 
 @Composable
 private fun Idle(room: String, qr: ImageBitmap) {
-    BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 36.dp)) {
+    BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 28.dp), contentAlignment = Alignment.Center) {
         val mw = maxWidth; val mh = maxHeight
         val wide = mw > mh
-        val clockH = if (wide) (mh * 0.2f) else (mw * 0.16f)
-        val content: @Composable () -> Unit = {
-            Column {
-                Text(tr("Pumili ng kanta", "Pick a song"), color = INK, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
-                Spacer(Modifier.height(10.dp))
-                Clock(clockH)
-                Spacer(Modifier.height(10.dp))
-                Text(SimpleDateFormat("EEEE, MMMM d", if (Prefs.lang == "en") Locale.US else Locale("fil", "PH")).format(Date()), color = INK, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text(tr("I-scan ang QR code gamit ang camera ng phone para mag-reserve ng kanta.", "Scan the QR code with your phone's camera to reserve a song."), color = DIM, fontSize = 17.sp)
-            }
-        }
+        val qrSize = if (wide) minOf(mh * 0.55f, mw * 0.3f) else minOf(mw * 0.6f, mh * 0.32f)
+        val clockH = if (wide) minOf(mh * 0.16f, mw * 0.07f) else mw * 0.12f
+        val date = SimpleDateFormat("EEEE, MMMM d", if (Prefs.lang == "en") Locale.US else Locale("fil", "PH")).format(Date())
         val card: @Composable () -> Unit = {
-            Column(Modifier.clip(RoundedCornerShape(22.dp)).background(Color.White).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(qr, null, Modifier.size(if (wide) mh * 0.38f else mw * 0.5f))
+            Column(Modifier.clip(RoundedCornerShape(24.dp)).background(Color.White).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Image(qr, null, Modifier.size(qrSize))
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Room ", color = Color(0xFF171A20), fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -476,14 +461,29 @@ private fun Idle(room: String, qr: ImageBitmap) {
                 }
             }
         }
-        if (wide) Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.Bottom) { Box(Modifier.weight(1f)) { content() }; card() }
-        else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.Start) { content(); Spacer(Modifier.height(20.dp)); Box(Modifier.align(Alignment.CenterHorizontally)) { card() } }
+        val info: @Composable (Alignment.Horizontal) -> Unit = { align ->
+            Column(horizontalAlignment = align) {
+                Text(tr("Pumili ng kanta", "Pick a song"), color = INK, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(10.dp))
+                Clock(clockH)
+                Spacer(Modifier.height(10.dp))
+                Text(date, color = INK, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(tr("I-scan ang QR para mag-reserve ng kanta", "Scan the QR to reserve a song"), color = DIM, fontSize = 16.sp,
+                    textAlign = if (align == Alignment.CenterHorizontally) TextAlign.Center else TextAlign.Start)
+            }
+        }
+        if (wide) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            info(Alignment.Start); Spacer(Modifier.width(48.dp)); card()
+        } else Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            info(Alignment.CenterHorizontally); Spacer(Modifier.height(24.dp)); card()
+        }
     }
 }
 
 @Composable
 private fun TopStrip(queue: List<QItem>, current: QItem?, mode: String) {
-    Row(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xAA000000), Color.Transparent))).padding(horizontal = 24.dp, vertical = 14.dp),
+    Row(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xAA000000), Color.Transparent)))
+        .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.displayCutout).padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         val next = queue.filter { it.status == "waiting" && it.id != current?.id }
         if (next.isEmpty()) Text(tr("Walang kasunod. Mag-reserve gamit ang phone.", "Nothing next. Reserve with your phone."), color = DIM, fontSize = 15.sp)

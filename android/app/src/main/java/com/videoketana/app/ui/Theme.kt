@@ -139,8 +139,15 @@ private val GLYPHS: Map<Char, Array<String>> = mapOf(
 @Composable
 fun DotText(
     text: String, height: Dp, color: Color = vk.displayFg, modifier: Modifier = Modifier,
-    ghost: Boolean = true, glow: Boolean = true
+    ghost: Boolean = true, glow: Boolean = true, style: String? = null
 ) {
+    // ibang estilo ayon sa Settings → Estilo ng numero at orasan
+    when (style ?: Prefs.displayFont) {
+        "seg" -> if (text.all { it.isDigit() || it == ':' || it == ' ' || it == '-' || it == '.' }) { SegText(text, height, color, modifier, ghost, glow); return }
+            else { StyledText(text, height, color, modifier, FontWeight.Bold); return }
+        "bold" -> { StyledText(text, height, color, modifier, FontWeight.ExtraBold); return }
+        "thin" -> { StyledText(text, height, color, modifier, FontWeight.Light); return }
+    }
     val chars = text.uppercase()
     val cell = height / 7f
     val ghostColor = color.copy(alpha = 0.10f)
@@ -156,6 +163,58 @@ fun DotText(
                 if (on && glow) drawCircle(color.copy(alpha = 0.18f), r * 1.9f, center)
                 drawCircle(if (on) color else ghostColor, r, center)
             }
+        }
+    }
+}
+
+/** Numero/orasan bilang ordinaryong letra (makapal o manipis), kasing-taas ng DotText. */
+@Composable
+private fun StyledText(text: String, height: Dp, color: Color, modifier: Modifier, weight: FontWeight) {
+    val fs = with(androidx.compose.ui.platform.LocalDensity.current) { (height * 1.32f).toSp() }
+    Text(text, modifier = modifier, color = color, fontSize = fs, fontWeight = weight, maxLines = 1, softWrap = false,
+        style = TextStyle(letterSpacing = if (weight == FontWeight.Light) (fs.value * 0.02f).sp else (-fs.value * 0.02f).sp,
+            lineHeight = fs, platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+            shadow = androidx.compose.ui.graphics.Shadow(color.copy(alpha = 0.35f), Offset.Zero, 18f)))
+}
+
+/** 7-segment na numero, parang lumang digital na orasan. */
+private val SEGS = mapOf(
+    '0' to "abcdef", '1' to "bc", '2' to "abged", '3' to "abgcd", '4' to "fgbc", '5' to "afgcd", '6' to "afgedc",
+    '7' to "abc", '8' to "abcdefg", '9' to "abcdfg", '-' to "g", ' ' to ""
+)
+
+@Composable
+private fun SegText(text: String, height: Dp, color: Color, modifier: Modifier, ghost: Boolean, glow: Boolean) {
+    val w = height * 0.55f
+    val gap = height * 0.14f
+    val colonW = height * 0.22f
+    val total = text.fold(0f) { acc, ch -> acc + (if (ch == ':' || ch == '.') colonW.value else w.value + gap.value) }
+    Canvas(modifier.size(width = total.dp, height = height)) {
+        val h = size.height; val cw = w.toPx(); val g = gap.toPx(); val t = h * 0.11f; val cwC = colonW.toPx()
+        var x = 0f
+        fun seg(on: Boolean, x0: Float, y0: Float, x1: Float, y1: Float) {
+            val col = if (on) color else color.copy(alpha = 0.08f)
+            if (!on && !ghost) return
+            if (on && glow) drawLine(color.copy(alpha = 0.2f), Offset(x0, y0), Offset(x1, y1), strokeWidth = t * 2f, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            drawLine(col, Offset(x0, y0), Offset(x1, y1), strokeWidth = t, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        }
+        text.forEach { ch ->
+            if (ch == ':' || ch == '.') {
+                val cx = x + cwC / 2
+                if (ch == ':') { drawCircle(color, t * 0.75f, Offset(cx, h * 0.32f)); drawCircle(color, t * 0.75f, Offset(cx, h * 0.68f)) }
+                else drawCircle(color, t * 0.75f, Offset(cx, h - t))
+                x += cwC; return@forEach
+            }
+            val on = SEGS[ch] ?: ""
+            val l = x + t; val r = x + cw - t; val top = t; val mid = h / 2; val bot = h - t; val p = t * 0.7f
+            seg('a' in on, l + p, top, r - p, top)
+            seg('b' in on, r, top + p, r, mid - p)
+            seg('c' in on, r, mid + p, r, bot - p)
+            seg('d' in on, l + p, bot, r - p, bot)
+            seg('e' in on, l, mid + p, l, bot - p)
+            seg('f' in on, l, top + p, l, mid - p)
+            seg('g' in on, l + p, mid, r - p, mid)
+            x += cw + g
         }
     }
 }
