@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -483,7 +484,7 @@ private fun Idle(room: String, qr: ImageBitmap) {
 @Composable
 private fun TopStrip(queue: List<QItem>, current: QItem?, mode: String) {
     Row(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xAA000000), Color.Transparent)))
-        .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.displayCutout).padding(horizontal = 24.dp, vertical = 14.dp),
+        .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.Companion.displayCutout).padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         val next = queue.filter { it.status == "waiting" && it.id != current?.id }
         if (next.isEmpty()) Text(tr("Walang kasunod. Mag-reserve gamit ang phone.", "Nothing next. Reserve with your phone."), color = DIM, fontSize = 15.sp)
