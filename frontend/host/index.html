@@ -5,16 +5,16 @@
 <meta name="google" content="notranslate">
 <meta name="theme-color" content="#15171c">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="../assets/js/icons.js?v=0.9.9"></script>
-<script src="../assets/js/theme.js?v=0.9.9"></script>
-<script src="../assets/js/prefs.js?v=0.9.9"></script>
-<script src="../assets/js/i18n.js?v=0.9.9"></script>
-<script src="../assets/js/wallpaper.js?v=0.9.9"></script>
+<script src="../assets/js/icons.js?v=0.9.10"></script>
+<script src="../assets/js/theme.js?v=0.9.10"></script>
+<script src="../assets/js/prefs.js?v=0.9.10"></script>
+<script src="../assets/js/i18n.js?v=0.9.10"></script>
+<script src="../assets/js/wallpaper.js?v=0.9.10"></script>
 <title>Videoke</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/style.css?v=0.9.9">
-<link rel="stylesheet" href="../assets/css/host.css?v=0.9.9">
+<link rel="stylesheet" href="../assets/css/style.css?v=0.9.10">
+<link rel="stylesheet" href="../assets/css/host.css?v=0.9.10">
 </head>
 <body>
 <div id="gate">
@@ -83,7 +83,7 @@
     <div class="sc-note" id="scNote"></div>
   </div>
   <div id="sfxNote"></div>
-  <div id="cornerQr"><div id="qrSmall"></div><div translate="no" class="dot rc" id="roomSmall"></div></div>
+  <div id="cornerQr" data-hint="I-scan para sumali. Pindutin para isara."><div id="qrSmall"></div><div translate="no" class="dot rc" id="roomSmall"></div></div>
   <div id="pauseBadge"><div><i data-i="pause"></i>Naka-pause</div></div>
   <div id="volBadge"></div>
 
@@ -144,6 +144,7 @@
     <button class="link" id="rotStay" type="button">Hayaang nakatayo</button>
   </div>
   <div id="topBtns">
+    <button class="tb" id="btnQr" title="QR code ng room" aria-label="QR code ng room"><i data-i="qr"></i><span translate="no" class="dot" id="tbRoom"></span></button>
     <button class="tb" id="btnSkip" title="Laktawan (N)"><i data-i="next"></i><span>Laktawan</span></button>
     <button class="tb" id="btnScene" title="Palitan ang background (B)"><i data-i="film"></i><span>Background</span></button>
     <button class="tb" id="btnNewRoom" title="Bagong room code"><i data-i="refresh"></i><span>Bagong room</span></button>
@@ -156,14 +157,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script src="../assets/js/config.js?v=0.9.9"></script>
-<script src="../assets/js/common.js?v=0.9.9"></script>
-<script src="../assets/js/scenes.js?v=0.9.9"></script>
-<script src="../assets/js/sfx.js?v=0.9.9"></script>
-<script src="../assets/js/voice.js?v=0.9.9"></script>
-<script src="../assets/js/pitch.js?v=0.9.9"></script>
-<script src="../assets/js/mic-host.js?v=0.9.9"></script>
-<script src="../assets/js/host.js?v=0.9.9"></script>
-<script src="../assets/js/screensaver.js?v=0.9.9"></script>
+<script src="../assets/js/config.js?v=0.9.10"></script>
+<script src="../assets/js/common.js?v=0.9.10"></script>
+<script src="../assets/js/scenes.js?v=0.9.10"></script>
+<script src="../assets/js/sfx.js?v=0.9.10"></script>
+<script src="../assets/js/voice.js?v=0.9.10"></script>
+<script src="../assets/js/pitch.js?v=0.9.10"></script>
+<script src="../assets/js/mic-host.js?v=0.9.10"></script>
+<script src="../assets/js/host.js?v=0.9.10"></script>
+<script src="../assets/js/screensaver.js?v=0.9.10"></script>
 </body>
 </html>

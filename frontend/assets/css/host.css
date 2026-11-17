@@ -262,10 +262,7 @@ body.solo-open .solo-btn { opacity: 0; pointer-events: none; }
   .idle-time .dot { font-size: clamp(56px, 18vw, 140px); }
   .qr-card { align-self: center; padding: 12px; border-radius: 16px; }
   #qrBig { width: min(44vw, 30vh, 220px); }
-  #aTitle { top: 124px; left: 16px; right: 120px; }
-  #cornerQr { top: 116px; right: 12px; padding: 4px; gap: 6px; border-radius: 8px; flex-direction: column; }
-  #qrSmall { width: 56px; height: 56px; padding: 3px; border-radius: 4px; }
-  #cornerQr .rc { font-size: 13px; padding: 0; }
+  #aTitle { top: 124px; left: 16px; right: 16px; }
   #aTitle .t { font-size: 22px; } #aTitle .a { font-size: 15px; } #aTitle .s { font-size: 14px; }
   #pitchBar { top: 200px; left: 12px; right: 12px; width: calc(100% - 24px); height: 14vh; border-radius: 12px; }
   #lyCur { font-size: 7.5vw; } #lyNext { font-size: 5.5vw; }
@@ -284,11 +281,7 @@ body.solo-open .solo-btn { opacity: 0; pointer-events: none; }
   #lyNext, body.lyr-l #lyNext, body.lyr-xl #lyNext { font-size: min(3.2vw, 6.5vh); margin-top: 1vh; }
   #lyCue { font-size: min(3vw, 6vh); }
   .solo-btn { top: auto; bottom: 12px; left: 12px; }
-  #cornerQr { top: 34px; right: 12px; padding: 4px; gap: 6px; border-radius: 8px; }
-  #qrSmall { width: 44px; height: 44px; padding: 3px; border-radius: 4px; }
-  #cornerQr .rc { font-size: 14px; }
   #pitchBar { top: 92px; }
-  body.ui #cornerQr { opacity: 0; }
 }
 
 /* habang may kanta: maliit na bilog na button sa kaliwa sa ibaba para hindi matakpan ang title */
@@ -306,3 +299,13 @@ body.playing .solo-btn span { display: none; }
 @keyframes rotNudge { 0%, 30% { transform: rotate(0); } 55%, 85% { transform: rotate(90deg); } 100% { transform: rotate(0); } }
 @media (prefers-reduced-motion: reduce) { #rotateHint > .ic { animation: none; } }
 #btnRotate[hidden] { display: none; }
+
+/* ---------- QR habang may kanta: button sa hanay sa itaas; pindutin para lumaki ---------- */
+#btnQr .dot { font-size: 15px; letter-spacing: .12em; text-shadow: none; }
+body:not(.playing) #btnQr { display: none; }
+body.qr-open #cornerQr { display: flex !important; position: fixed; inset: 0; z-index: 40; top: 0; right: 0; padding: 24px; gap: 18px;
+  flex-direction: column; justify-content: center; align-items: center; border-radius: 0; border: 0;
+  background: rgba(8, 10, 14, .78); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); cursor: pointer; }
+body.qr-open #qrSmall { width: min(46vh, 70vw); height: min(46vh, 70vw); padding: 14px; border-radius: 16px; }
+body.qr-open #cornerQr .rc { font-size: min(9vh, 12vw); padding: 0; }
+body.qr-open #cornerQr::after { content: attr(data-hint); color: #b9c0ca; font-size: 15px; }

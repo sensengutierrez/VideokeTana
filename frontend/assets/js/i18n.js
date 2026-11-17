@@ -187,6 +187,7 @@
     'Hanapin ang kanta sa Songbook, i-type ang numero, Reserve.': 'Find a song in the Songbook, type its number, Reserve.',
     'Lahat ng kanta at numero': 'All songs and numbers', 'Magdagdag ng kanta': 'Add songs', 'Wika, tema, lyrics, tunog': 'Language, theme, lyrics, sound',
     'Videoke 0.9.8, pambahay na videoke': 'Videoke 0.9.8, a home videoke',
+    'QR code ng room': 'Room QR code', 'I-scan para sumali. Pindutin para isara.': 'Scan to join. Tap to close.',
     'Boses kapag pumindot': 'Voice when tapping', 'Binabasa nang malakas ang numerong pinipindot at ang mga aksyon, gaya ng "Naka-reserve".': 'Reads out the numbers you press and actions like "Reserved".',
     'Soundboard': 'Soundboard', 'Hindi magpapatong-patong': 'No overlap', 'Isang tunog lang sa isang pagkakataon.': 'Only one sound at a time.',
 
@@ -299,7 +300,7 @@
   window.vkLang = LANG;
   if (LANG !== 'en') return;
 
-  const ATTRS = ['placeholder', 'title', 'aria-label'];
+  const ATTRS = ['placeholder', 'title', 'aria-label', 'data-hint'];
   const skip = el => !el || el.closest('[data-notr], script, style, textarea');
   function walk(root) {
     if (root.nodeType === 3) { if (!skip(root.parentElement)) { const t = tr(root.data); if (t !== root.data) root.data = t; } return; }

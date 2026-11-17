@@ -32,6 +32,7 @@ function renderQr() {
   $('qrSmall').innerHTML = svg;
   $('roomCode').textContent = ROOM;
   $('roomSmall').textContent = ROOM;
+  $('tbRoom').textContent = ROOM;
   $('remoteUrl').textContent = remoteLink();
 }
 
@@ -44,7 +45,7 @@ function show(m) {
   $('idle').style.display = m === 'idle' ? 'flex' : 'none';
   const playing = m !== 'idle';
   document.body.classList.toggle('playing', playing);
-  $('cornerQr').style.display = playing ? 'flex' : 'none';
+  if (!playing) document.body.classList.remove('qr-open');
   $('nowTag').style.display = (m === 'video' || m === 'youtube') ? 'block' : 'none'; // sa audio, nasa screen na ang title
   // ang background ay tumatakbo lang kapag hindi natatakpan ng video
   if (started) applyBg(false);
@@ -471,6 +472,17 @@ function toggleFs() {
   else document.documentElement.requestFullscreen().catch(() => {});
 }
 $('btnFs').onclick = toggleFs;
+
+// QR habang may kanta: nakatago, lumalaki kapag pinindot ang QR button
+let qrTimer = null;
+function toggleQr(open = !document.body.classList.contains('qr-open')) {
+  document.body.classList.toggle('qr-open', open);
+  clearTimeout(qrTimer);
+  if (open) qrTimer = setTimeout(() => toggleQr(false), 20000);
+}
+$('btnQr').onclick = e => { e.stopPropagation(); toggleQr(); };
+$('cornerQr').onclick = () => toggleQr(false);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('qr-open')) toggleQr(false); });
 
 // ----- Landscape sa phone/tablet -----
 // Sa Android Chrome: fullscreen + lock sa landscape. Kapag hindi kaya (hal. iPhone), may paalala na i-rotate ang phone.
