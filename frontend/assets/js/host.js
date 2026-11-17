@@ -518,8 +518,24 @@ $('btnClose').onclick = () => {
 };
 // Ipakita ang mga button kapag gumalaw ang mouse o tinap ang screen, tapos itago ulit
 let uiTimer = null;
+// Huwag takpan ng mga button ang pila/kinakanta sa itaas: icon lang muna, at kung kulang pa, ibaba ang pila
+function fitTopBtns() {
+  const b = document.body;
+  b.classList.remove('tb-compact', 'tb-push');
+  const btnLeft = () => $('topBtns').getBoundingClientRect().left - 8;
+  const usedRight = () => Math.max(0, ...['nowTag', 'nextBar', 'micBar'].map(id => {
+    const el = $(id); if (!el || !el.offsetParent) return 0;
+    if (!el.textContent.trim()) return 0;
+    const r = document.createRange(); r.selectNodeContents(el);   // dulo ng mismong laman, hindi ng buong kahon
+    return r.getBoundingClientRect().right;
+  }));
+  if (usedRight() <= btnLeft()) return;
+  b.classList.add('tb-compact');
+  if (usedRight() > btnLeft()) b.classList.add('tb-push');
+}
 ['mousemove', 'touchstart', 'click'].forEach(ev => document.addEventListener(ev, () => {
   document.body.classList.add('ui');
+  if (Date.now() - (fitTopBtns.at || 0) > 250) { fitTopBtns.at = Date.now(); fitTopBtns(); }
   clearTimeout(uiTimer);
   uiTimer = setTimeout(() => document.body.classList.remove('ui'), 3000);
 }, { passive: true }));

@@ -312,3 +312,9 @@ body.qr-open #cornerQr::after { content: attr(data-hint); color: #b9c0ca; font-s
 
 .mic-chip .dl { font-size: .8em; opacity: .7; font-variant-numeric: tabular-nums; }
 .mic-chip .dl:empty { display: none; }
+
+/* kapag tatakpan ng mga button ang pila sa itaas */
+body.tb-compact .tb > span:not(.dot) { display: none; }
+body.tb-compact .tb:not(#btnQr) { width: 38px; padding: 0; justify-content: center; }
+#topBar { transition: transform .2s ease; }
+body.ui.tb-push #topBar { transform: translateY(calc(38px + 1vw)); }

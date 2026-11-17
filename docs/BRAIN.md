@@ -85,6 +85,7 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `fronten
 | 0.9.9 | Live na puntos ng tono sa pitch bar (% at tama/lahat), FAAH! sa soundboard | Ikinumpara ng user sa ibang videoke app | `pitch.js` draw; sariling sigaw gamit ang boses ng device (hindi kinopyang audio) |
 | 0.9.10 | QR habang may kanta: button na may room code sa hanay ng mga button sa itaas; pindutin para lumaki sa gitna (sarado pagkalipas ng 20 s, o pindutin/Esc) | Nakaka-distract ang QR sa kanang itaas habang kumakanta | `#btnQr`, `body.qr-open` ay ginagawang malaking overlay ang `#cornerQr` |
 | 0.9.11 | Mas mababang delay ng phone mic + sukat ng delay sa mic chip ng TV | Hiling ng user na walang delay | Opus 10 ms packet, FEC, walang DTX (SDP ng sagot ng TV); priority high sa sender; jitter buffer 0 (dati na); `getStats` para sa delay. Sa test sa iisang computer: mga 115 ms |
+| 0.9.12 | Hindi na tinatakpan ng mga button sa itaas ang kinakanta at pila | Natatakpan ang pangalan ng kanta kapag lumabas ang mga button | `fitTopBtns()`: kapag nagpapatong, icon lang ang mga button; kung kulang pa, ibinababa ang pila (`tb-push`) |
 
 ## Susunod
 
