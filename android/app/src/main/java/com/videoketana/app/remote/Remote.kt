@@ -4,6 +4,18 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import com.videoketana.app.ui.StandBy
+import kotlin.math.roundToInt
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -73,7 +85,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** Ang kinakanta ngayon, mula sa "state" na ipinapadala ng TV. */
-data class NowState(val title: String, val artist: String, val code: String, val source: String, val singer: String, val id: String?, val paused: Boolean, val volume: Int, val local: List<Triple<Int, String, String>>)
+data class NowState(
+    val title: String, val artist: String, val code: String, val source: String, val singer: String, val id: String?,
+    val paused: Boolean, val volume: Int, val local: List<Triple<Int, String, String>>, val fx: JSONObject?
+)
 
 private fun parseState(p: JSONObject): NowState {
     val n = p.optJSONObject("now")
@@ -82,10 +97,12 @@ private fun parseState(p: JSONObject): NowState {
         title = n?.optString("title") ?: "", artist = n?.optString("artist") ?: "", code = n?.opt("code")?.toString() ?: "",
         source = n?.optString("source") ?: "", singer = n?.optString("singer") ?: "", id = n?.optString("id"),
         paused = p.optBoolean("paused"), volume = p.optInt("volume", 100),
-        local = (0 until loc.length()).map { val o = loc.getJSONObject(it); Triple(o.optInt("code"), o.optString("title"), o.optString("artist")) }
+        local = (0 until loc.length()).map { val o = loc.getJSONObject(it); Triple(o.optInt("code"), o.optString("title"), o.optString("artist")) },
+        fx = p.optJSONObject("fx")
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RemoteScreen(room: String, go: (Screen) -> Unit) {
     val c = vk
@@ -97,10 +114,15 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
     var queue by remember { mutableStateOf<List<QItem>>(emptyList()) }
     var tab by remember { mutableIntStateOf(0) }
     var askName by remember { mutableStateOf(Prefs.name.isBlank()) }
-    var showBoard by remember { mutableStateOf(false) }
+    var sheet by remember { mutableStateOf("") }          // "" | sound | board
     var rt by remember { mutableStateOf<Realtime?>(null) }
+    var lastTouch by remember { mutableStateOf(System.currentTimeMillis()) }
+    var standby by remember { mutableStateOf(false) }
 
     suspend fun loadQueue() { queue = try { Supa.queue(room) } catch (e: Exception) { queue } }
+    val pickWall = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) scope.launch { if (com.videoketana.app.data.Wallpaper.save(ctx, uri) && Prefs.glass == 0) Prefs.changeGlass(35) }
+    }
 
     DisposableEffect(room) {
         val r = Realtime(room,
@@ -111,107 +133,276 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
                 }
             },
             onQueueChange = { scope.launch { loadQueue() } },
-            onStatus = { ok -> connected = ok; if (ok) rt?.broadcast("hello", JSONObject()) })
+            onStatus = { ok -> connected = ok })
         rt = r; r.connect()
         onDispose { r.close() }
     }
     LaunchedEffect(connected) { if (connected) { rt?.broadcast("hello", JSONObject()); loadQueue() } }
     LaunchedEffect(room) { while (true) { loadQueue(); delay(15000) } }
+    // StandBy kapag matagal na hindi ginagalaw ang phone
+    LaunchedEffect(lastTouch, standby) {
+        if (!Prefs.standby || standby) return@LaunchedEffect
+        delay(Prefs.standbyAfter * 1000L)
+        if (sheet.isEmpty()) standby = true
+    }
 
     fun cmd(action: String, value: Any? = null) {
         if (!hostSeen) Toast.makeText(ctx, tr("Hindi pa makita ang TV sa room $room.", "The TV in room $room cannot be found yet."), Toast.LENGTH_SHORT).show()
         rt?.broadcast("cmd", JSONObject().put("action", action).apply { if (value != null) put("value", value) })
     }
-    suspend fun reserve(songId: String? = null, ytId: String? = null, ytTitle: String? = null, localCode: Int? = null, localTitle: String? = null): Boolean = try {
-        Supa.reserve(room, Prefs.name, songId, ytId, ytTitle, localCode, localTitle)
+    fun sfx(name: String) = cmd("sfx", JSONObject().put("name", name).put("from", Prefs.name))
+    // mode: "reserve" (sa dulo ng pila), "top" (unahin), "now" (patugtugin ngayon)
+    suspend fun reserve(songId: String? = null, ytId: String? = null, ytTitle: String? = null, localCode: Int? = null, localTitle: String? = null, mode: String = "reserve"): Boolean = try {
+        val minBefore = queue.filter { it.status == "waiting" }.minOfOrNull { it.sortOrder }
+        val id = Supa.reserve(room, Prefs.name, songId, ytId, ytTitle, localCode, localTitle)
+        if (mode != "reserve" && minBefore != null && id.isNotEmpty()) Supa.moveToTop(id, minBefore)
         Synth.play("ding", 0.5f)
-        val pos = queue.count { it.status == "waiting" } + 1
-        Toast.makeText(ctx, if (now?.title.isNullOrEmpty() && pos <= 1) tr("Naka-reserve. Magsisimula na sa TV.", "Reserved. Starting on the TV.") else tr("Naka-reserve. Pang-$pos ka sa pila.", "Reserved. You are number $pos in the queue."), Toast.LENGTH_SHORT).show()
+        val playing = !now?.title.isNullOrEmpty()
+        if (mode == "now" && playing) cmd("skip")
+        val pos = if (mode == "reserve") queue.count { it.status == "waiting" } + 1 else 1
+        Toast.makeText(ctx, when {
+            mode == "now" || !playing && pos <= 1 -> tr("Tutugtog na sa TV.", "Playing on the TV now.")
+            mode == "top" -> tr("Inuna sa pila. Ikaw na ang susunod.", "Moved to the top. You are next.")
+            else -> tr("Naka-reserve. Pang-$pos ka sa pila.", "Reserved. You are number $pos in the queue.")
+        }, Toast.LENGTH_SHORT).show()
         loadQueue(); true
     } catch (e: Exception) { Toast.makeText(ctx, tr("Hindi na-reserve: ", "Could not reserve: ") + e.message, Toast.LENGTH_LONG).show(); false }
 
-    Column(Modifier.fillMaxSize()) {
-        // itaas: ✕, koneksyon, room
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            VkIconButton("x", { go(Screen.Home) })
-            Spacer(Modifier.width(12.dp))
-            Box(Modifier.size(9.dp).clip(RoundedCornerShape(50)).background(if (connected && hostSeen) c.accent else if (connected) c.muted else c.danger))
-            Spacer(Modifier.width(8.dp))
-            Text("VideokeTana", color = c.text, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp, modifier = Modifier.weight(1f))
-            Box(Modifier.clip(RoundedCornerShape(50)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                DotText(room, 16.dp, ghost = false)
-            }
-        }
-        if (connected && !hostSeen) Text(tr("Hinahanap ang TV sa room $room. Siguraduhing bukas ang TV screen at napindot ang Simulan.", "Looking for the TV in room $room. Make sure the TV screen is open and Start was pressed."),
-            color = c.muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 18.dp))
-
-        // kinakanta ngayon + kontrol
-        Panel(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), display = true) {
-            Column(Modifier.padding(16.dp)) {
-                Row { Text(tr("Kinakanta ngayon", "Now singing"), color = c.displayMuted, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                    now?.let { Text(tr("Lakas ${it.volume}", "Volume ${it.volume}"), color = c.displayMuted, fontSize = 13.sp) } }
-                Spacer(Modifier.height(6.dp))
-                val n = now
-                if (n == null || n.title.isEmpty()) {
-                    Text(tr("Walang tumutugtog", "Nothing is playing"), color = c.displayText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text(tr("Mag-reserve ng kanta para magsimula.", "Reserve a song to start."), color = c.displayMuted, fontSize = 14.sp)
-                } else {
+    Box(Modifier.fillMaxSize().pointerInput(Unit) {
+        awaitPointerEventScope { while (true) { awaitPointerEvent(PointerEventPass.Initial); lastTouch = System.currentTimeMillis() } }
+    }) {
+        Column(Modifier.fillMaxSize()) {
+            // ---------- itaas ----------
+            Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                VkIconButton("x", { go(Screen.Home) }, size = 42.dp)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("VideokeTana", color = c.text, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (n.source != "youtube") { DotText(n.code, 16.dp, ghost = false); Spacer(Modifier.width(10.dp)) }
-                        Text(n.title, color = c.displayText, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(if (connected && hostSeen) c.accent else if (connected) c.muted else c.danger))
+                        Spacer(Modifier.width(6.dp))
+                        Text(when { connected && hostSeen -> tr("Konektado sa TV", "Connected to the TV"); connected -> tr("Hinahanap ang TV", "Looking for the TV"); else -> tr("Kumokonekta", "Connecting") },
+                            color = c.muted, fontSize = 12.sp)
                     }
-                    Text(listOfNotNull(n.artist.ifBlank { null }, n.singer.ifBlank { null }?.let { tr("kumakanta: $it", "singing: $it") }).joinToString(", "), color = c.displayMuted, fontSize = 14.sp, maxLines = 1)
                 }
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    VkIconButton("restart", { cmd("restart") }, size = 48.dp)
-                    VkIconButton("voldown", { cmd("voldown") }, size = 48.dp)
-                    VkButton("", icon = if (now?.paused == true) "play" else "pause", primary = true, onClick = { cmd("toggle") }, modifier = Modifier.weight(1f), height = 48.dp)
-                    VkIconButton("volup", { cmd("volup") }, size = 48.dp)
-                    VkIconButton("next", { cmd("skip") }, size = 48.dp)
+                Box(Modifier.clip(RoundedCornerShape(50)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 9.dp)) {
+                    DotText(room, 13.dp, ghost = false)
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SfxChip(tr("Palakpak", "Applause"), Modifier.weight(1f)) { cmd("sfx", JSONObject().put("name", "applause").put("from", Prefs.name)) }
-                    SfxChip("Cheers", Modifier.weight(1f)) { cmd("sfx", JSONObject().put("name", "cheers").put("from", Prefs.name)) }
-                    SfxChip(if (showBoard) tr("Isara", "Close") else "Soundboard", Modifier.weight(1f), on = showBoard) { showBoard = !showBoard }
-                }
-                if (showBoard) Soundboard { name -> if (name == "stop") cmd("sfx", JSONObject().put("name", "stop")) else cmd("sfx", JSONObject().put("name", name).put("from", Prefs.name)) }
+                Spacer(Modifier.width(8.dp))
+                VkIconButton("sliders", { sheet = "sound" }, size = 42.dp, primary = true)
             }
+
+            // ---------- kinakanta ngayon ----------
+            NowCard(now, hostSeen, room,
+                onCmd = { a -> cmd(a) },
+                onSfx = { sfx(it) },
+                onBoard = { sheet = "board" },
+                onFx = { k, v -> cmd("fx", JSONObject().put("key", k).put("value", v)) })
+
+            // ---------- laman ng tab ----------
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when (tab) {
+                    0 -> NumberTab(now?.local ?: emptyList()) { s, local, mode -> scope.launch { if (local) reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title, mode = mode) else reserve(songId = s.id, mode = mode) } }
+                    1 -> SearchTab { s -> scope.launch { reserve(songId = s.id) } }
+                    2 -> YouTubeTab { id, title -> scope.launch { reserve(ytId = id, ytTitle = title) } }
+                    3 -> QueueTab(queue, now?.id,
+                        onRemove = { q -> scope.launch { try { Supa.removeFromQueue(q.id); loadQueue() } catch (e: Exception) { Toast.makeText(ctx, e.message, Toast.LENGTH_SHORT).show() } } },
+                        onTop = { q -> scope.launch { val min = queue.filter { it.status == "waiting" }.minOfOrNull { it.sortOrder } ?: 0.0; try { Supa.moveToTop(q.id, min); loadQueue() } catch (e: Exception) {} } })
+                    else -> MicTab(room)
+                }
+            }
+
+            // ---------- tab sa ibaba ----------
+            BottomNav(tab, queue.count { it.status == "waiting" }) { tab = it }
         }
 
-        // mga tab
-        val tabs = listOf("hash" to tr("Numero", "Number"), "search" to tr("Hanap", "Search"), "yt" to "YouTube", "list" to tr("Pila", "Queue"), "mic" to "Mic")
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-            tabs.forEachIndexed { i, (ic, label) ->
-                val on = tab == i
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { tab = i }.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box {
-                        VkIcon(ic, 22.dp, if (on) c.accent else c.muted)
-                        val w = queue.count { it.status == "waiting" }
-                        if (i == 3 && w > 0) Box(Modifier.align(Alignment.TopEnd).padding(start = 14.dp).size(18.dp).clip(RoundedCornerShape(50)).background(c.accent), contentAlignment = Alignment.Center) {
-                            Text("$w", color = c.accentInk, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    Text(label, color = if (on) c.text else c.muted, fontSize = 13.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal)
-                    Box(Modifier.padding(top = 4.dp).width(28.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(if (on) c.accent else c.bg))
-                }
-            }
-        }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when (tab) {
-                0 -> NumberTab(now?.local ?: emptyList()) { s, local -> scope.launch { if (local) reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title) else reserve(songId = s.id) } }
-                1 -> SearchTab { s -> scope.launch { reserve(songId = s.id) } }
-                2 -> YouTubeTab { id, title -> scope.launch { reserve(ytId = id, ytTitle = title) } }
-                3 -> QueueTab(queue, now?.id,
-                    onRemove = { q -> scope.launch { try { Supa.removeFromQueue(q.id); loadQueue() } catch (e: Exception) { Toast.makeText(ctx, e.message, Toast.LENGTH_SHORT).show() } } },
-                    onTop = { q -> scope.launch { val min = queue.filter { it.status == "waiting" }.minOfOrNull { it.sortOrder } ?: 0.0; try { Supa.moveToTop(q.id, min); loadQueue() } catch (e: Exception) {} } })
-                else -> MicTab(room)
-            }
+        if (standby) {
+            val next = queue.firstOrNull { it.status == "waiting" }
+            StandBy(nowTitle = now?.title ?: "", nowSinger = now?.singer ?: "", nextTitle = next?.title ?: "", room = room,
+                onWake = { standby = false; lastTouch = System.currentTimeMillis() })
         }
     }
 
+    if (sheet == "sound") ModalBottomSheet(onDismissRequest = { sheet = "" }, containerColor = if (Prefs.dark) com.videoketana.app.ui.DarkVk.surface else com.videoketana.app.ui.LightVk.surface) {
+        SoundSheet(now?.fx, now?.source ?: "", send = { k, v -> cmd("fx", JSONObject().put("key", k).put("value", v)) },
+            onWallpaper = { pickWall.launch("image/*") }, onStandby = { sheet = ""; standby = true })
+    }
+    if (sheet == "board") ModalBottomSheet(onDismissRequest = { sheet = "" }, containerColor = if (Prefs.dark) com.videoketana.app.ui.DarkVk.surface else com.videoketana.app.ui.LightVk.surface) {
+        Column(Modifier.padding(start = 18.dp, end = 18.dp, bottom = 28.dp)) {
+            Text("Soundboard", color = c.text, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+            Text(tr("Tutunog sa TV.", "Plays on the TV."), color = c.muted, fontSize = 14.sp)
+            Spacer(Modifier.height(12.dp))
+            Soundboard { name -> if (name == "stop") cmd("sfx", JSONObject().put("name", "stop")) else sfx(name) }
+        }
+    }
     if (askName) NameDialog { n -> Prefs.name = n; askName = false }
+}
+
+/** Card ng kinakanta ngayon: numero, title, kumakanta, mga kontrol, mabilis na tunog. */
+@Composable
+private fun NowCard(now: NowState?, hostSeen: Boolean, room: String, onCmd: (String) -> Unit, onSfx: (String) -> Unit, onBoard: () -> Unit, onFx: (String, Int) -> Unit) {
+    val c = vk
+    val shape = RoundedCornerShape(24.dp)
+    Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp).clip(shape)
+        .background(Brush.linearGradient(listOf(c.display, c.display.copy(alpha = 0.92f), c.accent.copy(alpha = 0.18f))))
+        .border(1.dp, c.displayLine, shape)) {
+        Column(Modifier.padding(16.dp)) {
+            val n = now
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(if (n?.title.isNullOrEmpty()) tr("Handa na", "Ready") else if (n!!.paused) tr("Naka-pause", "Paused") else tr("Kinakanta ngayon", "Now singing"),
+                    color = c.displayMuted, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                n?.let { Text(tr("Lakas ${it.volume}", "Volume ${it.volume}"), color = c.displayMuted, fontSize = 12.sp) }
+            }
+            Spacer(Modifier.height(6.dp))
+            if (n == null || n.title.isEmpty()) {
+                Text(if (hostSeen) tr("Walang tumutugtog", "Nothing is playing") else tr("Hinahanap ang TV sa room $room", "Looking for the TV in room $room"),
+                    color = c.displayText, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                Text(if (hostSeen) tr("Mag-reserve ng kanta sa ibaba.", "Reserve a song below.") else tr("Buksan ang TV screen at pindutin ang Simulan.", "Open the TV screen and press Start."),
+                    color = c.displayMuted, fontSize = 14.sp)
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = 0.35f)).padding(horizontal = 8.dp, vertical = 6.dp)) {
+                        if (n.source == "youtube") VkIcon("yt", 18.dp, c.danger) else DotText(n.code, 14.dp, ghost = false)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(n.title, color = c.displayText, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(listOfNotNull(n.artist.ifBlank { null }, n.singer.ifBlank { null }?.let { tr("kumakanta: $it", "singing: $it") }).joinToString(" · "),
+                            color = c.displayMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                VkIconButton("restart", { onCmd("restart") }, size = 46.dp)
+                VkIconButton("voldown", { onCmd("voldown") }, size = 46.dp)
+                VkButton("", icon = if (now?.paused == true) "play" else "pause", primary = true, onClick = { onCmd("toggle") }, modifier = Modifier.weight(1f), height = 52.dp, shape = RoundedCornerShape(50))
+                VkIconButton("volup", { onCmd("volup") }, size = 46.dp)
+                VkIconButton("next", { onCmd("skip") }, size = 46.dp)
+            }
+            // Key at Tempo (kapag ang TV ay ang app at sariling kanta ang tumutugtog)
+            val fx = now?.fx
+            if (fx != null && fx.has("musicKey") && now?.source != "youtube") {
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Stepper("Key", fx.optInt("musicKey"), -6, 6, Modifier.weight(1f)) { onFx("musicKey", it) }
+                    Stepper("Tempo", fx.optInt("musicTempo"), -5, 5, Modifier.weight(1f)) { onFx("musicTempo", it) }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SfxChip(tr("Palakpak", "Applause"), Modifier.weight(1f)) { onSfx("applause") }
+                SfxChip("Cheers", Modifier.weight(1f)) { onSfx("cheers") }
+                SfxChip("Wow", Modifier.weight(1f)) { onSfx("wow") }
+                SfxChip(tr("Iba pa", "More"), Modifier.weight(1f), on = true) { onBoard() }
+            }
+        }
+    }
+}
+
+/** − halaga + (para sa Key at Tempo). */
+@Composable
+private fun Stepper(label: String, value: Int, min: Int, max: Int, modifier: Modifier, onChange: (Int) -> Unit) {
+    val c = vk
+    Row(modifier.height(42.dp).clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = 0.3f)).border(1.dp, c.displayLine, RoundedCornerShape(50)),
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(42.dp).clip(RoundedCornerShape(50)).clickable(enabled = value > min) { onChange(value - 1) }, contentAlignment = Alignment.Center) {
+            Text("−", color = c.displayText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        }
+        Text(label + " " + (if (value > 0) "+" else "") + value, color = if (value == 0) c.displayMuted else c.displayFg, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        Box(Modifier.size(42.dp).clip(RoundedCornerShape(50)).clickable(enabled = value < max) { onChange(value + 1) }, contentAlignment = Alignment.Center) {
+            Text("+", color = c.displayText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** Tab sa ibaba ng screen, parang totoong app. */
+@Composable
+private fun BottomNav(tab: Int, waiting: Int, onTab: (Int) -> Unit) {
+    val c = vk
+    val tabs = listOf("hash" to tr("Numero", "Number"), "search" to tr("Hanap", "Search"), "yt" to "YouTube", "list" to tr("Pila", "Queue"), "mic" to "Mic")
+    Row(Modifier.fillMaxWidth().background(c.surface).border(width = 1.dp, color = c.line, shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+        .padding(horizontal = 8.dp, vertical = 8.dp)) {
+        tabs.forEachIndexed { i, (ic, label) ->
+            val on = tab == i
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable { onTab(i) }.padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.clip(RoundedCornerShape(50)).background(if (on) c.accent.copy(alpha = 0.18f) else Color.Transparent).padding(horizontal = 16.dp, vertical = 5.dp)) {
+                    VkIcon(ic, 22.dp, if (on) c.accent else c.muted)
+                    if (i == 3 && waiting > 0) Box(Modifier.align(Alignment.TopEnd).offset(x = 12.dp, y = (-4).dp).size(17.dp).clip(RoundedCornerShape(50)).background(c.accent), contentAlignment = Alignment.Center) {
+                        Text("$waiting", color = c.accentInk, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(Modifier.height(3.dp))
+                Text(label, color = if (on) c.text else c.muted, fontSize = 12.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium)
+            }
+        }
+    }
+}
+
+/** Mga adjust ng tunog sa TV: boses (mic) at kanta (bass, treble, key). */
+@Composable
+private fun SoundSheet(fx: JSONObject?, source: String, send: (String, Int) -> Unit, onWallpaper: () -> Unit, onStandby: () -> Unit) {
+    val c = vk
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 30.dp)) {
+        Text(tr("Tunog sa TV", "Sound on the TV"), color = c.text, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        Text(tr("Nagbabago agad habang kumakanta.", "Changes right away while singing."), color = c.muted, fontSize = 14.sp)
+        if (fx == null) Text(tr("Hinihintay ang TV...", "Waiting for the TV..."), color = c.muted, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
+        Spacer(Modifier.height(16.dp))
+        Text(tr("Kanta", "Song"), color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        val yt = source == "youtube"
+        FxSlider("Bass", "musicBass", -12, 12, fx, send, unit = " dB", enabled = !yt)
+        FxSlider("Treble", "musicTreble", -12, 12, fx, send, unit = " dB", enabled = !yt)
+        FxSlider(tr("Key (tono ng kanta)", "Key (song pitch)"), "musicKey", -6, 6, fx, send, unit = "", enabled = !yt && fx?.has("musicKey") == true)
+        FxSlider(tr("Tempo (bilis)", "Tempo (speed)"), "musicTempo", -5, 5, fx, send, unit = "", enabled = !yt && fx?.has("musicTempo") == true)
+        Text(when {
+            yt -> tr("Hindi mababago ang tunog ng YouTube na kanta. Sa sariling kanta lang ito gumagana.", "YouTube songs cannot be changed. This only works on your own songs.")
+            fx != null && !fx.has("musicKey") -> tr("Gumagana ang Key kapag ang TV ay ang VideokeTana app.", "Key works when the TV is the VideokeTana app.")
+            else -> ""
+        }, color = c.muted, fontSize = 12.sp)
+        Spacer(Modifier.height(16.dp))
+        Text(tr("Boses (mic)", "Voice (mic)"), color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        FxSlider(tr("Lakas ng mic", "Mic volume"), "micVolume", 0, 150, fx, send, unit = "%")
+        FxSlider("Echo", "micEcho", 0, 100, fx, send)
+        FxSlider("Reverb", "micReverb", 0, 100, fx, send)
+        FxSlider(tr("Linaw", "Clarity"), "micClarity", 0, 100, fx, send)
+
+        Spacer(Modifier.height(18.dp))
+        Text(tr("Itsura ng phone", "Phone look"), color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            VkButton(if (Prefs.wallpaper.isEmpty()) tr("Wallpaper", "Wallpaper") else tr("Palitan", "Change"), icon = "plus", onClick = onWallpaper, modifier = Modifier.weight(1f))
+            if (Prefs.wallpaper.isNotEmpty()) { val ctx = LocalContext.current; VkIconButton("trash", { com.videoketana.app.data.Wallpaper.clear(ctx) }, size = 48.dp, tint = c.danger) }
+            VkButton("StandBy", icon = "moon", onClick = onStandby, modifier = Modifier.weight(1f))
+        }
+        if (Prefs.wallpaper.isNotEmpty()) {
+            var g by remember { mutableFloatStateOf(Prefs.glass.toFloat()) }
+            Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(tr("Transparency", "Transparency"), color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("${g.toInt()}%", color = c.muted, fontSize = 13.sp)
+            }
+            Slider(value = g, onValueChange = { g = it }, onValueChangeFinished = { Prefs.changeGlass(g.toInt()) }, valueRange = 0f..85f,
+                colors = SliderDefaults.colors(thumbColor = c.accent, activeTrackColor = c.accent, inactiveTrackColor = c.line))
+        }
+    }
+}
+
+@Composable
+private fun FxSlider(label: String, key: String, min: Int, max: Int, fx: JSONObject?, send: (String, Int) -> Unit, unit: String = "", enabled: Boolean = true) {
+    val c = vk
+    var v by remember(key) { mutableFloatStateOf((fx?.optInt(key, 0) ?: 0).toFloat()) }
+    var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(fx) { if (!dragging && fx != null && fx.has(key)) v = fx.optInt(key).toFloat() }
+    Column(Modifier.padding(top = 6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, color = if (enabled) c.text else c.muted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text((if (min < 0 && v > 0) "+" else "") + v.toInt() + unit, color = c.muted, fontSize = 13.sp)
+        }
+        Slider(value = v, onValueChange = { dragging = true; v = it.roundToInt().toFloat() },
+            onValueChangeFinished = { dragging = false; send(key, v.toInt()) },
+            valueRange = min.toFloat()..max.toFloat(), enabled = enabled,
+            colors = SliderDefaults.colors(thumbColor = c.accent, activeTrackColor = c.accent, inactiveTrackColor = c.line))
+    }
 }
 
 @Composable
@@ -240,7 +431,7 @@ private fun Soundboard(send: (String) -> Unit) {
 
 // ---------------- NUMERO ----------------
 @Composable
-private fun NumberTab(local: List<Triple<Int, String, String>>, onReserve: (Song, Boolean) -> Unit) {
+private fun NumberTab(local: List<Triple<Int, String, String>>, onReserve: (Song, Boolean, String) -> Unit) {
     val c = vk
     var code by remember { mutableStateOf("") }
     var found by remember { mutableStateOf<Song?>(null) }
@@ -287,8 +478,12 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, onReserve: (Song
                 }
             }
         }
-        VkButton(if (found != null) tr("Reserve ${found!!.code}", "Reserve ${found!!.code}") else tr("Reserve", "Reserve"), primary = true, enabled = found != null,
-            onClick = { found?.let { onReserve(it, isLocal); code = "" } }, modifier = Modifier.fillMaxWidth(), height = 54.dp)
+        VkButton(if (found != null) tr("Reserve ${found!!.code}", "Reserve ${found!!.code}") else tr("Reserve", "Reserve"), primary = true, enabled = found != null, icon = "plus",
+            onClick = { found?.let { onReserve(it, isLocal, "reserve"); code = "" } }, modifier = Modifier.fillMaxWidth(), height = 54.dp)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            VkButton(tr("Unahin", "Next up"), icon = "up", enabled = found != null, onClick = { found?.let { onReserve(it, isLocal, "top"); code = "" } }, modifier = Modifier.weight(1f))
+            VkButton(tr("Patugtugin ngayon", "Play now"), icon = "play", enabled = found != null, onClick = { found?.let { onReserve(it, isLocal, "now"); code = "" } }, modifier = Modifier.weight(1f))
+        }
     }
 }
 

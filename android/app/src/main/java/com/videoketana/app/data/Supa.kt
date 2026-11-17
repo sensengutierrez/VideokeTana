@@ -154,7 +154,7 @@ object Supa {
         return list.sortedWith(compareBy<QItem> { if (it.status == "playing") 0 else 1 }.thenBy { it.sortOrder })
     }
 
-    suspend fun reserve(room: String, singer: String?, songId: String? = null, ytId: String? = null, ytTitle: String? = null, localCode: Int? = null, localTitle: String? = null) {
+    suspend fun reserve(room: String, singer: String?, songId: String? = null, ytId: String? = null, ytTitle: String? = null, localCode: Int? = null, localTitle: String? = null): String {
         val o = JSONObject().put("room", room).put("sort_order", System.currentTimeMillis().toDouble())
         if (!singer.isNullOrBlank()) o.put("singer", singer.take(40))
         songId?.let { o.put("song_id", it) }
@@ -162,7 +162,8 @@ object Supa {
         ytTitle?.let { o.put("yt_title", it.take(200)) }
         localCode?.let { o.put("local_code", it) }
         localTitle?.let { o.put("local_title", it.take(200)) }
-        call(req("queue").post(o.toString().toRequestBody(JSON)).header("Prefer", "return=minimal").build())
+        val res = call(req("queue", mapOf("select" to "id")).post(o.toString().toRequestBody(JSON)).header("Prefer", "return=representation").build())
+        return try { JSONArray(res).getJSONObject(0).optString("id") } catch (e: Exception) { "" }
     }
 
     suspend fun removeFromQueue(id: String) { call(req("queue", mapOf("id" to "eq.$id")).delete().build()) }

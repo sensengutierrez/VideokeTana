@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -140,6 +141,15 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var beep by remember { mutableStateOf(Prefs.keyBeep) }
     var score by remember { mutableStateOf(Prefs.scoreOn) }
     var checking by remember { mutableStateOf(false) }
+    var standby by remember { mutableStateOf(Prefs.standby) }
+    var after by remember { mutableStateOf(Prefs.standbyAfter) }
+    var sbColor by remember { mutableStateOf(Prefs.standbyColor) }
+    val pickWall = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) scope.launch {
+            if (!com.videoketana.app.data.Wallpaper.save(ctx, uri)) Toast.makeText(ctx, tr("Hindi magamit ang larawang ito.", "This picture cannot be used."), Toast.LENGTH_SHORT).show()
+            else if (Prefs.glass == 0) Prefs.changeGlass(35)
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         TopBar(tr("Settings", "Settings"), tr("Naka-save sa device na ito", "Saved on this device"), onClose = { go(Screen.Home) })
@@ -150,6 +160,38 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                 }
                 SetRow(tr("Tema", "Theme"), "") {
                     Seg(listOf("dark" to tr("Dark", "Dark"), "light" to tr("Light", "Light")), if (Prefs.dark) "dark" else "light") { Prefs.changeDark(it == "dark") }
+                }
+            }
+            Group(tr("Wallpaper at transparency", "Wallpaper and transparency")) {
+                SetRow(tr("Wallpaper", "Wallpaper"), if (Prefs.wallpaper.isEmpty()) tr("Sariling larawan bilang background. Nasa device lang, hindi ina-upload.", "Your own picture as the background. Stays on this device.") else tr("Naka-set ang sariling larawan.", "Your picture is set.")) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (Prefs.wallpaper.isNotEmpty()) VkIconButton("trash", { com.videoketana.app.data.Wallpaper.clear(ctx) }, size = 40.dp, tint = c.danger)
+                        VkButton(tr("Pumili", "Choose"), height = 40.dp, onClick = { pickWall.launch("image/*") })
+                    }
+                }
+                SliderRow(tr("Transparency ng mga kahon", "Box transparency"), tr("Gawing see-through ang mga kahon para makita ang wallpaper.", "Make boxes see-through to show the wallpaper."), Prefs.glass, 0, 85, "%") { Prefs.changeGlass(it) }
+                SliderRow(tr("Dilim ng wallpaper", "Wallpaper darkness"), tr("Mas madilim, mas madaling basahin.", "Darker is easier to read."), Prefs.wallDim, 0, 85, "%") { Prefs.changeWallDim(it) }
+            }
+            Group(tr("StandBy sa phone", "Phone StandBy")) {
+                Toggle(tr("StandBy kapag hindi ginagamit", "StandBy when idle"), tr("Madilim na malaking orasan, ang kinakanta at ang susunod, habang nakabukas ang remote. Iharap nang pahiga para mas malaki.", "A dim big clock with the current and next song while the remote is open. Turn the phone sideways for a bigger view."), standby) { standby = it; Prefs.standby = it }
+                SetRow(tr("Lalabas pagkatapos ng", "Show after"), "") {
+                    Seg(listOf("15" to "15s", "30" to "30s", "60" to "1m", "120" to "2m"), after.toString()) { after = it.toInt(); Prefs.standbyAfter = after }
+                }
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    Text(tr("Kulay", "Color"), color = c.text, style = VkType.title)
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        STANDBY_COLORS.forEach { (col, _) ->
+                            val on = sbColor == col
+                            Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).background(androidx.compose.ui.graphics.Color(col))
+                                .border(if (on) 3.dp else 1.dp, if (on) c.text else c.line, RoundedCornerShape(50))
+                                .clickable { sbColor = col; Prefs.standbyColor = col })
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Box(Modifier.fillMaxWidth().height(70.dp).clip(RoundedCornerShape(14.dp)).background(androidx.compose.ui.graphics.Color.Black), contentAlignment = Alignment.Center) {
+                        DotText("8:30", 40.dp, androidx.compose.ui.graphics.Color(sbColor).copy(alpha = 0.9f))
+                    }
                 }
             }
             Group(tr("Ikaw", "You")) {
@@ -181,6 +223,18 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SliderRow(title: String, sub: String, value: Int, min: Int, max: Int, unit: String, onDone: (Int) -> Unit) {
+    val c = vk
+    var v by remember(value) { mutableStateOf(value.toFloat()) }
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Row { Text(title, color = c.text, style = VkType.title, modifier = Modifier.weight(1f)); Text("${v.toInt()}$unit", color = c.muted, fontSize = 14.sp) }
+        if (sub.isNotEmpty()) Text(sub, color = c.muted, style = VkType.small)
+        androidx.compose.material3.Slider(value = v, onValueChange = { v = it }, onValueChangeFinished = { onDone(v.toInt()) }, valueRange = min.toFloat()..max.toFloat(),
+            colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = c.accent, activeTrackColor = c.accent, inactiveTrackColor = c.line))
     }
 }
 

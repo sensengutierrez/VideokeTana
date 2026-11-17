@@ -15,12 +15,38 @@ object Prefs {
         private set
     var dark by mutableStateOf(true)
         private set
+    // wallpaper at transparency (nakikita agad sa lahat ng screen)
+    var wallpaper by mutableStateOf("")
+        private set
+    var wallVersion by mutableStateOf(0)
+        private set
+    var glass by mutableStateOf(0)            // 0 = buo, 85 = pinaka see-through
+        private set
+    var wallDim by mutableStateOf(45)
+        private set
 
     fun init(c: Context) {
         sp = c.getSharedPreferences("videoketana", Context.MODE_PRIVATE)
         lang = sp.getString("lang", "fil") ?: "fil"
         dark = sp.getBoolean("dark", true)
+        wallpaper = sp.getString("wallpaper", "") ?: ""
+        glass = sp.getInt("glass", 0)
+        wallDim = sp.getInt("wallDim", 45)
     }
+    fun changeWallpaper(path: String) { wallpaper = path; wallVersion++; sp.edit().putString("wallpaper", path).apply() }
+    fun changeGlass(v: Int) { glass = v; sp.edit().putInt("glass", v).apply() }
+    fun changeWallDim(v: Int) { wallDim = v; sp.edit().putInt("wallDim", v).apply() }
+
+    // StandBy: dim na orasan sa phone kapag hindi kumakanta (parang StandBy ng iPhone, pero may ibang kulay)
+    var standby: Boolean
+        get() = sp.getBoolean("standby", true)
+        set(v) = sp.edit().putBoolean("standby", v).apply()
+    var standbyAfter: Int
+        get() = sp.getInt("standbyAfter", 30)
+        set(v) = sp.edit().putInt("standbyAfter", v).apply()
+    var standbyColor: Long
+        get() = sp.getLong("standbyColor", 0xFF62E3D2)
+        set(v) = sp.edit().putLong("standbyColor", v).apply()
 
     fun changeLang(v: String) { lang = v; sp.edit().putString("lang", v).apply() }
     fun changeDark(v: Boolean) { dark = v; sp.edit().putBoolean("dark", v).apply() }
@@ -49,6 +75,8 @@ object Prefs {
     var favorites: Set<Int>
         get() = (sp.getString("favs", "") ?: "").split(",").mapNotNull { it.toIntOrNull() }.toSet()
         set(v) = sp.edit().putString("favs", v.joinToString(",")).apply()
+    fun int(k: String, def: Int = 0) = sp.getInt(k, def)
+    fun putInt(k: String, v: Int) = sp.edit().putInt(k, v).apply()
     var skipUpdate: Int
         get() = sp.getInt("skipUpdate", 0)
         set(v) = sp.edit().putInt("skipUpdate", v).apply()

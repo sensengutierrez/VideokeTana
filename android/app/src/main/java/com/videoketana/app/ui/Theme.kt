@@ -64,9 +64,15 @@ val vk: VkColors @Composable get() = LocalVk.current
 
 @Composable
 fun VkTheme(content: @Composable () -> Unit) {
-    val c = if (Prefs.dark) DarkVk else LightVk
-    val scheme = if (Prefs.dark) darkColorScheme(primary = c.accent, onPrimary = c.accentInk, background = c.bg, surface = c.surface, onSurface = c.text, onBackground = c.text)
-    else lightColorScheme(primary = c.accent, onPrimary = c.accentInk, background = c.bg, surface = c.surface, onSurface = c.text, onBackground = c.text)
+    val base = if (Prefs.dark) DarkVk else LightVk
+    // may wallpaper: see-through ang mga kahon ayon sa Settings → Transparency
+    val c = if (Prefs.wallpaper.isNotEmpty()) {
+        val a = 1f - Prefs.glass / 100f
+        base.copy(bg = Color.Transparent, surface = base.surface.copy(alpha = a), surface2 = base.surface2.copy(alpha = a),
+            display = base.display.copy(alpha = (a + 0.15f).coerceAtMost(1f)))
+    } else base
+    val scheme = if (Prefs.dark) darkColorScheme(primary = base.accent, onPrimary = base.accentInk, background = base.bg, surface = base.surface, onSurface = base.text, onBackground = base.text)
+    else lightColorScheme(primary = base.accent, onPrimary = base.accentInk, background = base.bg, surface = base.surface, onSurface = base.text, onBackground = base.text)
     CompositionLocalProvider(LocalVk provides c) {
         MaterialTheme(colorScheme = scheme, content = content)
     }

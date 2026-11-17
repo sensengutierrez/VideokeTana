@@ -146,13 +146,38 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var ytView by remember { mutableStateOf<YouTubePlayerView?>(null) }
     var rt by remember { mutableStateOf<Realtime?>(null) }
 
+    fun applyVolume() { exo.volume = volume / 100f; yt?.setVolume(volume) }
+
+    // ---- tunog ng kanta: bass, treble (Equalizer ng Android), key at tempo (ExoPlayer) ----
+    var bass by remember { mutableIntStateOf(Prefs.int("musicBass")) }
+    var treble by remember { mutableIntStateOf(Prefs.int("musicTreble")) }
+    var key by remember { mutableIntStateOf(0) }       // bawat kanta: nagsisimula sa 0
+    var tempo by remember { mutableIntStateOf(0) }
+    var eq by remember { mutableStateOf<android.media.audiofx.Equalizer?>(null) }
+    fun applyFx() {
+        exo.playbackParameters = androidx.media3.common.PlaybackParameters(1f + tempo * 0.05f, Math.pow(2.0, key / 12.0).toFloat())
+        try {
+            if (eq == null && exo.audioSessionId != 0) eq = android.media.audiofx.Equalizer(0, exo.audioSessionId).apply { enabled = true }
+            eq?.let { e ->
+                val lo = e.bandLevelRange[0].toInt(); val hi = e.bandLevelRange[1].toInt()
+                for (b in 0 until e.numberOfBands) {
+                    val f = e.getCenterFreq(b.toShort()) / 1000      // Hz
+                    val db = when { f < 250 -> bass; f > 3500 -> treble; else -> 0 }
+                    e.setBandLevel(b.toShort(), (db * 100).coerceIn(lo, hi).toShort())
+                }
+            }
+        } catch (ex: Exception) { }
+    }
+    fun fxJson() = JSONObject().put("musicBass", bass).put("musicTreble", treble).put("musicKey", key).put("musicTempo", tempo)
+        .put("micVolume", Prefs.int("micVolume", 100)).put("micEcho", Prefs.int("micEcho", 30)).put("micReverb", Prefs.int("micReverb", 20)).put("micClarity", Prefs.int("micClarity", 30))
+        .put("eq", true)
+
     fun broadcastState() {
         if (standby) return
         val q = current
         val now = q?.let { JSONObject().put("code", it.code).put("title", it.title).put("artist", it.artist).put("source", it.source).put("singer", it.singer ?: "").put("id", it.id) }
-        rt?.broadcast("state", JSONObject().put("now", now ?: JSONObject.NULL).put("paused", paused).put("volume", volume).put("room", room).put("local", JSONArray()))
+        rt?.broadcast("state", JSONObject().put("now", now ?: JSONObject.NULL).put("paused", paused).put("volume", volume).put("room", room).put("local", JSONArray()).put("fx", fxJson()))
     }
-    fun applyVolume() { exo.volume = volume / 100f; yt?.setVolume(volume) }
 
     fun stopMedia() {
         exo.stop(); exo.clearMediaItems()
@@ -211,7 +236,8 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                                 lyrics = l; lyricOffset = off
                             }
                             exo.setMediaItem(MediaItem.fromUri(Supa.mediaUrl(s.mediaPath) ?: ""))
-                            exo.prepare(); applyVolume(); exo.play()
+                            key = 0; tempo = 0
+                            exo.prepare(); applyVolume(); applyFx(); exo.play()
                         }
                         else -> {
                             mode = "youtube"
@@ -239,6 +265,18 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             "voldown" -> { volume = (volume - 10).coerceAtLeast(0); applyVolume(); note = "Volume $volume" }
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
             "refresh" -> scope.launch { loadQueue(); startNext() }
+            "fx" -> {
+                val o = value as? JSONObject ?: return
+                val k = o.optString("key"); val v = o.optInt("value")
+                when (k) {
+                    "musicBass" -> { bass = v.coerceIn(-12, 12); Prefs.putInt(k, bass) }
+                    "musicTreble" -> { treble = v.coerceIn(-12, 12); Prefs.putInt(k, treble) }
+                    "musicKey" -> { key = v.coerceIn(-6, 6); note = "Key " + (if (key > 0) "+" else "") + key }
+                    "musicTempo" -> { tempo = v.coerceIn(-5, 5); note = "Tempo " + (if (tempo > 0) "+" else "") + tempo }
+                    "micVolume", "micEcho", "micReverb", "micClarity" -> Prefs.putInt(k, v)
+                }
+                applyFx()
+            }
             "sfx" -> {
                 val o = value as? JSONObject
                 val name = o?.optString("name") ?: value?.toString() ?: return
@@ -283,7 +321,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             }
         }
         exo.addListener(l)
-        onDispose { exo.removeListener(l); exo.release(); ytView?.release() }
+        onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); ytView?.release() }
     }
 
     // ---- lyrics habang tumutugtog ----

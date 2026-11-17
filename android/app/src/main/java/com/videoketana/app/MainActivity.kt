@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -85,7 +86,17 @@ fun App(isTv: Boolean, linkRoom: String?, consumeLink: () -> Unit) {
     val go: (Screen) -> Unit = { screen = it }
     BackHandler(enabled = screen != Screen.Home && !(isTv && screen == Screen.Tv)) { screen = Screen.Home }
 
-    Box(Modifier.fillMaxSize().background(vk.bg)) {
+    Box(Modifier.fillMaxSize().background(if (Prefs.dark) com.videoketana.app.ui.DarkVk.bg else com.videoketana.app.ui.LightVk.bg)) {
+        // sariling wallpaper sa likod ng lahat (maliban sa TV screen)
+        if (Prefs.wallpaper.isNotEmpty() && screen != Screen.Tv) {
+            val bmp = androidx.compose.runtime.remember(Prefs.wallpaper, Prefs.wallVersion) {
+                try { android.graphics.BitmapFactory.decodeFile(Prefs.wallpaper)?.asImageBitmap() } catch (e: Exception) { null }
+            }
+            if (bmp != null) {
+                androidx.compose.foundation.Image(bmp, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                Box(Modifier.fillMaxSize().background((if (Prefs.dark) androidx.compose.ui.graphics.Color.Black else androidx.compose.ui.graphics.Color.White).copy(alpha = Prefs.wallDim / 100f)))
+            }
+        }
         val pad = if (screen == Screen.Tv) Modifier else Modifier.safeDrawingPadding()
         Box(pad.fillMaxSize()) {
             when (val s = screen) {
