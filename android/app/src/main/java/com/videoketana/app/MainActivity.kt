@@ -1,227 +1,107 @@
 package com.videoketana.app
 
-import android.Manifest
-import android.annotation.SuppressLint
 import android.app.UiModeManager
-import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.graphics.Color
-import android.net.Uri
 import android.os.Bundle
-import android.view.View
-import android.view.ViewGroup
 import android.view.WindowManager
-import android.webkit.CookieManager
-import android.webkit.PermissionRequest
-import android.webkit.ValueCallback
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.videoketana.app.data.Prefs
+import com.videoketana.app.data.roomFromScan
+import com.videoketana.app.remote.RemoteScreen
+import com.videoketana.app.tv.TvScreen
+import com.videoketana.app.ui.HomeScreen
+import com.videoketana.app.ui.Intro
+import com.videoketana.app.ui.SettingsScreen
+import com.videoketana.app.ui.SongbookScreen
+import com.videoketana.app.ui.Synth
+import com.videoketana.app.ui.VkTheme
+import com.videoketana.app.ui.vk
 
-/**
- * Videoke app: buong-screen na app para sa phone, tablet at Smart TV (Android TV / Mi TV).
- * Iisang code ang app at ang website (nasa frontend/ ng repo), kaya sabay silang naa-update
- * at nagkakausap ang app at ang phone na naka-browser lang.
- *
- * Mga ginagawa ng app na wala sa browser:
- *  - walang address bar; buong screen; hindi namamatay ang screen habang bukas
- *  - lumalabas sa home screen ng Smart TV; diretso sa TV screen (host) kapag TV
- *  - humihingi ng pahintulot sa mic (phone bilang mic) at camera (pag-scan ng QR)
- *  - pumipili ng file (kanta, wallpaper) at full screen na video
- */
+/** Mga screen ng app. */
+sealed class Screen {
+    object Home : Screen()
+    object Tv : Screen()
+    object Songbook : Screen()
+    object Settings : Screen()
+    data class Remote(val room: String) : Screen()
+}
+
 class MainActivity : ComponentActivity() {
+    // room mula sa link/QR na nagbukas sa app
+    private var linkRoom by mutableStateOf<String?>(null)
 
-    companion object {
-        const val SITE = "https://videoketana.tigomenote.com/"
-        const val SITE_HOST = "videoketana.tigomenote.com"
-        // lumang address (inililipat ng GitHub sa bago)
-        val HOSTS = setOf(SITE_HOST, "sensengutierrez.github.io")
-    }
-
-    private lateinit var web: WebView
-    private lateinit var root: FrameLayout
-    private var isTv = false
-    private lateinit var chrome: WebChromeClient
-
-    // naghihintay na hiling ng web page para sa mic/camera
-    private var pendingPermission: PermissionRequest? = null
-    private var fileCallback: ValueCallback<Array<Uri>>? = null
-    private var customView: View? = null
-    private var customCallback: WebChromeClient.CustomViewCallback? = null
-
-    private val askPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-        val req = pendingPermission ?: return@registerForActivityResult
-        pendingPermission = null
-        val allowed = req.resources.filter { res ->
-            when (res) {
-                PermissionRequest.RESOURCE_AUDIO_CAPTURE -> result[Manifest.permission.RECORD_AUDIO] == true || has(Manifest.permission.RECORD_AUDIO)
-                PermissionRequest.RESOURCE_VIDEO_CAPTURE -> result[Manifest.permission.CAMERA] == true || has(Manifest.permission.CAMERA)
-                else -> false
-            }
-        }
-        if (allowed.isEmpty()) req.deny() else req.grant(allowed.toTypedArray())
-    }
-
-    private val pickFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        fileCallback?.onReceiveValue(uris.toTypedArray())
-        fileCallback = null
-    }
-
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val ui = getSystemService(UI_MODE_SERVICE) as UiModeManager
-        isTv = ui.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
-
+        Prefs.init(this)
+        enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        WindowCompat.setDecorFitsSystemWindows(window, !isTv)
-
-        root = FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#15171C")) }
-        web = WebView(this).apply {
-            setBackgroundColor(Color.parseColor("#15171C"))
-            isFocusable = true
-            isFocusableInTouchMode = true
-        }
-        root.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        setContentView(root)
-        if (isTv) hideSystemBars()
-
-        with(web.settings) {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            databaseEnabled = true
-            mediaPlaybackRequiresUserGesture = false   // para tumuloy-tuloy ang kanta
-            loadWithOverviewMode = true
-            useWideViewPort = true
-            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            allowFileAccess = false
-            cacheMode = WebSettings.LOAD_DEFAULT
-            // para malaman ng web na nasa app (hal. itago ang "I-download ang app")
-            userAgentString = "$userAgentString VideokeApp/${packageManager.getPackageInfo(packageName, 0).versionName}" + if (isTv) " VideokeTV" else ""
-        }
-        CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
-
-        web.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                val url = request.url
-                // sariling site at YouTube player: dito sa app; iba pa: sa browser
-                if ((url.host ?: "") in HOSTS || url.host?.endsWith("youtube.com") == true || url.host?.endsWith("youtube-nocookie.com") == true) return false
-                return try { startActivity(Intent(Intent.ACTION_VIEW, url)); true } catch (e: ActivityNotFoundException) { false }
-            }
-
-            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) view.loadUrl("file:///android_asset/offline.html")
+        val isTv = (getSystemService(UI_MODE_SERVICE) as UiModeManager).currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
+        if (isTv) {
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                hide(WindowInsetsCompat.Type.systemBars())
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         }
+        linkRoom = intent?.dataString?.let { roomFromScan(it) }
+        Synth.warm("beep", "applause", "fanfare")
 
-        chrome = object : WebChromeClient() {
-            override fun onPermissionRequest(request: PermissionRequest) {
-                runOnUiThread {
-                    val need = mutableListOf<String>()
-                    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE in request.resources && !has(Manifest.permission.RECORD_AUDIO)) need += Manifest.permission.RECORD_AUDIO
-                    if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in request.resources && !has(Manifest.permission.CAMERA)) need += Manifest.permission.CAMERA
-                    if (need.isEmpty()) {
-                        request.grant(request.resources.filter {
-                            it == PermissionRequest.RESOURCE_AUDIO_CAPTURE || it == PermissionRequest.RESOURCE_VIDEO_CAPTURE
-                        }.toTypedArray())
-                    } else {
-                        pendingPermission = request
-                        askPermissions.launch(need.toTypedArray())
-                    }
-                }
-            }
-
-            override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
-                fileCallback?.onReceiveValue(null)
-                fileCallback = callback
-                val types = params.acceptTypes.filter { it.isNotBlank() }.flatMap { t ->
-                    when {
-                        t.startsWith(".") -> listOf("*/*")          // hal. .lrc
-                        else -> listOf(t)
-                    }
-                }.ifEmpty { listOf("*/*") }.distinct()
-                return try { pickFiles.launch(types.toTypedArray()); true } catch (e: Exception) { fileCallback = null; false }
-            }
-
-            // full screen na video (hal. YouTube)
-            override fun onShowCustomView(view: View, callback: CustomViewCallback) {
-                if (customView != null) { callback.onCustomViewHidden(); return }
-                customView = view; customCallback = callback
-                root.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-                web.visibility = View.GONE
-                hideSystemBars()
-            }
-
-            override fun onHideCustomView() {
-                customView?.let { root.removeView(it) }
-                customView = null
-                customCallback?.onCustomViewHidden(); customCallback = null
-                web.visibility = View.VISIBLE
-                if (!isTv) showSystemBars()
+        setContent {
+            VkTheme {
+                App(isTv = isTv, linkRoom = linkRoom, consumeLink = { linkRoom = null })
             }
         }
-
-        web.webChromeClient = chrome
-
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                when {
-                    customView != null -> chrome.onHideCustomView()
-                    web.canGoBack() -> web.goBack()
-                    else -> finish()
-                }
-            }
-        })
-
-        if (savedInstanceState != null) web.restoreState(savedInstanceState)
-        else web.loadUrl(startUrl(intent))
-    }
-
-    // Smart TV: diretso sa TV screen. Link (hal. QR ng room): ang link mismo. Iba: home.
-    private fun startUrl(i: Intent?): String {
-        val data = i?.data
-        if (data != null && (data.host ?: "") in HOSTS) return data.toString()
-        return if (isTv) SITE + "host/" else SITE + "app/"
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        val data = intent.data
-        if (data != null && (data.host ?: "") in HOSTS) web.loadUrl(data.toString())
+        intent.dataString?.let { roomFromScan(it) }?.let { linkRoom = it }
     }
-
-    private fun has(p: String) = ContextCompat.checkSelfPermission(this, p) == PackageManager.PERMISSION_GRANTED
-
-    private fun hideSystemBars() {
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
-    }
-
-    private fun showSystemBars() {
-        WindowInsetsControllerCompat(window, window.decorView).show(WindowInsetsCompat.Type.systemBars())
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        web.saveState(outState)
-    }
-
-    override fun onResume() { super.onResume(); web.onResume() }
-    override fun onPause() { super.onPause(); web.onPause() }
-    override fun onDestroy() { web.destroy(); super.onDestroy() }
 }
+
+@Composable
+fun App(isTv: Boolean, linkRoom: String?, consumeLink: () -> Unit) {
+    var intro by rememberSaveable { mutableStateOf(true) }
+    var screen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf<Screen>(if (isTv) Screen.Tv else Screen.Home) }
+    androidx.compose.runtime.LaunchedEffect(linkRoom) { if (linkRoom != null) { screen = Screen.Remote(linkRoom); consumeLink() } }
+
+    val go: (Screen) -> Unit = { screen = it }
+    BackHandler(enabled = screen != Screen.Home && !(isTv && screen == Screen.Tv)) { screen = Screen.Home }
+
+    Box(Modifier.fillMaxSize().background(vk.bg)) {
+        val pad = if (screen == Screen.Tv) Modifier else Modifier.safeDrawingPadding()
+        Box(pad.fillMaxSize()) {
+            when (val s = screen) {
+                Screen.Home -> HomeScreen(go)
+                Screen.Tv -> TvScreen(onClose = { screen = Screen.Home }, isTv = isTv)
+                Screen.Songbook -> SongbookScreen(go)
+                Screen.Settings -> SettingsScreen(go)
+                is Screen.Remote -> RemoteScreen(s.room, go)
+            }
+        }
+        if (intro) Intro(onDone = { intro = false })
+    }
+}
+
+/** Para matandaan ang screen kapag umikot ang phone. */
+val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, String>(
+    save = { s -> when (s) { Screen.Home -> "home"; Screen.Tv -> "tv"; Screen.Songbook -> "book"; Screen.Settings -> "set"; is Screen.Remote -> "r:" + s.room } },
+    restore = { v -> when { v == "tv" -> Screen.Tv; v == "book" -> Screen.Songbook; v == "set" -> Screen.Settings; v.startsWith("r:") -> Screen.Remote(v.drop(2)); else -> Screen.Home } }
+)
