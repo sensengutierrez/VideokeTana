@@ -355,7 +355,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     LaunchedEffect(showUi) { if (showUi) { delay(4000); showUi = false } }
 
     // ================= ITSURA =================
-    Box(Modifier.fillMaxSize().background(Color(0xFF0B0C10)).clickable(remember { MutableInteractionSource() }, null) { showUi = true }) {
+    Box(Modifier.fillMaxSize().background(if (mode == "youtube") Color.Transparent else Color(0xFF0B0C10)).clickable(remember { MutableInteractionSource() }, null) { showUi = true }) {
         Background(mode == "idle" || mode == "audio")
 
         // YouTube player (laging nakahanda para mabilis magsimula)
@@ -387,8 +387,17 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 finish("error")
             }
         }
-        // laging buong laki ang WebView (kung 1dp, minsan itim lang ang lumalabas); itinatago lang kapag hindi YouTube
-        AndroidView(factory = { c -> yt.create(c) }, modifier = Modifier.fillMaxSize().alpha(if (mode == "youtube") 1f else 0f))
+        // Ang YouTube WebView ay nasa ILALIM ng buong Compose screen (direkta sa window), hindi sa loob ng Compose.
+        // Sa loob ng Compose, tunog lang ang lumalabas at itim ang video (hindi lumalabas ang video layer ng Chromium).
+        // Kaya transparent ang Compose habang YouTube, at nakikita ang video sa likod.
+        DisposableEffect(Unit) {
+            val act = ctx.findActivity()
+            val root = act?.findViewById<ViewGroup>(android.R.id.content)
+            val w = yt.create(act ?: ctx)
+            root?.addView(w, 0, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            onDispose { try { root?.removeView(w) } catch (e: Exception) { } }
+        }
+        LaunchedEffect(mode) { yt.web?.visibility = if (mode == "youtube") android.view.View.VISIBLE else android.view.View.INVISIBLE }
         if (mode == "youtube" && !ytPlaying) Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 current?.let { Text(it.title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 2) }
@@ -605,4 +614,11 @@ private fun ScoreView(n: Int, singer: String) {
             if (singer.isNotBlank()) Text(singer, color = TEAL, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
     }
+}
+
+/** Ang Activity sa likod ng Compose context. */
+fun android.content.Context.findActivity(): android.app.Activity? {
+    var c: android.content.Context? = this
+    while (c is android.content.ContextWrapper) { if (c is android.app.Activity) return c; c = c.baseContext }
+    return null
 }

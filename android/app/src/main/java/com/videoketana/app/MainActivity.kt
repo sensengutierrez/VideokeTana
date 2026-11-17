@@ -87,7 +87,8 @@ fun App(isTv: Boolean, linkRoom: String?, consumeLink: () -> Unit) {
     val go: (Screen) -> Unit = { screen = it }
     BackHandler(enabled = screen != Screen.Home && !(isTv && screen == Screen.Tv)) { screen = Screen.Home }
 
-    Box(Modifier.fillMaxSize().background(if (Prefs.dark) com.videoketana.app.ui.DarkVk.bg else com.videoketana.app.ui.LightVk.bg)) {
+    // TV screen: transparent para makita ang YouTube video na nasa likod (tingnan ang Tv.kt)
+    Box(Modifier.fillMaxSize().background(if (screen == Screen.Tv) androidx.compose.ui.graphics.Color.Transparent else if (Prefs.dark) com.videoketana.app.ui.DarkVk.bg else com.videoketana.app.ui.LightVk.bg)) {
         // sariling wallpaper sa likod ng lahat (maliban sa TV screen)
         if (Prefs.wallpaper.isNotEmpty() && screen != Screen.Tv) {
             val bmp = androidx.compose.runtime.remember(Prefs.wallpaper, Prefs.wallVersion) {
