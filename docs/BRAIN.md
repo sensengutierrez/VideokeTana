@@ -42,15 +42,21 @@ Ito ang alaala ng project: **ano** ang nagawa, **bakit**, at **paano**. Basahin 
 | Phone bilang mic gamit ang WebRTC (hindi mawawala ang delay; pinakamaliit lang) | Diretso phone sa TV sa iisang Wi-Fi, mababa ang delay (mga 0.1 hanggang 0.3 s). Signaling sa Supabase broadcast. Maaaring kailangan ng TURN server sa ilang router. |
 | Wallpaper sa IndexedDB | Hindi ina-upload; nananatili sa device. Ganito rin ang plano para sa sariling kanta mula sa device. |
 | Sariling wika (Tagalog/English) + `translate="no"` | Ginugulo ng Google Translate ng Chrome ang page (naghihiwalay ang numero, nagpapatong ang text). Kaya hinarang ito, at may sariling English na salin ang app. |
+| Android app = WebView na nagbubukas ng live site | Iisang code para sa app at web, kaya sabay ang updates at iisang room ang gamit ng app at ng phone na naka-browser. Sa APK nadadagdag ang mga kayang gawin ng native (buong screen, TV launcher, permissions). |
+| Kanta sa device = IndexedDB ng TV device, numero 90001+ | Hindi ina-upload (privacy, walang gastos sa storage); ang phone ay nagre-reserve gamit ang numero na ipinapasa ng TV. |
 | Pitch bar na hindi alam kung saan galing ang notes | Iisang component para sa demo (.mel.json) at sa MIDI/KAR sa susunod: ibigay lang ang `[[simula, haba, midi], ...]`. |
 | Pitch ay hindi pinapansin ang octave | Para pantay ang lalaki at babae; tama na kung parehong nota. |
 | Responsive na host (portrait/maliit na screen) | Ginagamit din ang host sa phone/tablet na nakatayo; dati nagpapatong ang mga button sa reserved list at orasan. |
 
 ## Tuwing magre-release
 
-Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `frontend/**/index.html`, at ang bersyon sa footer ng home at sa Settings → Tungkol sa app, para makuha agad ng phone at TV ang bagong bersyon.
+Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `frontend/**/index.html`, ang `VERSION` sa `frontend/sw.js`, at ang bersyon sa footer ng home at sa Settings → Tungkol sa app, para makuha agad ng phone at TV ang bagong bersyon.
 
 ## Mga file na dapat kilalanin
+
+- `android/`: Android app (Kotlin, `MainActivity.kt`). Pansariling signing key sa repo.
+- `frontend/sw.js`, `frontend/manifest.webmanifest`: installable web app. Palitan ang `VERSION` sa sw.js tuwing release.
+- `frontend/assets/js/localsongs.js`, `frontend/mysongs/`: kanta sa device.
 
 - `frontend/assets/js/common.js`: Supabase client, `mediaUrl`, `itemInfo`, mga helper.
 - `frontend/assets/js/prefs.js`: lahat ng setting at ang default nila (`VK_PREFS.get/set`).
@@ -89,11 +95,11 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `fronten
 | 0.9.14 | Kontrol ng tunog mula sa phone (Mic tab): lakas ng mic, echo, reverb, linaw, at bass/treble ng kanta; bass/treble din sa Settings | Hiling ng user; hindi mabago ang echo mula sa phone | `cmd fx` → `VK_PREFS.set` sa TV; `state.fx` pabalik sa phone. Bass/treble: Web Audio (lowshelf 120 Hz, highshelf 4 kHz) sa `aud`/`vid` na may `crossOrigin=anonymous`. Hindi kaya sa YouTube (cross-origin na player) |
 | 0.9.15 | Iisang TV lang bawat room (ang luma ay naghihintay, may "Gamitin dito"); ibinabalik sa pila ang mga naipit sa "Kinakanta"; pwedeng alisin sa phone ang naipit | Naipit ang 3 kanta sa "Kinakanta" at hindi matuloy ang susunod: dalawang TV tab sa iisang room ang parehong kumukuha ng kanta | Broadcast `host` {id, since}; mas bago ang panalo; `standby` ay hindi sumasagot sa cmd/hello/rtc; `startNext` ay nagre-reset ng ibang `playing` na row |
 | 0.9.16 | Nabubura na sa pila ang tapos o na-skip na kanta; pwedeng alisin sa phone ang kinakanta/naipit | Paikot-ikot sa parehong kanta at hindi nawawala kapag inalis. Sa logs: walang DELETE mula sa TV, at ang DELETE ng phone ay may `status=waiting` | `await` sa delete ng `finishCurrent` (ang supabase-js query ay hindi tumatakbo kung hindi hinihintay); tinanggal ang `.eq('status','waiting')` sa pag-alis. Aral: laging `await` ang `sb.from(...)`; hindi ito nahuli ng test stub dahil agad tumatakbo ang stub |
+| 0.10.0 | **VideokeTana** na ang pangalan; **Android app** (phone, tablet, Android TV/Mi TV) na ginagawa ng GitHub Actions at nasa Releases; installable na web app (PWA) para sa iPhone at computer; intro sa home; **Kanta sa device** (90001+, hindi ina-upload, may sukat ng storage) | Hiling ng user: sariling app (hindi parang browser), intro, kanta mula sa device at storage, app at web na nagkakausap, app sa Smart TV | `android/` (WebView app: buong screen, mic/camera permission, file picker, full screen video, LEANBACK launcher, diretso sa host kapag TV); `.github/workflows/android.yml` → `releases/latest/download/VideokeTana.apk`; `manifest.webmanifest` + `sw.js`; `localsongs.js` (IndexedDB) + `mysongs/`; `queue.local_code`/`local_title`; ipinapasa ng TV sa phone ang listahan (`state.local`) |
 
 ## Susunod
 
 - MIDI/KAR player na may libreng SoundFont; ipapasa ang melody track sa `VKPitch.load()`.
-- Sariling kanta mula sa device (IndexedDB, hindi ina-upload).
 - Language/category ng kanta (OPM, English, Korean, Japanese).
 - YouTube search: kailangan ang API key ng user (secret `YT_API_KEY`).
 - Gawin ng user: GitHub → Settings → Pages → Source: GitHub Actions.

@@ -407,10 +407,14 @@ $('pad').addEventListener('click', async e => {
   if (code.length === 5) {
     $('codePrev').innerHTML = '<span class="muted">Hinahanap...</span>';
     const typed = code;
-    const { data } = await sb.from('songs').select('id, code, title, artist').eq('code', parseInt(code, 10)).maybeSingle();
+    let data = null;
+    if (+code >= 90000) {   // kanta sa device ng TV
+      const m = state && state.local && state.local.find(s => s.code === +code);
+      if (m) data = { id: 'local:' + m.code, code: m.code, title: m.title, artist: m.artist, local: true };
+    } else ({ data } = await sb.from('songs').select('id, code, title, artist').eq('code', parseInt(code, 10)).maybeSingle());
     if (typed !== code) return;
     if (window.VKVoice) data ? VKVoice.say(data.title) : VKVoice.act('notfound');
-    if (data) { codeSong = data; songCache.set(data.id, data); $('codePrev').innerHTML = `<b>${esc(data.title)}</b><span class="muted">${esc(data.artist || '')}</span>`; }
+    if (data) { codeSong = data; if (!data.local) songCache.set(data.id, data); $('codePrev').innerHTML = `<b>${esc(data.title)}</b><span class="muted">${esc(data.artist || '')}</span>`; }
     else $('codePrev').innerHTML = '<span class="err">Walang kanta sa numerong ito</span>';
     renderCode();
   } else {
@@ -419,7 +423,8 @@ $('pad').addEventListener('click', async e => {
 });
 $('codeReserve').onclick = async () => {
   if (!codeSong) return;
-  if (await reserve({ song_id: codeSong.id })) {
+  const row = codeSong.local ? { local_code: codeSong.code, local_title: (codeSong.artist ? codeSong.artist + ' - ' : '') + codeSong.title } : { song_id: codeSong.id };
+  if (await reserve(row)) {
     code = ''; codeSong = null; renderCode();
     $('codePrev').innerHTML = '<span class="muted">I-type ang song number</span>';
   }

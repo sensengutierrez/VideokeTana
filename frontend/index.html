@@ -4,22 +4,34 @@
 <meta charset="UTF-8">
 <meta name="google" content="notranslate">
 <meta name="theme-color" content="#15171c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icons/favicon-48.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<script src="assets/js/icons.js?v=0.9.16"></script>
-<script src="assets/js/theme.js?v=0.9.16"></script>
-<script src="assets/js/prefs.js?v=0.9.16"></script>
-<script src="assets/js/i18n.js?v=0.9.16"></script>
-<script src="assets/js/wallpaper.js?v=0.9.16"></script>
-<title>Videoke</title>
+<script src="assets/js/icons.js?v=0.10.0"></script>
+<script src="assets/js/theme.js?v=0.10.0"></script>
+<script src="assets/js/prefs.js?v=0.10.0"></script>
+<script src="assets/js/i18n.js?v=0.10.0"></script>
+<script src="assets/js/wallpaper.js?v=0.10.0"></script>
+<title>VideokeTana</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=0.9.16">
-<link rel="stylesheet" href="assets/css/home.css?v=0.9.16">
+<link rel="stylesheet" href="assets/css/style.css?v=0.10.0">
+<link rel="stylesheet" href="assets/css/home.css?v=0.10.0">
 </head>
 <body>
+<!-- intro: minsan bawat pagbukas; pindutin para laktawan -->
+<div id="intro" class="intro" aria-hidden="true" hidden>
+  <div class="intro-box">
+    <div class="intro-num" translate="no"><span class="dot" id="introNum">88888</span></div>
+    <div class="intro-word" translate="no"><span class="dot" id="introWord"></span></div>
+    <p class="intro-tag">Pumili ng kanta, i-type ang numero, kumanta.</p>
+  </div>
+</div>
 <main class="home">
   <header class="topbar">
-    <span class="wordmark"><i data-i="mic"></i>videoke</span>
+    <span class="wordmark"><i data-i="mic"></i>VideokeTana</span>
     <button class="theme-toggle"></button>
   </header>
 
@@ -57,6 +69,13 @@
     </form>
   </div>
 
+  <section class="getapp" id="getApp" hidden>
+    <img src="assets/icons/icon-192.png" alt="" width="52" height="52">
+    <div class="ga-txt"><b>VideokeTana app</b><small id="gaSub">Sariling app para sa phone, tablet at Smart TV. Walang address bar, buong screen.</small></div>
+    <a class="btn primary" id="gaApk" href="https://github.com/sensengutierrez/VideokeTana/releases/latest/download/VideokeTana.apk" hidden>I-download</a>
+    <button class="btn primary" id="gaInstall" type="button" hidden>I-install</button>
+  </section>
+
   <section class="how" aria-label="Paano gamitin">
     <h2>Paano gamitin</h2>
     <ol>
@@ -68,17 +87,43 @@
 
   <nav class="links">
     <a href="songbook/"><i data-i="book"></i><span><b>Songbook</b><small>Lahat ng kanta at numero</small></span></a>
+    <a href="mysongs/"><i data-i="music"></i><span><b>Kanta sa device</b><small>Sariling file, hindi ina-upload</small></span></a>
     <a href="admin/"><i data-i="sliders"></i><span><b>Library</b><small>Magdagdag ng kanta</small></span></a>
     <a href="settings/"><i data-i="gear"></i><span><b>Settings</b><small>Wika, tema, lyrics, tunog</small></span></a>
   </nav>
 
-  <footer class="foot muted">Videoke 0.9.8, pambahay na videoke</footer>
+  <footer class="foot muted">VideokeTana 0.10, pambahay na videoke</footer>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=0.9.16"></script>
-<script src="assets/js/common.js?v=0.9.16"></script>
+<script src="assets/js/config.js?v=0.10.0"></script>
+<script src="assets/js/common.js?v=0.10.0"></script>
 <script>
+// ----- Intro -----
+(function () {
+  const el = document.getElementById('intro');
+  let seen = false; try { seen = sessionStorage.getItem('vk_intro') === '1'; } catch (e) {}
+  if (seen || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  try { sessionStorage.setItem('vk_intro', '1'); } catch (e) {}
+  el.hidden = false;
+  const num = document.getElementById('introNum'), word = document.getElementById('introWord');
+  let done = false, t0 = performance.now();
+  const end = () => { if (done) return; done = true; el.classList.add('out'); setTimeout(() => el.remove(), 600); };
+  el.addEventListener('click', end);
+  document.addEventListener('keydown', end, { once: true });
+  // parang videoke machine na nagbibilang ng song number, tapos lalabas ang pangalan
+  (function spin(now) {
+    if (done) return;
+    const t = now - t0;
+    if (t < 900) num.textContent = String(10000 + Math.floor(Math.random() * 89999));
+    else if (!el.classList.contains('word')) { num.textContent = '10001'; el.classList.add('word'); }
+    const n = Math.max(0, Math.min(11, Math.floor((t - 900) / 70)));
+    word.textContent = 'VideokeTana'.slice(0, n);
+    if (t > 2600) return end();
+    requestAnimationFrame(spin);
+  })(t0);
+})();
+
 // Display: random na kanta bawat 4 na segundo + listahan ng pinakabago
 (async () => {
   try {
@@ -99,6 +144,23 @@
     if (data.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(show, 4000);
   } catch (e) { /* offline: iwan ang default */ }
 })();
+// ----- Kunin ang app -----
+(function () {
+  const ua = navigator.userAgent, box = document.getElementById('getApp');
+  const inApp = /VideokeApp/.test(ua) || matchMedia('(display-mode: standalone)').matches;
+  if (inApp) return;
+  const android = /Android/i.test(ua), ios = /iPhone|iPad|iPod/i.test(ua);
+  const show = () => { box.hidden = false; };
+  if (android) { document.getElementById('gaApk').hidden = false; show(); }
+  else if (ios) { document.getElementById('gaSub').textContent = 'Sa Safari: pindutin ang Share, tapos "Add to Home Screen".'; show(); }
+  const pwa = () => {
+    if (android) return;   // sa Android, ang APK ang mas buo
+    const b = document.getElementById('gaInstall'); b.hidden = false; show();
+    b.onclick = async () => { const p = window.vkInstallPrompt; if (!p) return; p.prompt(); await p.userChoice.catch(() => {}); window.vkInstallPrompt = null; box.hidden = true; };
+  };
+  if (window.vkInstallPrompt) pwa(); else window.addEventListener('vkinstallable', pwa);
+})();
+
 // Sumali sa room mula rito
 const roomIn = document.getElementById('roomIn');
 roomIn.value = (localStorage.getItem('vk_last_room') || '').toUpperCase();
@@ -110,6 +172,6 @@ document.getElementById('joinForm').addEventListener('submit', e => {
   location.href = 'remote/?room=' + r;
 });
 </script>
-<script src="assets/js/screensaver.js?v=0.9.16"></script>
+<script src="assets/js/screensaver.js?v=0.10.0"></script>
 </body>
 </html>

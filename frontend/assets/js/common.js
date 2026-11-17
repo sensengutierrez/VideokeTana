@@ -62,6 +62,7 @@ async function fetchYouTubeTitle(id) {
 // Display info for a queue row (library song or YouTube)
 function itemInfo(q) {
   if (q.song) return { code: q.song.code, title: q.song.title, artist: q.song.artist || '', source: q.song.kind };
+  if (q.local_code) return { code: q.local_code, title: q.local_title || 'Kanta sa device', artist: '', source: 'local' };
   return { code: 'YT', title: q.yt_title || 'YouTube video', artist: 'YouTube', source: 'youtube' };
 }
 

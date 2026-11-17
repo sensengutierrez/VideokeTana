@@ -210,6 +210,7 @@ function showSplash(item) {
 
 // ================= PLAYBACK =================
 function stopMedia() {
+  if (localUrl) { setTimeout((u => () => URL.revokeObjectURL(u))(localUrl), 1000); localUrl = null; }
   try { vid.pause(); vid.removeAttribute('src'); vid.load(); } catch (e) {}
   try { aud.pause(); aud.removeAttribute('src'); aud.load(); } catch (e) {}
   try { if (ytPlayer && ytReady) ytPlayer.stopVideo(); } catch (e) {}
@@ -217,14 +218,24 @@ function stopMedia() {
   document.body.classList.remove('has-pitch');   // ang stats ay nililinis sa simula ng susunod na kanta (kailangan pa sa score)
 }
 
+let localUrl = null;
 async function playItem(item) {
   const i = itemInfo(item);
   $('nowTag').innerHTML = `<span class="dot">${esc(i.code)}</span><span>${esc(i.title)}</span>${item.singer ? `<span class="nt-s">${esc(item.singer)}</span>` : ''}`;
   applyVolume();
 
+  // kanta na nasa device na ito (IndexedDB)
+  if (item.local_code && !item.song) {
+    const rec = window.VKLocal ? await VKLocal.get(item.local_code).catch(() => null) : null;
+    if (!rec) throw new Error(`Wala sa device na ito ang kantang ${item.local_code}`);
+    if (localUrl) URL.revokeObjectURL(localUrl);
+    localUrl = URL.createObjectURL(rec.blob);
+    item.song = { code: rec.code, title: rec.title, artist: rec.artist, kind: rec.kind, local: true, lrcText: rec.lrc || '' };
+  }
+  const src = s => s.local ? localUrl : mediaUrl(s.media_path);
   if (item.song && item.song.kind === 'video') {
     show('video');
-    vid.src = mediaUrl(item.song.media_path);
+    vid.src = src(item.song);
     await vid.play();
   } else if (item.song && item.song.kind === 'audio') {
     show('audio');
@@ -233,7 +244,8 @@ async function playItem(item) {
     $('aS').textContent = item.singer ? 'Kumakanta: ' + item.singer : '';
     $('lyCur').textContent = ''; lineText = null; $('lyNext').textContent = '';
     lyrics = []; lyricOffset = 0;
-    if (item.song.lrc_path) {
+    if (item.song.lrcText) parseLrc(item.song.lrcText);
+    else if (item.song.lrc_path) {
       try {
         const r = await fetch(mediaUrl(item.song.lrc_path) + '?v=' + Date.now());
         parseLrc(await r.text());
@@ -241,7 +253,7 @@ async function playItem(item) {
     }
     $('noLrc').style.display = lyrics.length ? 'none' : 'block';
     loadMelody(item.song);
-    aud.src = mediaUrl(item.song.media_path);
+    aud.src = src(item.song);
     await aud.play();
   } else if (item.yt_id || (item.song && item.song.kind === 'youtube')) {
     show('youtube');
@@ -305,6 +317,7 @@ const songTime = () => aud.currentTime + lyricOffset + (VK_PREFS.get().lyricDela
 async function loadMelody(song) {
   VKPitch.clear(); document.body.classList.remove('has-pitch');
   if (VK_PREFS.get().pitchBar === 'off') return;
+  if (song.local) return;
   const path = song.mel_path || (song.media_path || '').replace(/\.(mp3|m4a|ogg|wav)$/i, '.mel.json');
   if (!/\.mel\.json$/.test(path)) return;
   try {
@@ -489,10 +502,18 @@ function fxState() {
   return o;
 }
 
+// listahan ng kanta sa device na ito, para makapag-reserve ang phone gamit ang numero
+let localCatalog = [];
+async function refreshLocalCatalog() {
+  try { localCatalog = window.VKLocal ? (await VKLocal.list()).map(s => ({ code: s.code, title: s.title, artist: s.artist })) : []; } catch (e) { localCatalog = []; }
+}
+refreshLocalCatalog();
+window.addEventListener('focus', () => refreshLocalCatalog().then(() => { if (!standby) broadcastState(); }));
+
 function broadcastState() {
   if (!channel) return;
   const now = current ? { ...itemInfo(current), singer: current.singer || '', id: current.id } : null;
-  channel.send({ type: 'broadcast', event: 'state', payload: { now, paused, volume, room: ROOM, fx: fxState() } });
+  channel.send({ type: 'broadcast', event: 'state', payload: { now, paused, volume, room: ROOM, fx: fxState(), local: localCatalog } });
 }
 
 // ================= REALTIME =================
@@ -858,7 +879,11 @@ window.addEventListener('vkprefs', () => {
 // ================= ISANG DEVICE LANG (solo mode) =================
 const HOST_NAME = () => localStorage.getItem('vk_name') || null;
 async function hostReserve(songId, yt) {
-  const row = yt ? { room: ROOM, yt_id: yt.yt_id, yt_title: yt.yt_title, singer: HOST_NAME() } : { room: ROOM, song_id: songId, singer: HOST_NAME() };
+  let row = yt ? { room: ROOM, yt_id: yt.yt_id, yt_title: yt.yt_title, singer: HOST_NAME() } : { room: ROOM, song_id: songId, singer: HOST_NAME() };
+  if (typeof songId === 'string' && songId.startsWith('local:')) {
+    const m = await VKLocal.meta(songId.slice(6));
+    row = { room: ROOM, local_code: m.code, local_title: (m.artist ? m.artist + ' - ' : '') + m.title, singer: HOST_NAME() };
+  }
   const { error } = await sb.from('queue').insert(row);
   if (error) { toast('Hindi na-reserve: ' + error.message, 'err'); return false; }
   if (window.VKVoice) VKVoice.act('reserved');
@@ -867,6 +892,10 @@ async function hostReserve(songId, yt) {
   return true;
 }
 async function findSong(code) {
+  if (+code >= 90000) {                       // kanta sa device na ito
+    const m = window.VKLocal ? await VKLocal.meta(code).catch(() => null) : null;
+    return m ? { id: 'local:' + m.code, code: m.code, title: m.title, artist: m.artist } : null;
+  }
   const { data } = await sb.from('songs').select('id, code, title, artist').eq('code', code).maybeSingle();
   return data;
 }
@@ -930,8 +959,11 @@ async function soloSearch() {
   const q = $('sQ').value.trim().replace(/[,%()*\\]/g, ' ').trim();
   let req = sb.from('songs').select('id, code, title, artist, category').order('title').limit(100);
   if (q) req = /^\d{1,5}$/.test(q) ? req.or(`title.ilike.%${q}%,artist.ilike.%${q}%,code.eq.${parseInt(q, 10)}`) : req.or(`title.ilike.%${q}%,artist.ilike.%${q}%`);
-  const { data } = await req;
-  $('sList').innerHTML = (data || []).map(s => `<div class="s-row"><span class="dot">${s.code}</span><div><b>${esc(s.title)}</b><small>${esc(s.artist || '')}${s.category ? ', ' + esc(s.category) : ''}</small></div><button class="btn small" data-sid="${s.id}">Reserve</button></div>`).join('')
+  const [{ data }, locals] = await Promise.all([req, window.VKLocal ? VKLocal.list().catch(() => []) : []]);
+  const ql = q.toLowerCase();
+  const mine = locals.filter(s => !q || String(s.code).includes(q) || (s.title + ' ' + (s.artist || '')).toLowerCase().includes(ql))
+    .map(s => ({ id: 'local:' + s.code, code: s.code, title: s.title, artist: s.artist, category: 'Kanta sa device na ito' }));
+  $('sList').innerHTML = [...mine, ...(data || [])].map(s => `<div class="s-row"><span class="dot">${s.code}</span><div><b>${esc(s.title)}</b><small>${esc(s.artist || '')}${s.category ? ', ' + esc(s.category) : ''}</small></div><button class="btn small" data-sid="${s.id}">Reserve</button></div>`).join('')
     || '<p class="s-empty">Walang nahanap.</p>';
 }
 $('sList').addEventListener('click', async e => {

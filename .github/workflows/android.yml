@@ -1,5 +1,5 @@
 # Gumagawa ng Android app (APK) para sa phone, tablet at Smart TV, at inilalagay sa GitHub Releases.
-# Download: https://github.com/sensengutierrez/VideokeTana/releases/latest/download/Videoke.apk
+# Download: https://github.com/sensengutierrez/VideokeTana/releases/latest/download/VideokeTana.apk
 name: Build Android app
 on:
   push:
@@ -23,18 +23,18 @@ jobs:
       - name: Build APK
         run: gradle -p android :app:assembleRelease --no-daemon
       - name: Ihanda ang file
-        run: cp android/app/build/outputs/apk/release/app-release.apk Videoke.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk VideokeTana.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Videoke-apk
-          path: Videoke.apk
+          name: VideokeTana-apk
+          path: VideokeTana.apk
       - name: Ilagay sa Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: app-v${{ github.run_number }}
-          name: Videoke app ${{ github.run_number }}
+          name: VideokeTana app ${{ github.run_number }}
           body: |
-            Android app ng Videoke para sa phone, tablet at Smart TV (Android TV / Mi TV).
-            I-download ang Videoke.apk at buksan para i-install.
-          files: Videoke.apk
+            Android app ng VideokeTana para sa phone, tablet at Smart TV (Android TV / Mi TV).
+            I-download ang VideokeTana.apk at buksan para i-install.
+          files: VideokeTana.apk
           make_latest: true

@@ -1,4 +1,4 @@
-# 🎤 Videoke App
+# 🎤 VideokeTana
 
 Pambahay na videoke. Ang TV screen ay laptop, tablet o phone (pwedeng naka-HDMI/Type-C sa TV), ang phone ay remote at mic, at ang song library ay nasa Supabase.
 
@@ -25,9 +25,15 @@ Basahin ang [docs/BRAIN.md](docs/BRAIN.md) para sa mga nagawa, bakit at paano.
 │   │       └── yt-search/    Edge Function para sa YouTube search (secret YT_API_KEY)
 │   └── tools/
 │       └── synth.py          Gumagawa ng demo songs (mp3, lrc, melody para sa pitch bar)
+├── android/                  Android app (phone, tablet, Smart TV); APK sa GitHub Releases
 ├── docs/BRAIN.md             Talaan ng mga nagawa, bakit at paano
 └── .github/workflows/pages.yml  Nagde-deploy ng frontend/ sa GitHub Pages
 ```
+
+## App
+
+Android (phone, tablet, Android TV / Mi TV): https://github.com/sensengutierrez/VideokeTana/releases/latest/download/VideokeTana.apk
+iPhone at computer: buksan ang site at i-install (Add to Home Screen / Install app).
 
 ## Deploy
 

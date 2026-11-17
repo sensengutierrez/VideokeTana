@@ -70,3 +70,15 @@
     if (e.key === KEY) window.dispatchEvent(new CustomEvent('vkprefs', { detail: read() }));
   });
 })();
+
+// ===== App (PWA): i-register ang service worker para mai-install =====
+(function () {
+  const src = (document.currentScript && document.currentScript.src) || '';
+  const root = src.replace(/assets\/js\/prefs\.js.*$/, '');
+  window.VK_ROOT = root;
+  if ('serviceWorker' in navigator && root && location.protocol !== 'file:') {
+    window.addEventListener('load', () => navigator.serviceWorker.register(root + 'sw.js', { scope: root }).catch(() => {}));
+  }
+  // kailangang mahuli agad ang install prompt (bago pa mag-load ang ibang script)
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.vkInstallPrompt = e; window.dispatchEvent(new Event('vkinstallable')); });
+})();
