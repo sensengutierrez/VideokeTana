@@ -43,6 +43,35 @@
     peers.forEach(x => { if (x.presence) x.presence.gain.setTargetAtTime((p.micClarity / 100) * 9, t, 0.05); });
   }
 
+  // Opus na 10 ms bawat packet, may FEC, walang DTX: mas mababang delay sa Wi-Fi
+  function lowLatencySdp(sdp) {
+    const m = sdp.match(/a=rtpmap:(\d+) opus\/48000/i);
+    if (!m) return sdp;
+    const pt = m[1];
+    sdp = sdp.replace(new RegExp('a=fmtp:' + pt + ' ([^\r\n]*)'), (all, p) => {
+      const kv = Object.fromEntries(p.split(';').filter(Boolean).map(x => x.split('=')));
+      Object.assign(kv, { minptime: '10', ptime: '10', useinbandfec: '1', usedtx: '0', stereo: '0', maxplaybackrate: '48000' });
+      return 'a=fmtp:' + pt + ' ' + Object.entries(kv).map(([k, v]) => k + '=' + v).join(';');
+    });
+    if (!/a=ptime:/.test(sdp)) sdp = sdp.replace(/(m=audio[^\r\n]*\r?\n)/, '$1a=ptime:10\r\n');
+    return sdp;
+  }
+  // tinatayang delay mula phone hanggang speaker (ms): network + jitter buffer + audio output
+  async function measure() {
+    for (const p of peers.values()) {
+      try {
+        const st = await p.pc.getStats(); let jb = 0, rtt = 0;
+        st.forEach(r => {
+          if (r.type === 'inbound-rtp' && r.kind === 'audio' && r.jitterBufferEmittedCount) jb = r.jitterBufferDelay / r.jitterBufferEmittedCount;
+          if (r.type === 'candidate-pair' && r.nominated && r.currentRoundTripTime != null) rtt = r.currentRoundTripTime;
+        });
+        const out = ac ? (ac.baseLatency || 0) + (ac.outputLatency || 0) : 0;
+        p.delay = Math.round((jb + rtt / 2 + out + 0.03) * 1000);   // +30 ms para sa mic at encoder ng phone
+      } catch (e) {}
+    }
+  }
+  setInterval(measure, 2000);
+
   function create(id, name) {
     const pc = new RTCPeerConnection({ iceServers: ICE });
     const peer = { id, name: name || 'Mic', pc, iceQ: [], ready: false, level: 0, muted: false };
@@ -111,6 +140,7 @@
         peer = create(msg.from, msg.name);
         await peer.pc.setRemoteDescription(msg.data);
         const ans = await peer.pc.createAnswer();
+        ans.sdp = lowLatencySdp(ans.sdp);
         await peer.pc.setLocalDescription(ans);
         sendFn({ to: msg.from, type: 'answer', data: { type: ans.type, sdp: peer.pc.localDescription.sdp } });
         peer.ready = true;
@@ -193,7 +223,7 @@
     hasLocal: () => peers.has('local'),
     setLocalMuted(m) { const p = peers.get('local'); if (p) { p.muted = !!m; p.gain.gain.value = m ? 0 : 1; onChange(); } },
     count: () => peers.size,
-    list: () => [...peers.values()].map(p => ({ id: p.id, name: p.name, muted: p.muted, live: !!p.an })),
+    list: () => [...peers.values()].map(p => ({ id: p.id, name: p.name, muted: p.muted, live: !!p.an, delay: p.delay || 0 })),
     closeAll() { [...peers.keys()].forEach(close); }
   };
 })();

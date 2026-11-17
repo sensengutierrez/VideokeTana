@@ -640,7 +640,7 @@ VKMicHost.init(
 );
 function renderMics() {
   const list = VKMicHost.list();
-  $('micBar').innerHTML = list.map(m => `<span class="mic-chip ${m.muted ? 'muted' : ''}" data-mic="${esc(m.id)}">${ICON('mic')}<span>${esc(m.name)}</span><i class="lv"><b></b></i></span>`).join('');
+  $('micBar').innerHTML = list.map(m => `<span class="mic-chip ${m.muted ? 'muted' : ''}" data-mic="${esc(m.id)}">${ICON('mic')}<span>${esc(m.name)}</span><i class="lv"><b></b></i><small class="dl" translate="no"></small></span>`).join('');
 }
 // lugar ng linya ng lyrics sa oras na t (para sa score mula sa mic)
 function inLyricLine(t) {
@@ -670,6 +670,10 @@ setInterval(() => {
   lv.forEach(m => {
     const el = document.querySelector(`[data-mic="${CSS.escape(m.id)}"] .lv b`);
     if (el) el.style.width = Math.min(100, m.level * 400) + '%';
+  });
+  VKMicHost.list().forEach(m => {
+    const d = document.querySelector(`[data-mic="${CSS.escape(m.id)}"] .dl`);
+    if (d) d.textContent = m.delay && m.id !== 'local' ? m.delay + ' ms' : '';
   });
   if (!current || !micStat || paused || mode === 'idle' || scoring) return;
   const live = lv.filter(m => m.live && !m.muted);

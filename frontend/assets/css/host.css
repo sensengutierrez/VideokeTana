@@ -309,3 +309,6 @@ body.qr-open #cornerQr { display: flex !important; position: fixed; inset: 0; z-
 body.qr-open #qrSmall { width: min(46vh, 70vw); height: min(46vh, 70vw); padding: 14px; border-radius: 16px; }
 body.qr-open #cornerQr .rc { font-size: min(9vh, 12vw); padding: 0; }
 body.qr-open #cornerQr::after { content: attr(data-hint); color: #b9c0ca; font-size: 15px; }
+
+.mic-chip .dl { font-size: .8em; opacity: .7; font-variant-numeric: tabular-nums; }
+.mic-chip .dl:empty { display: none; }

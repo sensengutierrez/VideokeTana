@@ -39,7 +39,7 @@ Ito ang alaala ng project: **ano** ang nagawa, **bakit**, at **paano**. Basahin 
 | QR + 4 na letrang room code | Mabilis sumali ang phone nang walang account. |
 | Laging-bukas na attract screen sa TV | Gusto ng user na parang totoong videoke: hindi nawawala ang main screen, may background, reserved list sa taas. |
 | Sound effects at eksena ay gawa ng code (Web Audio, canvas) | Walang audio/video file na may karapatan; magaan; walang kinopya. |
-| Phone bilang mic gamit ang WebRTC | Diretso phone sa TV sa iisang Wi-Fi, mababa ang delay (mga 0.1 hanggang 0.3 s). Signaling sa Supabase broadcast. Maaaring kailangan ng TURN server sa ilang router. |
+| Phone bilang mic gamit ang WebRTC (hindi mawawala ang delay; pinakamaliit lang) | Diretso phone sa TV sa iisang Wi-Fi, mababa ang delay (mga 0.1 hanggang 0.3 s). Signaling sa Supabase broadcast. Maaaring kailangan ng TURN server sa ilang router. |
 | Wallpaper sa IndexedDB | Hindi ina-upload; nananatili sa device. Ganito rin ang plano para sa sariling kanta mula sa device. |
 | Sariling wika (Tagalog/English) + `translate="no"` | Ginugulo ng Google Translate ng Chrome ang page (naghihiwalay ang numero, nagpapatong ang text). Kaya hinarang ito, at may sariling English na salin ang app. |
 | Pitch bar na hindi alam kung saan galing ang notes | Iisang component para sa demo (.mel.json) at sa MIDI/KAR sa susunod: ibigay lang ang `[[simula, haba, midi], ...]`. |
@@ -84,6 +84,7 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `fronten
 | 0.9.8 | `frontend/` + `backend/` na folders, GitHub Actions deploy, bagong home page (panel na parang videoke machine, Sumali sa room gamit ang code, Paano gamitin), source ng Edge Function at synth.py sa repo | Hiling ng user: maayos na front end/back end at magandang index | `git mv`; `.github/workflows/pages.yml`; redirect na `index.html`/`404.html` habang branch deploy pa |
 | 0.9.9 | Live na puntos ng tono sa pitch bar (% at tama/lahat), FAAH! sa soundboard | Ikinumpara ng user sa ibang videoke app | `pitch.js` draw; sariling sigaw gamit ang boses ng device (hindi kinopyang audio) |
 | 0.9.10 | QR habang may kanta: button na may room code sa hanay ng mga button sa itaas; pindutin para lumaki sa gitna (sarado pagkalipas ng 20 s, o pindutin/Esc) | Nakaka-distract ang QR sa kanang itaas habang kumakanta | `#btnQr`, `body.qr-open` ay ginagawang malaking overlay ang `#cornerQr` |
+| 0.9.11 | Mas mababang delay ng phone mic + sukat ng delay sa mic chip ng TV | Hiling ng user na walang delay | Opus 10 ms packet, FEC, walang DTX (SDP ng sagot ng TV); priority high sa sender; jitter buffer 0 (dati na); `getStats` para sa delay. Sa test sa iisang computer: mga 115 ms |
 
 ## Susunod
 

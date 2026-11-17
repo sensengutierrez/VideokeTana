@@ -27,7 +27,7 @@
     set('asking');
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: opts.clean, noiseSuppression: opts.clean, autoGainControl: true, channelCount: 1 },
+        audio: { echoCancellation: opts.clean, noiseSuppression: opts.clean, autoGainControl: true, channelCount: 1, latency: 0 },
         video: false
       });
     } catch (e) {
@@ -46,7 +46,14 @@
     if (pc) { try { pc.close(); } catch (e) {} }
     set('connecting');
     pc = new RTCPeerConnection({ iceServers: ICE });
-    stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    stream.getTracks().forEach(t => {
+      const sender = pc.addTrack(t, stream);
+      try {   // unahin ang boses sa Wi-Fi
+        const prm = sender.getParameters(); prm.encodings = prm.encodings && prm.encodings.length ? prm.encodings : [{}];
+        prm.encodings.forEach(e => { e.priority = 'high'; e.networkPriority = 'high'; e.maxBitrate = 64000; });
+        sender.setParameters(prm).catch(() => {});
+      } catch (e) {}
+    });
     pc.onicecandidate = e => { if (e.candidate) send({ to: 'host', from: myId, type: 'ice', data: e.candidate.toJSON ? e.candidate.toJSON() : e.candidate }); };
     pc.onconnectionstatechange = () => {
       if (!pc) return;
