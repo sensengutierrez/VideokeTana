@@ -19,7 +19,7 @@
     el.classList.add('out'); setTimeout(() => el.remove(), 600);
   };
   function playSound() {
-    VKSfx.setVolume(Math.min(1, (p.sfxVolume == null ? 80 : p.sfxVolume) / 100));
+    VKSfx.setVolume(Math.min(1, (p.sfxVolume == null ? 80 : p.sfxVolume) / 80));
     VKSfx.play('intro'); withSound = true;
   }
   function start() {
