@@ -12,7 +12,9 @@ object Prefs {
 
     // nakikita ng Compose: kapag nagbago, nagre-render ulit ang screen
     var lang by mutableStateOf("fil")
+        private set
     var dark by mutableStateOf(true)
+        private set
 
     fun init(c: Context) {
         sp = c.getSharedPreferences("videoketana", Context.MODE_PRIVATE)
@@ -20,8 +22,8 @@ object Prefs {
         dark = sp.getBoolean("dark", true)
     }
 
-    fun setLang(v: String) { lang = v; sp.edit().putString("lang", v).apply() }
-    fun setDark(v: Boolean) { dark = v; sp.edit().putBoolean("dark", v).apply() }
+    fun changeLang(v: String) { lang = v; sp.edit().putString("lang", v).apply() }
+    fun changeDark(v: Boolean) { dark = v; sp.edit().putBoolean("dark", v).apply() }
 
     var name: String
         get() = sp.getString("name", "") ?: ""

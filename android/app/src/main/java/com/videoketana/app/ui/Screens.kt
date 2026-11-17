@@ -146,10 +146,10 @@ fun SettingsScreen(go: (Screen) -> Unit) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Group(tr("Itsura", "Appearance")) {
                 SetRow(tr("Wika", "Language"), tr("Ang wika ng buong app.", "The language of the whole app.")) {
-                    Seg(listOf("fil" to "Tagalog", "en" to "English"), Prefs.lang) { Prefs.setLang(it) }
+                    Seg(listOf("fil" to "Tagalog", "en" to "English"), Prefs.lang) { Prefs.changeLang(it) }
                 }
                 SetRow(tr("Tema", "Theme"), "") {
-                    Seg(listOf("dark" to tr("Dark", "Dark"), "light" to tr("Light", "Light")), if (Prefs.dark) "dark" else "light") { Prefs.setDark(it == "dark") }
+                    Seg(listOf("dark" to tr("Dark", "Dark"), "light" to tr("Light", "Light")), if (Prefs.dark) "dark" else "light") { Prefs.changeDark(it == "dark") }
                 }
             }
             Group(tr("Ikaw", "You")) {
