@@ -188,7 +188,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         startNext()
     }
 
-    startNext = suspend {
+    startNext = suspend sn@{
         if (!busy && current == null && !standby) {
             busy = true
             val next = queue.firstOrNull { it.status == "playing" } ?: queue.firstOrNull { it.status == "waiting" }
@@ -202,7 +202,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 if (current?.id == next.id) {
                     val s = next.song
                     when {
-                        next.localCode != null && s == null -> { Toast.makeText(ctx, tr("Wala sa device na ito ang kantang ${next.localCode}", "Song ${next.localCode} is not on this device"), Toast.LENGTH_LONG).show(); busy = false; finish("error"); return@suspend }
+                        next.localCode != null && s == null -> { Toast.makeText(ctx, tr("Wala sa device na ito ang kantang ${next.localCode}", "Song ${next.localCode} is not on this device"), Toast.LENGTH_LONG).show(); busy = false; finish("error"); return@sn }
                         s != null && (s.kind == "audio" || s.kind == "video") -> {
                             mode = s.kind
                             lyrics = emptyList(); lyricOffset = 0.0
@@ -216,7 +216,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                         else -> {
                             mode = "youtube"
                             val id = next.ytId ?: s?.ytId
-                            if (id == null) { busy = false; finish("error"); return@suspend }
+                            if (id == null) { busy = false; finish("error"); return@sn }
                             yt?.let { it.loadVideo(id, 0f); applyVolume() }
                         }
                     }
@@ -415,8 +415,9 @@ private fun Clock(height: androidx.compose.ui.unit.Dp) {
 @Composable
 private fun Idle(room: String, qr: ImageBitmap) {
     BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 36.dp)) {
-        val wide = maxWidth > maxHeight
-        val clockH = if (wide) (maxHeight * 0.2f) else (maxWidth * 0.16f)
+        val mw = maxWidth; val mh = maxHeight
+        val wide = mw > mh
+        val clockH = if (wide) (mh * 0.2f) else (mw * 0.16f)
         val content: @Composable () -> Unit = {
             Column {
                 Text(tr("Pumili ng kanta", "Pick a song"), color = INK, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
@@ -429,7 +430,7 @@ private fun Idle(room: String, qr: ImageBitmap) {
         }
         val card: @Composable () -> Unit = {
             Column(Modifier.clip(RoundedCornerShape(22.dp)).background(Color.White).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(qr, null, Modifier.size(if (wide) maxHeight * 0.38f else maxWidth * 0.5f))
+                Image(qr, null, Modifier.size(if (wide) mh * 0.38f else mw * 0.5f))
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Room ", color = Color(0xFF171A20), fontWeight = FontWeight.Bold, fontSize = 18.sp)
