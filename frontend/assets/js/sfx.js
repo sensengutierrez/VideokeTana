@@ -129,6 +129,53 @@
     },
     omg(t) { noise(t, 0.35, 0.12, 'bandpass', 1500, 1.5); setTimeout(() => say('Oh my God!', 0.85, 1.2), 250); },
     wownaman(t) { setTimeout(() => say('Wow naman!', 0.9, 1.3), 30); FX.wow(t + 0.6); },
+
+    // ---- intro na pang-sine: tik-tik ng numero, riser, boom, blip bawat letra, chord na kumikislap ----
+    intro(t) {
+      // tik-tik ng umiikot na numero (0 hanggang 0.9 s), pabilis at pataas
+      for (let i = 0; i < 18; i++) {
+        const at = t + 0.9 * Math.pow(i / 18, 0.85);
+        noise(at, 0.03, 0.10, 'bandpass', 2400 + i * 140, 6);
+      }
+      // riser papunta sa paglapag
+      const rs = ac.createBufferSource(); if (!NOISE) NOISE = noiseBuf(2); rs.buffer = NOISE; rs.loop = true;
+      const rf = ac.createBiquadFilter(); rf.type = 'bandpass'; rf.Q.value = 2;
+      rf.frequency.setValueAtTime(300, t); rf.frequency.exponentialRampToValueAtTime(5000, t + 0.9);
+      const rg = ac.createGain(); rg.gain.setValueAtTime(0.0001, t); rg.gain.exponentialRampToValueAtTime(0.16, t + 0.85); rg.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+      rs.connect(rf).connect(rg).connect(bus); rs.start(t); rs.stop(t + 1.05);
+      // BOOM paglapag ng 10001
+      const L = t + 0.9;
+      const b = ac.createOscillator(), bg = ac.createGain();
+      b.type = 'sine'; b.frequency.setValueAtTime(110, L); b.frequency.exponentialRampToValueAtTime(38, L + 1.1);
+      bg.gain.setValueAtTime(0.0001, L); bg.gain.exponentialRampToValueAtTime(0.9, L + 0.015); bg.gain.exponentialRampToValueAtTime(0.0001, L + 1.6);
+      b.connect(bg).connect(bus); b.start(L); b.stop(L + 1.7);
+      noise(L, 0.5, 0.25, 'lowpass', 900, 0.7);
+      // reverb para sa laki ng tunog
+      const conv = ac.createConvolver(), len = Math.floor(ac.sampleRate * 2.6), ir = ac.createBuffer(2, len, ac.sampleRate);
+      for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+      conv.buffer = ir; const wet = ac.createGain(); wet.gain.value = 0.55; conv.connect(wet).connect(bus);
+      // blip bawat letra ng "VideokeTana" (pentatonic, pataas)
+      const scale = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.5, 1568, 1760, 2093];
+      scale.forEach((f, i) => {
+        const at = t + 0.9 + i * 0.07, o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'triangle'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(0.09, at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
+        o.connect(g); g.connect(bus); g.connect(conv); o.start(at); o.stop(at + 0.25);
+      });
+      // chord na lumalaki (Cmaj9) pagkabuo ng pangalan
+      const C = t + 1.65;
+      [130.81, 196, 261.63, 329.63, 392, 493.88, 587.33].forEach((f, i) => {
+        for (const det of [-6, 6]) {
+          const o = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter();
+          o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det;
+          lp.type = 'lowpass'; lp.frequency.setValueAtTime(400, C); lp.frequency.exponentialRampToValueAtTime(3200, C + 0.9); lp.frequency.exponentialRampToValueAtTime(900, C + 2.6);
+          g.gain.setValueAtTime(0.0001, C); g.gain.exponentialRampToValueAtTime(0.022 - i * 0.002, C + 0.35); g.gain.exponentialRampToValueAtTime(0.0001, C + 2.8);
+          o.connect(lp).connect(g); g.connect(bus); g.connect(conv); o.start(C); o.stop(C + 2.9);
+        }
+      });
+      // kislap sa itaas
+      [2637, 3136, 3951].forEach((f, i) => tone(C + 0.1 + i * 0.09, f, 0.5, 0.025, 'sine'));
+    },
     faah(t) { noise(t, 0.6, 0.18, 'bandpass', 900, 0.8); setTimeout(() => say('Faaaah!', 0.7, 0.8), 30); },
     galing(t) { setTimeout(() => say('Ang galing!', 0.95, 1.1), 30); FX.applause(t + 0.6, { size: 0.6 }); }
   };
@@ -141,6 +188,8 @@
   window.VKSfx = {
     NAMES: ['applause', 'cheers', 'drumroll', 'ding', 'horn', 'boom', 'wow', 'aww', 'boo', 'laugh', 'angry', 'omg', 'faah', 'wownaman', 'galing'],
     unlock() { ctx(); if (window.speechSynthesis) speechSynthesis.getVoices(); },
+    // tunog na pwede bang tumugtog ngayon (pinipigilan ng browser hangga't walang pindot)
+    async ready() { const c = ctx(); if (!c) return false; try { await Promise.race([c.resume(), new Promise(r => setTimeout(r, 120))]); } catch (e) {} return c.state === 'running'; },
     setVolume(v) { vol = Math.max(0, Math.min(1, v)); if (master) master.gain.value = vol * 0.9; },
     stop() { if (ac) stop(); },
     // o.solo: ihinto muna ang tumutunog bago tumugtog ang bago

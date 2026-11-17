@@ -9,16 +9,16 @@
 <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<script src="../assets/js/icons.js?v=0.11.0"></script>
-<script src="../assets/js/theme.js?v=0.11.0"></script>
-<script src="../assets/js/prefs.js?v=0.11.0"></script>
-<script src="../assets/js/i18n.js?v=0.11.0"></script>
-<script src="../assets/js/wallpaper.js?v=0.11.0"></script>
+<script src="../assets/js/icons.js?v=0.11.2"></script>
+<script src="../assets/js/theme.js?v=0.11.2"></script>
+<script src="../assets/js/prefs.js?v=0.11.2"></script>
+<script src="../assets/js/i18n.js?v=0.11.2"></script>
+<script src="../assets/js/wallpaper.js?v=0.11.2"></script>
 <title>VideokeTana</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/style.css?v=0.11.0">
-<link rel="stylesheet" href="../assets/css/home.css?v=0.11.0">
+<link rel="stylesheet" href="../assets/css/style.css?v=0.11.2">
+<link rel="stylesheet" href="../assets/css/home.css?v=0.11.2">
 </head>
 <body>
 <!-- intro: minsan bawat pagbukas; pindutin para laktawan -->
@@ -96,34 +96,9 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../assets/js/config.js?v=0.11.0"></script>
-<script src="../assets/js/common.js?v=0.11.0"></script>
+<script src="../assets/js/config.js?v=0.11.2"></script>
+<script src="../assets/js/common.js?v=0.11.2"></script>
 <script>
-// ----- Intro -----
-(function () {
-  const el = document.getElementById('intro');
-  let seen = false; try { seen = sessionStorage.getItem('vk_intro') === '1'; } catch (e) {}
-  if (seen || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  try { sessionStorage.setItem('vk_intro', '1'); } catch (e) {}
-  el.hidden = false;
-  const num = document.getElementById('introNum'), word = document.getElementById('introWord');
-  let done = false, t0 = performance.now();
-  const end = () => { if (done) return; done = true; el.classList.add('out'); setTimeout(() => el.remove(), 600); };
-  el.addEventListener('click', end);
-  document.addEventListener('keydown', end, { once: true });
-  // parang videoke machine na nagbibilang ng song number, tapos lalabas ang pangalan
-  (function spin(now) {
-    if (done) return;
-    const t = now - t0;
-    if (t < 900) num.textContent = String(10000 + Math.floor(Math.random() * 89999));
-    else if (!el.classList.contains('word')) { num.textContent = '10001'; el.classList.add('word'); }
-    const n = Math.max(0, Math.min(11, Math.floor((t - 900) / 70)));
-    word.textContent = 'VideokeTana'.slice(0, n);
-    if (t > 2600) return end();
-    requestAnimationFrame(spin);
-  })(t0);
-})();
-
 // Display: random na kanta bawat 4 na segundo + listahan ng pinakabago
 (async () => {
   try {
@@ -172,6 +147,8 @@ document.getElementById('joinForm').addEventListener('submit', e => {
   location.href = '../remote/?room=' + r;
 });
 </script>
-<script src="../assets/js/screensaver.js?v=0.11.0"></script>
+<script src="../assets/js/screensaver.js?v=0.11.2"></script>
+<script src="../assets/js/sfx.js?v=0.11.2"></script>
+<script src="../assets/js/intro.js?v=0.11.2"></script>
 </body>
 </html>

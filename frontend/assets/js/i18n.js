@@ -212,6 +212,7 @@
     'Numero, hanap, pila at soundboard': 'Number, search, queue and soundboard', 'Phone na mic': 'Phone as mic', 'Echo, reverb, sabay-sabay na kanta': 'Echo, reverb, sing together',
     'Sariling kanta': 'Your own songs', 'Nasa device mo lang, hindi ina-upload': 'Only on your device, never uploaded', 'App': 'App',
     'VideokeTana: pambahay na videoke': 'VideokeTana: home videoke',
+    'Pindutin para may tunog': 'Tap for sound',
     'Boses kapag pumindot': 'Voice when tapping', 'Binabasa nang malakas ang numerong pinipindot at ang mga aksyon, gaya ng "Naka-reserve".': 'Reads out the numbers you press and actions like "Reserved".',
     'Soundboard': 'Soundboard', 'Hindi magpapatong-patong': 'No overlap', 'Isang tunog lang sa isang pagkakataon.': 'Only one sound at a time.',
 
