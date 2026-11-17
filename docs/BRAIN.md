@@ -18,7 +18,8 @@ Ito ang alaala ng project: **ano** ang nagawa, **bakit**, at **paano**. Basahin 
 
 | Bahagi | Saan | Ginagawa |
 |---|---|---|
-| Home | `frontend/index.html` | Display ng kanta, Buksan sa TV, Sumali sa room (room code), paano gamitin |
+| Landing | `frontend/index.html` | Unang page: pakilala, Simulan, Sumali, Kunin ang app |
+| App home | `frontend/app/index.html` | Display ng kanta, Buksan sa TV, Sumali sa room (room code), Kunin ang app, paano gamitin |
 | Host (TV) | `frontend/host/`, `host.js` | Laging bukas na screen ng videoke: background, orasan, QR, reserved list, tumutugtog ng kanta, lyrics, pitch bar, score, sound effects, mic mixer |
 | Remote (phone) | `frontend/remote/`, `remote.js` | Sumasali gamit ang QR/room code; numero, hanap, YouTube, pila, mic, soundboard |
 | Songbook | `frontend/songbook/` | Listahan ng lahat ng kanta at numero |
@@ -96,6 +97,7 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `fronten
 | 0.9.15 | Iisang TV lang bawat room (ang luma ay naghihintay, may "Gamitin dito"); ibinabalik sa pila ang mga naipit sa "Kinakanta"; pwedeng alisin sa phone ang naipit | Naipit ang 3 kanta sa "Kinakanta" at hindi matuloy ang susunod: dalawang TV tab sa iisang room ang parehong kumukuha ng kanta | Broadcast `host` {id, since}; mas bago ang panalo; `standby` ay hindi sumasagot sa cmd/hello/rtc; `startNext` ay nagre-reset ng ibang `playing` na row |
 | 0.9.16 | Nabubura na sa pila ang tapos o na-skip na kanta; pwedeng alisin sa phone ang kinakanta/naipit | Paikot-ikot sa parehong kanta at hindi nawawala kapag inalis. Sa logs: walang DELETE mula sa TV, at ang DELETE ng phone ay may `status=waiting` | `await` sa delete ng `finishCurrent` (ang supabase-js query ay hindi tumatakbo kung hindi hinihintay); tinanggal ang `.eq('status','waiting')` sa pag-alis. Aral: laging `await` ang `sb.from(...)`; hindi ito nahuli ng test stub dahil agad tumatakbo ang stub |
 | 0.10.0 | **VideokeTana** na ang pangalan; **Android app** (phone, tablet, Android TV/Mi TV) na ginagawa ng GitHub Actions at nasa Releases; installable na web app (PWA) para sa iPhone at computer; intro sa home; **Kanta sa device** (90001+, hindi ina-upload, may sukat ng storage) | Hiling ng user: sariling app (hindi parang browser), intro, kanta mula sa device at storage, app at web na nagkakausap, app sa Smart TV | `android/` (WebView app: buong screen, mic/camera permission, file picker, full screen video, LEANBACK launcher, diretso sa host kapag TV); `.github/workflows/android.yml` → `releases/latest/download/VideokeTana.apk`; `manifest.webmanifest` + `sw.js`; `localsongs.js` (IndexedDB) + `mysongs/`; `queue.local_code`/`local_title`; ipinapasa ng TV sa phone ang listahan (`state.local`) |
+| 0.11.0 | Bagong main page (landing) sa `/`: hero, larawan ng TV at phone, mga feature, wika; ang dating home ay nasa `/app/`; ang VideokeTana na logo ay papunta sa landing; ang ✕ ng bawat page ay pabalik sa `/app/` | Hiling ng user: main index na parang TigoMeNote, habang nananatili ang dating home | `frontend/index.html` + `landing.css`; `app/index.html`; manifest `start_url` at Android app ay diretso sa `/app/` (TV: `/host/`) |
 
 ## Susunod
 

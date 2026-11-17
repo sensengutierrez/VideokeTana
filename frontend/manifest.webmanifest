@@ -3,7 +3,7 @@
   "short_name": "VideokeTana",
   "description": "Pambahay na videoke: TV screen, phone bilang remote at mic, sariling kanta at YouTube.",
   "id": "./",
-  "start_url": "./?source=app",
+  "start_url": "./app/?source=app",
   "scope": "./",
   "display": "standalone",
   "background_color": "#15171c",

@@ -186,3 +186,4 @@ body.glass .display { background-color: color-mix(in srgb, var(--display-bg) var
 body.glass .group, body.glass .menu, body.glass .panel, body.glass .book { box-shadow: none; }
 body.has-wall { min-height: 100vh; }
 html:has(body.has-wall) { background: #0b0d11; }
+a.wordmark { color: inherit; text-decoration: none; }

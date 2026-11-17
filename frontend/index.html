@@ -3,24 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#15171c">
+<meta name="description" content="VideokeTana: pambahay na videoke. TV screen sa laptop, tablet o Smart TV, phone bilang remote at mic, sariling kanta at YouTube.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icons/favicon-48.png">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<script src="assets/js/icons.js?v=0.10.0"></script>
-<script src="assets/js/theme.js?v=0.10.0"></script>
-<script src="assets/js/prefs.js?v=0.10.0"></script>
-<script src="assets/js/i18n.js?v=0.10.0"></script>
-<script src="assets/js/wallpaper.js?v=0.10.0"></script>
-<title>VideokeTana</title>
+<script src="assets/js/icons.js?v=0.11.0"></script>
+<script src="assets/js/theme.js?v=0.11.0"></script>
+<script src="assets/js/prefs.js?v=0.11.0"></script>
+<script src="assets/js/i18n.js?v=0.11.0"></script>
+<title>VideokeTana: pambahay na videoke</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/style.css?v=0.10.0">
-<link rel="stylesheet" href="assets/css/home.css?v=0.10.0">
+<link rel="stylesheet" href="assets/css/style.css?v=0.11.0">
+<link rel="stylesheet" href="assets/css/landing.css?v=0.11.0">
 </head>
-<body>
+<body class="landing">
 <!-- intro: minsan bawat pagbukas; pindutin para laktawan -->
 <div id="intro" class="intro" aria-hidden="true" hidden>
   <div class="intro-box">
@@ -29,149 +29,104 @@
     <p class="intro-tag">Pumili ng kanta, i-type ang numero, kumanta.</p>
   </div>
 </div>
-<main class="home">
-  <header class="topbar">
-    <span class="wordmark"><i data-i="mic"></i>VideokeTana</span>
+
+<header class="nav">
+  <a class="wordmark" href="./"><i data-i="mic"></i>VideokeTana</a>
+  <nav class="nav-r">
+    <button class="pill" id="langBtn" type="button"><i data-i="globe"></i><span id="langLbl" data-notr>Tagalog</span></button>
     <button class="theme-toggle"></button>
-  </header>
+    <a class="pill hide-sm" id="getAppTop" href="https://github.com/sensengutierrez/VideokeTana/releases/latest/download/VideokeTana.apk"><i data-i="phone"></i>Kunin ang app</a>
+    <a class="btn primary" href="app/">Buksan ang app</a>
+  </nav>
+</header>
 
-  <!-- panel na parang harap ng videoke machine -->
-  <section class="display panel" aria-label="Song number display">
-    <div class="panel-now">
-      <div class="panel-row"><span>Song no.</span><span id="libCount"></span></div>
-      <div translate="no" class="dot hero-num" id="heroNum"><span class="ghost">88888</span></div>
-      <div class="hero-title" id="heroTitle" data-notr>Pumili ng kanta, i-type ang numero, kumanta.</div>
+<main class="hero">
+  <div class="hero-txt">
+    <span class="tag"><b></b>Kanta, remote at mic</span>
+    <h1>Videoke sa bahay,<br><span>kahit saang screen.</span></h1>
+    <p class="lead">Gawing videoke ang TV, laptop o tablet. Phone ang remote at mic ng bawat isa. Sariling kanta, YouTube, lyrics at score, walang bayad.</p>
+    <div class="ctas">
+      <a class="btn primary big" href="app/">Simulan ang kantahan <i data-i="chevron"></i></a>
+      <a class="btn big" href="remote/">Sumali sa room</a>
     </div>
-    <div class="panel-new">
-      <div class="panel-row"><span>Bago sa library</span><a href="songbook/" class="panel-link">Songbook</a></div>
-      <ol class="new-list" id="newList">
-        <li><span class="dot">-----</span><span class="nl-t muted">Wala pang kanta</span></li>
-      </ol>
+    <div class="trust">
+      <span><i data-i="lock"></i>Walang account para kumanta</span>
+      <span><i data-i="phone"></i>Web, Android app at Smart TV</span>
     </div>
-  </section>
-
-  <div class="actions">
-    <a href="host/" class="act act-tv">
-      <span class="act-ic"><i data-i="tv"></i></span>
-      <b>Buksan sa TV</b>
-      <small>Sa laptop, tablet o phone na tutugtog ng kanta. Pwede ring dito na mismo kumanta kahit iisang device lang.</small>
-      <span class="act-go">Simulan <i data-i="chevron"></i></span>
-    </a>
-    <form class="act act-join" id="joinForm" autocomplete="off">
-      <span class="act-ic"><i data-i="phone"></i></span>
-      <b>Sumali sa room</b>
-      <small>I-type ang room code na nasa TV para gawing remote at mic ang phone.</small>
-      <div class="join-row">
-        <input translate="no" class="field room-in" id="roomIn" maxlength="4" placeholder="ABCD" aria-label="Room code" autocapitalize="characters" spellcheck="false">
-        <button class="btn primary" type="submit">Sumali</button>
-      </div>
-      <a href="remote/" class="join-scan"><i data-i="qr"></i>I-scan ang QR code</a>
-    </form>
   </div>
 
-  <section class="getapp" id="getApp" hidden>
-    <img src="assets/icons/icon-192.png" alt="" width="52" height="52">
-    <div class="ga-txt"><b>VideokeTana app</b><small id="gaSub">Sariling app para sa phone, tablet at Smart TV. Walang address bar, buong screen.</small></div>
-    <a class="btn primary" id="gaApk" href="https://github.com/sensengutierrez/VideokeTana/releases/latest/download/VideokeTana.apk" hidden>I-download</a>
-    <button class="btn primary" id="gaInstall" type="button" hidden>I-install</button>
-  </section>
-
-  <section class="how" aria-label="Paano gamitin">
-    <h2>Paano gamitin</h2>
-    <ol>
-      <li><b>Buksan sa TV</b><span>Sa device na nakakonekta sa TV, pindutin ang Simulan.</span></li>
-      <li><b>I-scan ang QR</b><span>Sa phone, i-scan ang QR o i-type ang room code.</span></li>
-      <li><b>I-type ang numero</b><span>Hanapin ang kanta sa Songbook, i-type ang numero, Reserve.</span></li>
-    </ol>
-  </section>
-
-  <nav class="links">
-    <a href="songbook/"><i data-i="book"></i><span><b>Songbook</b><small>Lahat ng kanta at numero</small></span></a>
-    <a href="mysongs/"><i data-i="music"></i><span><b>Kanta sa device</b><small>Sariling file, hindi ina-upload</small></span></a>
-    <a href="admin/"><i data-i="sliders"></i><span><b>Library</b><small>Magdagdag ng kanta</small></span></a>
-    <a href="settings/"><i data-i="gear"></i><span><b>Settings</b><small>Wika, tema, lyrics, tunog</small></span></a>
-  </nav>
-
-  <footer class="foot muted">VideokeTana 0.10, pambahay na videoke</footer>
+  <!-- larawan: TV na may lyrics at phone na remote (gawa sa CSS) -->
+  <div class="stage" aria-hidden="true">
+    <div class="tv">
+      <div class="tv-screen">
+        <div class="tv-top"><span class="dot">10002</span><span>Jingle Bells</span><span class="tv-clock dot">8:30</span></div>
+        <div class="tv-pitch"><i style="left:6%;top:56%;width:14%"></i><i style="left:22%;top:40%;width:10%"></i><i class="on" style="left:34%;top:48%;width:16%"></i><i style="left:52%;top:30%;width:12%"></i><i style="left:66%;top:44%;width:22%"></i><b style="left:30%"></b></div>
+        <div class="tv-ly"><span class="sung">Jingle bells,</span> jingle bells</div>
+        <div class="tv-ly next">Jingle all the way</div>
+      </div>
+      <div class="tv-foot"></div>
+    </div>
+    <div class="phone">
+      <div class="ph-screen">
+        <div class="ph-code dot">10002</div>
+        <div class="ph-keys"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>⌫</span><span>0</span><span>✓</span></div>
+        <div class="ph-btn">Reserve</div>
+      </div>
+    </div>
+    <div class="chip c1"><i data-i="star"></i>Score <b>96</b></div>
+    <div class="chip c2"><i data-i="check"></i>Naka-reserve</div>
+  </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js?v=0.10.0"></script>
-<script src="assets/js/common.js?v=0.10.0"></script>
+<section class="feats">
+  <a class="feat" href="host/"><span class="f-ic"><i data-i="tv"></i></span><span><b>TV screen</b><small>Lyrics, pitch bar, score at background</small></span></a>
+  <a class="feat" href="remote/"><span class="f-ic"><i data-i="phone"></i></span><span><b>Phone na remote</b><small>Numero, hanap, pila at soundboard</small></span></a>
+  <a class="feat" href="remote/"><span class="f-ic"><i data-i="mic"></i></span><span><b>Phone na mic</b><small>Echo, reverb, sabay-sabay na kanta</small></span></a>
+  <a class="feat" href="mysongs/"><span class="f-ic"><i data-i="music"></i></span><span><b>Sariling kanta</b><small>Nasa device mo lang, hindi ina-upload</small></span></a>
+</section>
+
+<footer class="foot">
+  <a href="app/">App</a><a href="songbook/">Songbook</a><a href="mysongs/">Kanta sa device</a><a href="settings/">Settings</a><a href="admin/">Library</a><button type="button" id="langFoot" data-notr>English</button>
+  <span>© 2026 VideokeTana</span>
+</footer>
+
 <script>
-// ----- Intro -----
+// ----- Intro (kapareho ng nasa app; minsan lang bawat pagbukas) -----
 (function () {
   const el = document.getElementById('intro');
   let seen = false; try { seen = sessionStorage.getItem('vk_intro') === '1'; } catch (e) {}
-  if (seen || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (seen || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.remove(); return; }
   try { sessionStorage.setItem('vk_intro', '1'); } catch (e) {}
   el.hidden = false;
   const num = document.getElementById('introNum'), word = document.getElementById('introWord');
-  let done = false, t0 = performance.now();
+  let done = false; const t0 = performance.now();
   const end = () => { if (done) return; done = true; el.classList.add('out'); setTimeout(() => el.remove(), 600); };
   el.addEventListener('click', end);
   document.addEventListener('keydown', end, { once: true });
-  // parang videoke machine na nagbibilang ng song number, tapos lalabas ang pangalan
   (function spin(now) {
     if (done) return;
     const t = now - t0;
     if (t < 900) num.textContent = String(10000 + Math.floor(Math.random() * 89999));
     else if (!el.classList.contains('word')) { num.textContent = '10001'; el.classList.add('word'); }
-    const n = Math.max(0, Math.min(11, Math.floor((t - 900) / 70)));
-    word.textContent = 'VideokeTana'.slice(0, n);
+    word.textContent = 'VideokeTana'.slice(0, Math.max(0, Math.min(11, Math.floor((t - 900) / 70))));
     if (t > 2600) return end();
     requestAnimationFrame(spin);
   })(t0);
 })();
-
-// Display: random na kanta bawat 4 na segundo + listahan ng pinakabago
-(async () => {
-  try {
-    const { data, count } = await sb.from('songs').select('code, title, artist, created_at', { count: 'exact' }).limit(300);
-    if (!data || !data.length) return;
-    const n = count ?? data.length;
-    document.getElementById('libCount').textContent = n + (n === 1 ? ' kanta' : ' na kanta');
-    const newest = [...data].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '') || b.code - a.code).slice(0, 4);
-    document.getElementById('newList').innerHTML = newest.map(s =>
-      `<li><span class="dot">${s.code}</span><span class="nl-t" data-notr>${esc(s.title)}</span></li>`).join('');
-    let i = Math.floor(Math.random() * data.length);
-    const show = () => {
-      const s = data[i % data.length]; i++;
-      document.getElementById('heroNum').textContent = s.code;
-      document.getElementById('heroTitle').textContent = s.title + (s.artist ? ', ' + s.artist : '');
-    };
-    show();
-    if (data.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(show, 4000);
-  } catch (e) { /* offline: iwan ang default */ }
-})();
-// ----- Kunin ang app -----
+// ----- Wika -----
+document.getElementById('langLbl').textContent = window.vkLang === 'en' ? 'English' : 'Tagalog';
+const swapLang = () => { VK_PREFS.set('lang', window.vkLang === 'en' ? 'fil' : 'en'); location.reload(); };
+document.getElementById('langBtn').onclick = swapLang;
+document.getElementById('langFoot').textContent = window.vkLang === 'en' ? 'Tagalog' : 'English';
+document.getElementById('langFoot').onclick = swapLang;
+// ----- Kunin ang app: APK sa Android; install sa iba; wala kapag nasa app na -----
 (function () {
-  const ua = navigator.userAgent, box = document.getElementById('getApp');
-  const inApp = /VideokeApp/.test(ua) || matchMedia('(display-mode: standalone)').matches;
-  if (inApp) return;
-  const android = /Android/i.test(ua), ios = /iPhone|iPad|iPod/i.test(ua);
-  const show = () => { box.hidden = false; };
-  if (android) { document.getElementById('gaApk').hidden = false; show(); }
-  else if (ios) { document.getElementById('gaSub').textContent = 'Sa Safari: pindutin ang Share, tapos "Add to Home Screen".'; show(); }
-  const pwa = () => {
-    if (android) return;   // sa Android, ang APK ang mas buo
-    const b = document.getElementById('gaInstall'); b.hidden = false; show();
-    b.onclick = async () => { const p = window.vkInstallPrompt; if (!p) return; p.prompt(); await p.userChoice.catch(() => {}); window.vkInstallPrompt = null; box.hidden = true; };
-  };
-  if (window.vkInstallPrompt) pwa(); else window.addEventListener('vkinstallable', pwa);
+  const a = document.getElementById('getAppTop'), ua = navigator.userAgent;
+  if (/VideokeApp/.test(ua) || matchMedia('(display-mode: standalone)').matches) { location.replace('app/'); return; }
+  if (/Android/i.test(ua)) return;
+  const pwa = () => { a.removeAttribute('href'); a.onclick = async e => { e.preventDefault(); const p = window.vkInstallPrompt; if (p) { p.prompt(); await p.userChoice.catch(() => {}); } }; };
+  if (window.vkInstallPrompt) pwa(); else { window.addEventListener('vkinstallable', pwa); a.href = 'app/'; }
 })();
-
-// Sumali sa room mula rito
-const roomIn = document.getElementById('roomIn');
-roomIn.value = (localStorage.getItem('vk_last_room') || '').toUpperCase();
-roomIn.addEventListener('input', () => { roomIn.value = roomIn.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
-document.getElementById('joinForm').addEventListener('submit', e => {
-  e.preventDefault();
-  const r = cleanRoom(roomIn.value);
-  if (!ROOM_RE.test(r)) { toast('Ilagay ang 4 na letra o numero na room code na nasa TV', 'err'); roomIn.focus(); return; }
-  location.href = 'remote/?room=' + r;
-});
 </script>
-<script src="assets/js/screensaver.js?v=0.10.0"></script>
 </body>
 </html>

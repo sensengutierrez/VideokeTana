@@ -609,7 +609,7 @@ if (!isTouch) $('btnRotate').hidden = true;
 $('btnClose').onclick = () => {
   if (!confirm('Isara ang host? Hihinto ang kanta.')) return;
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-  location.href = '../';
+  location.href = '../app/';
 };
 // Ipakita ang mga button kapag gumalaw ang mouse o tinap ang screen, tapos itago ulit
 let uiTimer = null;

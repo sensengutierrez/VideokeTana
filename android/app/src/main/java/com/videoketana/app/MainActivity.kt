@@ -192,7 +192,7 @@ class MainActivity : ComponentActivity() {
     private fun startUrl(i: Intent?): String {
         val data = i?.data
         if (data != null && data.host == SITE_HOST) return data.toString()
-        return if (isTv) SITE + "host/" else SITE
+        return if (isTv) SITE + "host/" else SITE + "app/"
     }
 
     override fun onNewIntent(intent: Intent) {
