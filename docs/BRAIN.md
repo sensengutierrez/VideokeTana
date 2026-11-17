@@ -43,7 +43,7 @@ Ito ang alaala ng project: **ano** ang nagawa, **bakit**, at **paano**. Basahin 
 | Phone bilang mic gamit ang WebRTC (hindi mawawala ang delay; pinakamaliit lang) | Diretso phone sa TV sa iisang Wi-Fi, mababa ang delay (mga 0.1 hanggang 0.3 s). Signaling sa Supabase broadcast. Maaaring kailangan ng TURN server sa ilang router. |
 | Wallpaper sa IndexedDB | Hindi ina-upload; nananatili sa device. Ganito rin ang plano para sa sariling kanta mula sa device. |
 | Sariling wika (Tagalog/English) + `translate="no"` | Ginugulo ng Google Translate ng Chrome ang page (naghihiwalay ang numero, nagpapatong ang text). Kaya hinarang ito, at may sariling English na salin ang app. |
-| Android app = WebView na nagbubukas ng live site | Iisang code para sa app at web, kaya sabay ang updates at iisang room ang gamit ng app at ng phone na naka-browser. Sa APK nadadagdag ang mga kayang gawin ng native (buong screen, TV launcher, permissions). |
+| Android app = native (Kotlin + Compose) mula app 2.0 (dati: WebView) | Gusto ng user ng totoong app na may sariling design. Iisa pa rin ang Supabase at ang protocol (broadcast cmd/state/hello/score/host, table queue), kaya nagkakausap ang app at ang web. Nag-a-update ang app nang sarili mula sa GitHub Releases (tag app-vN > versionCode). |
 | Kanta sa device = IndexedDB ng TV device, numero 90001+ | Hindi ina-upload (privacy, walang gastos sa storage); ang phone ay nagre-reserve gamit ang numero na ipinapasa ng TV. |
 | Pitch bar na hindi alam kung saan galing ang notes | Iisang component para sa demo (.mel.json) at sa MIDI/KAR sa susunod: ibigay lang ang `[[simula, haba, midi], ...]`. |
 | Pitch ay hindi pinapansin ang octave | Para pantay ang lalaki at babae; tama na kung parehong nota. |
@@ -55,7 +55,7 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `fronten
 
 ## Mga file na dapat kilalanin
 
-- `android/`: Android app (Kotlin, `MainActivity.kt`). Pansariling signing key sa repo.
+- `android/`: native Android app (Kotlin + Compose). Pansariling signing key sa repo. Walang Android SDK sa workspace: GitHub Actions ang nagko-compile; tingnan ang logs ng run kapag may error.
 - `frontend/sw.js`, `frontend/manifest.webmanifest`: installable web app. Palitan ang `VERSION` sa sw.js tuwing release.
 - `frontend/assets/js/localsongs.js`, `frontend/mysongs/`: kanta sa device.
 
@@ -100,8 +100,11 @@ Palitan ang `?v=` ng lahat ng `assets/css` at `assets/js` link sa bawat `fronten
 | 0.11.0 | Bagong main page (landing) sa `/`: hero, larawan ng TV at phone, mga feature, wika; ang dating home ay nasa `/app/`; ang VideokeTana na logo ay papunta sa landing; ang ✕ ng bawat page ay pabalik sa `/app/` | Hiling ng user: main index na parang TigoMeNote, habang nananatili ang dating home | `frontend/index.html` + `landing.css`; `app/index.html`; manifest `start_url` at Android app ay diretso sa `/app/` (TV: `/host/`) |
 | 0.11.1 | Bagong address: **videoketana.tigomenote.com** (Cloudflare CNAME → GitHub Pages) | Hiling ng user: sub-domain ng tigomenote | `CNAME`; pinayagan ang bagong origin sa `yt-search` (naka-deploy na); Android app at offline page sa bagong address (tinatanggap pa rin ang lumang link); `404.html` gumagana rin sa custom domain |
 | 0.11.2 | Tunog na pang-sine sa intro: tik-tik ng umiikot na numero, riser, boom sa paglapag ng 10001, blip bawat letra ng VideokeTana, chord na may reverb | Hiling ng user (0.11.3: nilakasan nang mga 2.5x, may compressor at limiter, may suntok sa gitnang tunog para marinig sa speaker ng phone) | `VKSfx.play('intro')` (Web Audio, walang file); `intro.js` na pinagsasaluhan ng landing at app. Kapag hinarang ng browser ang tunog: "Pindutin para may tunog" na umuulit sa intro na may tunog. Sa Android app, kusang may tunog. Sumusunod sa Settings → Tunog |
+| app 2.0 | **Native Android app** (Kotlin + Jetpack Compose), hindi na web sa loob: intro na may sariling tunog (laging tumutunog), home, sumali gamit QR/code, remote (numero, hanap, YouTube, pila, soundboard), songbook, settings (wika, tema, tunog), TV screen (ExoPlayer para sa sariling kanta, YouTube player, LRC lyrics, QR, score, iisang TV bawat room), **sariling update** mula sa GitHub Releases | Hiling ng user: totoong app na may sariling design at ma-update | `android/app/src/main/java/com/videoketana/app/`: `data/` (Supa REST, Realtime Phoenix websocket, Prefs, Updater), `ui/` (Theme na may DotText LCD, Synth na AudioTrack, Intro, Home, Screens), `remote/`, `tv/`. Kapareho ng web ang usapan sa Supabase. Wala pa: mic sa loob ng app (bukas muna sa web), kanta sa device |
 
 ## Susunod
+
+- Native app: mic sa phone (WebRTC) at pagtanggap ng mic sa TV screen ng app; pitch bar at background videos sa TV ng app.
 
 - MIDI/KAR player na may libreng SoundFont; ipapasa ang melody track sa `VKPitch.load()`.
 - Language/category ng kanta (OPM, English, Korean, Japanese).
