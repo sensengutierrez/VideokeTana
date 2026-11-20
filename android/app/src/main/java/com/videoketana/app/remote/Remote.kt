@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -182,11 +183,11 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
     }) {
         Column(Modifier.fillMaxSize()) {
             // ---------- itaas ----------
-            Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                VkIconButton("x", { go(Screen.Home) }, size = 42.dp)
+            Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                VkIconButton("x", { go(Screen.Home) }, size = 38.dp)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("VideokeTana", color = c.text, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                    Text("VideokeTana", color = c.text, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(if (connected && hostSeen) c.accent else if (connected) c.muted else c.danger))
                         Spacer(Modifier.width(6.dp))
@@ -194,11 +195,11 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
                             color = c.muted, fontSize = 12.sp)
                     }
                 }
-                Box(Modifier.clip(RoundedCornerShape(50)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 9.dp)) {
-                    DotText(room, 13.dp, ghost = false)
+                Box(Modifier.clip(RoundedCornerShape(50)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 7.dp)) {
+                    DotText(room, 11.dp, ghost = false)
                 }
                 Spacer(Modifier.width(8.dp))
-                VkIconButton("sliders", { sheet = "sound" }, size = 42.dp, primary = true)
+                VkIconButton("sliders", { sheet = "sound" }, size = 38.dp, primary = true)
             }
 
             // ---------- kinakanta ngayon ----------
@@ -255,59 +256,54 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
 }
 
 /** Card ng kinakanta ngayon: numero, title, kumakanta, mga kontrol, mabilis na tunog. */
+/** Kompaktong "mini player": kinakanta, kontrol, at mabilis na sound effects. Key/Tempo ay nasa "Tunog sa TV". */
 @Composable
 private fun NowCard(now: NowState?, hostSeen: Boolean, room: String, onCmd: (String) -> Unit, onSfx: (String) -> Unit, onBoard: () -> Unit, onFx: (String, Int) -> Unit) {
     val c = vk
-    val shape = RoundedCornerShape(24.dp)
-    Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp).clip(shape)
-        .background(Brush.linearGradient(listOf(c.display, c.display.copy(alpha = 0.92f), c.accent.copy(alpha = 0.18f))))
-        .border(1.dp, c.displayLine, shape)) {
-        Column(Modifier.padding(16.dp)) {
+    val shape = RoundedCornerShape(22.dp)
+    Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp).clip(shape)
+        .background(Brush.verticalGradient(listOf(Color(0xF2181C24), Color(0xF20E1116))))
+        .border(1.dp, Brush.linearGradient(listOf(c.accent.copy(alpha = 0.55f), Color.White.copy(alpha = 0.06f), c.accent.copy(alpha = 0.15f))), shape)) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
             val n = now
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (n?.title.isNullOrEmpty()) tr("Handa na", "Ready") else if (n!!.paused) tr("Naka-pause", "Paused") else tr("Kinakanta ngayon", "Now singing"),
-                    color = c.displayMuted, fontSize = 12.sp, modifier = Modifier.weight(1f))
-                n?.let { Text(tr("Lakas ${it.volume}", "Volume ${it.volume}"), color = c.displayMuted, fontSize = 12.sp) }
-            }
-            Spacer(Modifier.height(6.dp))
-            if (n == null || n.title.isEmpty()) {
-                Text(if (hostSeen) tr("Walang tumutugtog", "Nothing is playing") else tr("Hinahanap ang TV sa room $room", "Looking for the TV in room $room"),
-                    color = c.displayText, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                Text(if (hostSeen) tr("Mag-reserve ng kanta sa ibaba.", "Reserve a song below.") else tr("Buksan ang TV screen at pindutin ang Simulan.", "Open the TV screen and press Start."),
-                    color = c.displayMuted, fontSize = 14.sp)
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = 0.35f)).padding(horizontal = 8.dp, vertical = 6.dp)) {
-                        if (n.source == "youtube") VkIcon("yt", 18.dp, c.danger) else DotText(n.code, 14.dp, ghost = false)
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(n.title, color = c.displayText, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(listOfNotNull(n.artist.ifBlank { null }, n.singer.ifBlank { null }?.let { tr("kumakanta: $it", "singing: $it") }).joinToString(" · "),
-                            color = c.displayMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // numero o YouTube
+                Box(Modifier.size(width = 74.dp, height = 40.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF07090C)).border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center) {
+                    when {
+                        n == null || n.title.isEmpty() -> DotText("-----", 13.dp, ghost = true)
+                        n.source == "youtube" -> VkIcon("yt", 20.dp, c.danger)
+                        else -> DotText(n.code, 13.dp, ghost = false)
                     }
                 }
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                VkIconButton("restart", { onCmd("restart") }, size = 46.dp)
-                VkIconButton("voldown", { onCmd("voldown") }, size = 46.dp)
-                VkButton("", icon = if (now?.paused == true) "play" else "pause", primary = true, onClick = { onCmd("toggle") }, modifier = Modifier.weight(1f), height = 52.dp, shape = RoundedCornerShape(50))
-                VkIconButton("volup", { onCmd("volup") }, size = 46.dp)
-                VkIconButton("next", { onCmd("skip") }, size = 46.dp)
-            }
-            // Key at Tempo (kapag ang TV ay ang app at sariling kanta ang tumutugtog)
-            val fx = now?.fx
-            val isYt = now?.source == "youtube"
-            if (fx != null && fx.has("musicKey") && (!isYt || fx.optBoolean("ytTempo"))) {
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (!isYt) Stepper("Key", fx.optInt("musicKey"), -6, 6, Modifier.weight(1f)) { onFx("musicKey", it) }
-                    Stepper("Tempo", fx.optInt("musicTempo"), -5, 5, Modifier.weight(1f)) { onFx("musicTempo", it) }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    if (n == null || n.title.isEmpty()) {
+                        Text(if (hostSeen) tr("Walang tumutugtog", "Nothing playing") else tr("Hinahanap ang TV…", "Looking for the TV…"),
+                            color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(if (hostSeen) tr("Pumili ng kanta sa ibaba", "Pick a song below") else tr("Room $room", "Room $room"), color = Color(0xFF8C93A1), fontSize = 12.sp, maxLines = 1)
+                    } else {
+                        Text(n.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(listOfNotNull(if (n.paused) tr("Naka-pause", "Paused") else null, n.artist.ifBlank { null }, n.singer.ifBlank { null }).joinToString(" · "),
+                            color = if (n.paused) c.accent else Color(0xFF8C93A1), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
+                n?.let { Text("${it.volume}", color = Color(0xFF8C93A1), fontSize = 12.sp, fontWeight = FontWeight.Bold) }
             }
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                CtlBtn("restart") { onCmd("restart") }
+                CtlBtn("voldown") { onCmd("voldown") }
+                Box(Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(50))
+                    .background(Brush.horizontalGradient(listOf(c.accent, c.accent.copy(alpha = 0.75f))))
+                    .clickable { onCmd("toggle") }, contentAlignment = Alignment.Center) {
+                    VkIcon(if (now?.paused == true) "play" else "pause", 22.dp, c.accentInk)
+                }
+                CtlBtn("volup") { onCmd("volup") }
+                CtlBtn("next") { onCmd("skip") }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SfxChip(tr("Palakpak", "Applause"), Modifier.weight(1f)) { onSfx("applause") }
                 SfxChip("Cheers", Modifier.weight(1f)) { onSfx("cheers") }
                 SfxChip("Wow", Modifier.weight(1f)) { onSfx("wow") }
@@ -315,6 +311,12 @@ private fun NowCard(now: NowState?, hostSeen: Boolean, room: String, onCmd: (Str
             }
         }
     }
+}
+
+@Composable
+private fun CtlBtn(icon: String, onClick: () -> Unit) {
+    Box(Modifier.size(44.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.06f)).border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(50))
+        .clickable(onClick = onClick), contentAlignment = Alignment.Center) { VkIcon(icon, 20.dp, Color.White) }
 }
 
 /** − halaga + (para sa Key at Tempo). */
@@ -428,8 +430,9 @@ private fun FxSlider(label: String, key: String, min: Int, max: Int, fx: JSONObj
 @Composable
 private fun SfxChip(label: String, modifier: Modifier, on: Boolean = false, onClick: () -> Unit) {
     val c = vk
-    Box(modifier.height(40.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, if (on) c.displayFg else c.displayLine, RoundedCornerShape(12.dp)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-        Text(label, color = if (on) c.displayFg else c.displayText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+    Box(modifier.height(34.dp).clip(RoundedCornerShape(50)).background(if (on) c.accent.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.04f))
+        .border(1.dp, if (on) c.accent.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f), RoundedCornerShape(50)).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Text(label, color = if (on) c.accent else Color(0xFFE6E8EB), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -472,38 +475,72 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, onReserve: (Song
         if (Prefs.keyBeep) Synth.play("beep", 0.4f)
         code = when (k) { "clr" -> ""; "del" -> code.dropLast(1); else -> if (code.length < 5) code + k else code }
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Panel(Modifier.fillMaxWidth(), display = true) {
-            Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                DotText(code.padEnd(5, ' '), 44.dp)
-                Spacer(Modifier.height(8.dp))
+    // walang scroll: ang mga key ang lumiliit/lumalaki ayon sa natitirang espasyo
+    Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // LCD
+        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFF05070A), Color(0xFF0B0F14))))
+            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), c.accent.copy(alpha = 0.25f))), RoundedCornerShape(18.dp))
+            .padding(vertical = 10.dp, horizontal = 14.dp)) {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                DotText(code.padEnd(5, ' '), 34.dp)
+                Spacer(Modifier.height(4.dp))
                 Text(when {
                     code.length < 5 -> tr("I-type ang song number", "Type the song number")
-                    searching -> tr("Hinahanap...", "Searching...")
-                    found != null -> found!!.title + if (found!!.artist.isNotBlank()) ", " + found!!.artist else ""
+                    searching -> tr("Hinahanap…", "Searching…")
+                    found != null -> found!!.title + if (found!!.artist.isNotBlank()) " · " + found!!.artist else ""
                     else -> tr("Walang kanta sa numerong ito", "No song with this number")
-                }, color = if (code.length == 5 && found == null && !searching) c.danger else c.displayText, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }, color = when { code.length == 5 && found == null && !searching -> c.danger; found != null -> c.accent; else -> Color(0xFF8C93A1) },
+                    fontSize = 14.sp, fontWeight = if (found != null) FontWeight.Bold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("clr", "0", "del")).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEach { k ->
-                    Box(Modifier.weight(1f).height(56.dp).clip(RoundedCornerShape(14.dp)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(14.dp)).clickable { key(k) }, contentAlignment = Alignment.Center) {
-                        when (k) {
-                            "del" -> VkIcon("del", 24.dp)
-                            "clr" -> Text("C", color = c.muted, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                            else -> Text(k, color = c.text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
+        // keypad
+        Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("clr", "0", "del")).forEach { row ->
+                Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { k -> KeyPad(k, Modifier.weight(1f).fillMaxHeight()) { key(k) } }
                 }
             }
         }
-        VkButton(if (found != null) tr("Reserve ${found!!.code}", "Reserve ${found!!.code}") else tr("Reserve", "Reserve"), primary = true, enabled = found != null, icon = "plus",
-            onClick = { found?.let { onReserve(it, isLocal, "reserve"); code = "" } }, modifier = Modifier.fillMaxWidth(), height = 54.dp)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            VkButton(tr("Unahin", "Next up"), icon = "up", enabled = found != null, onClick = { found?.let { onReserve(it, isLocal, "top"); code = "" } }, modifier = Modifier.weight(1f))
-            VkButton(tr("Patugtugin ngayon", "Play now"), icon = "play", enabled = found != null, onClick = { found?.let { onReserve(it, isLocal, "now"); code = "" } }, modifier = Modifier.weight(1f))
+        // aksyon: Unahin | Reserve | Patugtugin ngayon
+        val ok = found != null
+        Row(Modifier.fillMaxWidth().height(54.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            ActBtn("up", tr("Unahin", "Next"), ok, Modifier.width(72.dp).fillMaxHeight()) { found?.let { onReserve(it, isLocal, "top"); code = "" } }
+            Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(18.dp))
+                .background(if (ok) Brush.horizontalGradient(listOf(c.accent, Color(0xFF3FC7B6))) else Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.White.copy(alpha = 0.04f))))
+                .clickable(enabled = ok) { found?.let { onReserve(it, isLocal, "reserve"); code = "" } }, contentAlignment = Alignment.Center) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    VkIcon("plus", 20.dp, if (ok) c.accentInk else Color(0xFF6B7280)); Spacer(Modifier.width(8.dp))
+                    Text(if (ok) "Reserve ${found!!.code}" else "Reserve", color = if (ok) c.accentInk else Color(0xFF6B7280), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+            ActBtn("play", tr("Ngayon", "Now"), ok, Modifier.width(72.dp).fillMaxHeight()) { found?.let { onReserve(it, isLocal, "now"); code = "" } }
         }
+    }
+}
+
+@Composable
+private fun KeyPad(k: String, modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(18.dp)
+    Box(modifier.clip(shape)
+        .background(Brush.verticalGradient(listOf(Color(0xE6232832), Color(0xE6161A21))))
+        .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.02f))), shape)
+        .clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        when (k) {
+            "del" -> VkIcon("del", 24.dp, Color(0xFFFF8A8A))
+            "clr" -> Text("C", color = Color(0xFF8C93A1), fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+            else -> Text(k, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
+        }
+    }
+}
+
+@Composable
+private fun ActBtn(icon: String, label: String, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val col = if (enabled) Color.White else Color(0xFF5B6270)
+    Column(modifier.clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.05f)).border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+        .clickable(enabled = enabled, onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        VkIcon(icon, 18.dp, col)
+        Text(label, color = col, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 

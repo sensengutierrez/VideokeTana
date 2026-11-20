@@ -44,6 +44,7 @@ object VkIcons {
         "del" to listOf("M8.5 5.5H20v13H8.5L3 12Z", "m11.5 9.5 5 5M16.5 9.5l-5 5"),
         "lock" to listOf("M6.5 10.5H17.5A2.0 2.0 0 0 1 19.5 12.5V18.5A2.0 2.0 0 0 1 17.5 20.5H6.5A2.0 2.0 0 0 1 4.5 18.5V12.5A2.0 2.0 0 0 1 6.5 10.5Z", "M8 10.5V7.5a4 4 0 0 1 8 0v3"),
         "rotate" to listOf("M5.0 8.0H15.0A2.0 2.0 0 0 1 17.0 10.0V16.0A2.0 2.0 0 0 1 15.0 18.0H5.0A2.0 2.0 0 0 1 3.0 16.0V10.0A2.0 2.0 0 0 1 5.0 8.0Z", "M13 3a8 8 0 0 1 8 8", "M21 7v4h-4"),
+        "sliders" to listOf("M4 7h9M19 7h1M4 17h3M13 17h7", "M14.0 7.0A2.5 2.5 0 1 0 19.0 7.0A2.5 2.5 0 1 0 14.0 7.0Z", "M7.0 17.0A2.5 2.5 0 1 0 12.0 17.0A2.5 2.5 0 1 0 7.0 17.0Z"),
         "fullscreen" to listOf("M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"),
     )
     private val cache = HashMap<String, ImageVector>()
