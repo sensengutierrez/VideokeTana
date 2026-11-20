@@ -40,6 +40,7 @@
           else if (hi === 0x80 || (hi === 0x90 && d2 === 0)) ev.push({ tick, k: 'off', ch, n: d1 });
           else if (hi === 0xc0) ev.push({ tick, k: 'prog', ch, v: d1 });
           else if (hi === 0xb0) ev.push({ tick, k: 'cc', ch, c: d1, v: d2 });
+          else if (hi === 0xe0) ev.push({ tick, k: 'bend', ch, v: ((d2 << 7) | d1) - 8192 });
         }
       }
       p = end;
@@ -50,19 +51,24 @@
 
     // mga nota na may haba; sustain pedal (CC64) ay nagpapahaba
     const prog = new Array(16).fill(0), vol = new Array(16).fill(100), expr = new Array(16).fill(127), sus = new Array(16).fill(false);
+    const bank = new Array(16).fill(0), pan = new Array(16).fill(64), bend = new Array(16).fill(0);
     const open = {}, held = new Array(16).fill(null).map(() => []);
     const notes = [];
     const close = (o, t) => { o.dur = Math.max(0.05, t - o.t); };
     for (const e of ev) {
       const t = sec(e.tick);
       if (e.k === 'prog') prog[e.ch] = e.v;
+      else if (e.k === 'bend') bend[e.ch] = e.v / 8192 * 2;
       else if (e.k === 'cc') {
         if (e.c === 7) vol[e.ch] = e.v; else if (e.c === 11) expr[e.ch] = e.v;
+        else if (e.c === 0) bank[e.ch] = e.v; else if (e.c === 10) pan[e.ch] = e.v;
+        else if (e.c === 121) { vol[e.ch] = 100; expr[e.ch] = 127; bend[e.ch] = 0; }
         else if (e.c === 64) { const on = e.v >= 64; if (sus[e.ch] && !on) { held[e.ch].forEach(o => close(o, t)); held[e.ch] = []; } sus[e.ch] = on; }
       } else if (e.k === 'on') {
         const key = e.ch * 128 + e.n;
         if (open[key]) { close(open[key], t); }
-        const o = { t, dur: 0.5, midi: e.n, ch: e.ch, vel: e.v / 127 * (vol[e.ch] / 127) * (expr[e.ch] / 127), prog: prog[e.ch] };
+        const o = { t, dur: 0.5, midi: e.n, ch: e.ch, vel: e.v / 127 * (vol[e.ch] / 127) * (expr[e.ch] / 127), prog: prog[e.ch],
+          v: e.v, cg: (vol[e.ch] / 127) * (expr[e.ch] / 127), bank: bank[e.ch], pan: pan[e.ch], bend: bend[e.ch] };
         notes.push(o); open[key] = o;
       } else if (e.k === 'off') {
         const key = e.ch * 128 + e.n; const o = open[key];

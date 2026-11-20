@@ -151,8 +151,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var rt by remember { mutableStateOf<Realtime?>(null) }
 
     val midi = remember { MidiPlayer() }
+    val synth = remember { SynthPlayer() }
     val recv = remember { com.videoketana.app.data.FileSend.Receiver(java.io.File(ctx.cacheDir, "fromphone")) }
-    fun applyVolume() { exo.volume = volume / 100f; yt.volume(volume); midi.volume(volume) }
+    fun applyVolume() { exo.volume = volume / 100f; yt.volume(volume); midi.volume(volume); synth.volume(volume) }
 
     // ---- tunog ng kanta: bass, treble (Equalizer ng Android), key at tempo (ExoPlayer) ----
     var bass by remember { mutableIntStateOf(Prefs.int("musicBass")) }
@@ -171,6 +172,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         }
     }
     fun applyFx() {
+        synth.key = key
         if (mode == "youtube") {
             yt.rate(1f + tempo * 0.05f)
             try { geq?.let { g -> setBands(g); g.enabled = bass != 0 || treble != 0 } } catch (e: Throwable) { }
@@ -196,8 +198,22 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
     fun stopMedia() {
         exo.stop(); exo.clearMediaItems()
-        yt.stop(); midi.stop()
+        yt.stop(); midi.stop(); synth.clear()
         lyrics = emptyList(); view = LyricView("", 0f, "", 0)
+    }
+
+    /** MIDI: SoundFont (GeneralUser GS o sariling .sf2) nang real-time; kung pumalya, ang synth ng Android. */
+    suspend fun playMidi(bytes: ByteArray, file: java.io.File): List<LyricLine> {
+        if (Prefs.str("midiEngine") != "basic") try {
+            val sf = SoundFonts.get(ctx) { st -> if (st == "download") scope.launch { Toast.makeText(ctx, tr("Dina-download ang SoundFont (isang beses lang, mga 32 MB)...", "Downloading the SoundFont (one time, about 32 MB)..."), Toast.LENGTH_LONG).show() } }
+            val song = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { parseMidiSong(bytes) }
+            synth.key = key
+            synth.start(sf, song, volume)
+            return song.lyrics
+        } catch (e: Throwable) {
+            Toast.makeText(ctx, tr("Hindi magamit ang SoundFont, simpleng tunog muna: ", "SoundFont unavailable, basic sound for now: ") + e.message, Toast.LENGTH_LONG).show()
+        }
+        return midi.loadFile(file, volume)
     }
 
     suspend fun loadQueue() {
@@ -255,7 +271,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                             lyrics = emptyList(); lyricOffset = 0.0; key = 0; tempo = 0
                             try {
                                 when {
-                                    ls.isMidi -> { mode = "audio"; lyrics = midi.loadFile(ls.file, volume) }
+                                    ls.isMidi -> { mode = "audio"; lyrics = playMidi(ls.file.readBytes(), ls.file) }
                                     else -> {
                                         mode = if (ls.isVideo) "video" else "audio"
                                         ls.lrc?.let { f -> val (l, off) = parseLrc(try { f.readText() } catch (e: Exception) { "" }); lyrics = l; lyricOffset = off }
@@ -282,7 +298,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                             }
                             lyrics = emptyList(); lyricOffset = 0.0; key = 0; tempo = 0
                             try {
-                                if (isMidiPath(f.name)) { mode = "audio"; lyrics = midi.loadFile(f, volume) }
+                                if (isMidiPath(f.name)) { mode = "audio"; lyrics = playMidi(f.readBytes(), f) }
                                 else {
                                     mode = if (f.extension.lowercase() in com.videoketana.app.data.LocalLib.VIDEO) "video" else "audio"
                                     exo.setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(f))); exo.prepare(); applyVolume(); applyFx(); exo.play()
@@ -297,7 +313,11 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                             mode = "audio"
                             lyrics = emptyList(); lyricOffset = 0.0; key = 0; tempo = 0
                             try {
-                                val inner = midi.load(ctx, Supa.mediaUrl(s.mediaPath)!!, volume)
+                                val bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                    Supa.http.newCall(okhttp3.Request.Builder().url(Supa.mediaUrl(s.mediaPath)!!).build()).execute().use { r -> if (!r.isSuccessful) throw RuntimeException("HTTP ${r.code}"); r.body!!.bytes() }
+                                }
+                                val tmp = java.io.File(ctx.cacheDir, "song.mid").also { it.writeBytes(bytes) }
+                                val inner = playMidi(bytes, tmp)
                                 lyrics = if (s.lrcPath != null) parseLrc(try { Supa.text(Supa.mediaUrl(s.lrcPath)!!) } catch (e: Exception) { "" }).also { lyricOffset = it.second }.first else inner
                             } catch (e: Exception) {
                                 Toast.makeText(ctx, tr("Hindi ma-play ang MIDI: ", "Cannot play the MIDI: ") + e.message, Toast.LENGTH_LONG).show()
@@ -338,11 +358,12 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 if (!armed && current == null) { arm(); scope.launch { startNext() }; return }
                 paused = when (action) { "pause" -> true; "play" -> false; else -> !paused }
                 if (mode == "youtube") { if (paused) yt.pause() else yt.play() }
+                else if (synth.active) { if (paused) synth.pause() else synth.play() }
                 else if (midi.active) { if (paused) midi.pause() else midi.play() }
                 else exo.playWhenReady = !paused
             }
             "skip" -> { if (current == null) { arm(); scope.launch { startNext() } } else scope.launch { finish("skip") } }
-            "restart" -> { if (mode == "youtube") yt.seek(0) else if (midi.active) midi.restart() else exo.seekTo(0) }
+            "restart" -> { if (mode == "youtube") yt.seek(0) else if (synth.active) synth.restart() else if (midi.active) midi.restart() else exo.seekTo(0) }
             "volup" -> { volume = (volume + 10).coerceAtMost(100); applyVolume(); note = "Volume $volume" }
             "voldown" -> { volume = (volume - 10).coerceAtLeast(0); applyVolume(); note = "Volume $volume" }
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
@@ -425,8 +446,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         }
         exo.addListener(l)
         midi.onEnd = { if (current != null) scope.launch { finish("ended") } }
+        synth.onEnd = { if (current != null) scope.launch { finish("ended") } }
         midi.onError = { code -> Toast.makeText(ctx, tr("Hindi ma-play ang MIDI ($code)", "Cannot play the MIDI ($code)"), Toast.LENGTH_LONG).show(); scope.launch { delay(1500); finish("error") } }
-        onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); midi.stop(); yt.destroy(); try { geq?.release() } catch (e: Throwable) {} }
+        onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); midi.stop(); synth.clear(); yt.destroy(); try { geq?.release() } catch (e: Throwable) {} }
     }
 
     // ---- interlude: musika habang naghihintay ng kanta ----
@@ -455,7 +477,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
     // ---- lyrics habang tumutugtog ----
     LaunchedEffect(mode, lyrics) {
-        while (mode == "audio") { view = lyricAt(lyrics, (if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset); delay(40) }
+        while (mode == "audio") { view = lyricAt(lyrics, (if (synth.active) synth.positionMs else if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset); delay(40) }
     }
     LaunchedEffect(note) { if (note.isNotEmpty()) { delay(2200); note = "" } }
     LaunchedEffect(showUi) { if (showUi) { delay(4000); showUi = false } }

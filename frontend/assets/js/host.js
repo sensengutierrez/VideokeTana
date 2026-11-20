@@ -224,7 +224,13 @@ let localUrl = null;
 async function midiSong(ab, info) {
   toast('Inihahanda ang MIDI...', 'info', 2500);
   const parsed = VKMidi.parse(ab);
-  const blob = await VKMidi.render(parsed);
+  let blob = null;
+  // SoundFont (GeneralUser GS, o sariling .sf2); kung pumalya, ang simpleng synth
+  if (window.VKSF2 && (VK_PREFS.get().midiEngine || 'sf') === 'sf') {
+    try { const sf = await VKSF2.load(); blob = await VKSF2.render(parsed, sf, {}); }
+    catch (e) { console.warn('SoundFont', e); toast('Hindi magamit ang SoundFont, simpleng tunog muna', 'err', 3000); }
+  }
+  if (!blob) blob = await VKMidi.render(parsed);
   if (localUrl) URL.revokeObjectURL(localUrl);
   localUrl = URL.createObjectURL(blob);
   return { code: info.code, title: info.title, artist: info.artist || '', kind: 'audio', local: true, lrcText: '', midiLyrics: parsed.lyrics, midiMelody: parsed.melody };
