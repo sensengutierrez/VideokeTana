@@ -228,10 +228,6 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     }
 
     /** MIDI: SoundFont (GeneralUser GS o sariling .sf2) nang real-time; kung pumalya, ang synth ng Android. */
-    suspend fun playMidi(bytes: ByteArray, file: java.io.File): List<LyricLine> {
-        preparing = true
-        try { return playMidiInner(bytes, file) } finally { preparing = false }
-    }
     suspend fun playMidiInner(bytes: ByteArray, file: java.io.File): List<LyricLine> {
         if (Prefs.str("midiEngine") != "basic") try {
             val sf = SoundFonts.get(ctx) { st -> if (st == "download") scope.launch { Toast.makeText(ctx, tr("Dina-download ang SoundFont (isang beses lang, mga 32 MB)...", "Downloading the SoundFont (one time, about 32 MB)..."), Toast.LENGTH_LONG).show() } }
@@ -244,6 +240,11 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             Toast.makeText(ctx, tr("Hindi magamit ang SoundFont, simpleng tunog muna: ", "SoundFont unavailable, basic sound for now: ") + e.message, Toast.LENGTH_LONG).show()
         }
         return midi.loadFile(file, volume)
+    }
+
+    suspend fun playMidi(bytes: ByteArray, file: java.io.File): List<LyricLine> {
+        preparing = true
+        try { return playMidiInner(bytes, file) } finally { preparing = false }
     }
 
     suspend fun loadQueue() {
