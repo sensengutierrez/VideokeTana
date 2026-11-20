@@ -467,7 +467,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 o.optString("countdown").takeIf { it.isNotEmpty() }?.let { Prefs.countdownOn = it != "off" }
                 note = tr("Na-update ang lyrics", "Lyrics updated")
             }
-            "font" -> { val v = value?.toString() ?: return; if (v in listOf("dot", "seg", "bold", "thin")) Prefs.changeDisplayFont(v) }
+            "font" -> { val v = value?.toString() ?: return; if (v in DISPLAY_FONTS) Prefs.changeDisplayFont(v) }
             "scene" -> {
                 // susunod na eksena (o susunod na BGV kapag video)
                 val cur = if (bgSceneS == "cycle") BG_SCENES[0] else bgSceneS
@@ -537,6 +537,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                         val list = (0 until a.length()).map { val o = a.getJSONObject(it)
                             com.videoketana.app.data.LocalSong(o.optInt("code"), o.optString("title"), o.optString("artist"), java.io.File(PHONE_MARK + o.optInt("code"))) }
                         phoneLists = phoneLists + (p.optString("id") to list)
+                        p.optString("tz").takeIf { it.isNotEmpty() }?.let { Prefs.putStr("remoteTz", it) }
                     }
                     "host" -> if (p.optString("id") != hostId && !standby) {
                         if (p.optLong("since") > hostSince) { standby = true; stopMedia(); current = null; mode = "idle" }
@@ -926,16 +927,28 @@ private fun Idle(room: String, qr: ImageBitmap, waiting: Int, onStart: () -> Uni
     BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 28.dp), contentAlignment = Alignment.Center) {
         val mw = maxWidth; val mh = maxHeight
         val wide = mw > mh
-        val qrSize = if (wide) minOf(mh * 0.55f, mw * 0.3f) else minOf(mw * 0.6f, mh * 0.32f)
+        val qrMode = Prefs.str("qrMode").ifEmpty { "show" }      // show | small | hide
+        val qrSize = (if (wide) minOf(mh * 0.55f, mw * 0.3f) else minOf(mw * 0.6f, mh * 0.32f)) * (if (qrMode == "small") 0.5f else 1f)
         val clockH = if (wide) minOf(mh * 0.16f, mw * 0.07f) else mw * 0.12f
         val date = SimpleDateFormat("EEEE, MMMM d", if (Prefs.lang == "en") Locale.US else Locale("fil", "PH")).apply { timeZone = Prefs.tvTimeZone() }.format(Date())
         val card: @Composable () -> Unit = {
-            Column(Modifier.clip(RoundedCornerShape(24.dp)).background(Color.White).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            if (qrMode == "hide") {
+                // walang QR: room code lang sa salamin na chip
+                Row(Modifier.clip(RoundedCornerShape(50)).background(Color(0x33FFFFFF)).border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(50))
+                    .padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Room ", color = INK, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    DotText(room, 22.dp, TEAL, ghost = false, glow = false)
+                }
+            } else Column(Modifier.clip(RoundedCornerShape(if (qrMode == "small") 16.dp else 24.dp))
+                // salamin: puting may kaunting transparency (nababasa pa rin ng camera)
+                .background(Brush.verticalGradient(listOf(Color(0xD9FFFFFF), Color(0xC7EEF7F6))))
+                .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(if (qrMode == "small") 16.dp else 24.dp))
+                .padding(if (qrMode == "small") 9.dp else 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Image(qr, null, Modifier.size(qrSize))
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(if (qrMode == "small") 4.dp else 8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Room ", color = Color(0xFF171A20), fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    DotText(room, 22.dp, Color(0xFF0B8576), ghost = false, glow = false)
+                    Text("Room ", color = Color(0xFF171A20), fontWeight = FontWeight.Bold, fontSize = if (qrMode == "small") 13.sp else 18.sp)
+                    DotText(room, if (qrMode == "small") 15.dp else 22.dp, Color(0xFF0B8576), ghost = false, glow = false)
                 }
             }
         }
@@ -946,7 +959,8 @@ private fun Idle(room: String, qr: ImageBitmap, waiting: Int, onStart: () -> Uni
                 Clock(clockH)
                 Spacer(Modifier.height(10.dp))
                 Text(date, color = INK, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text(tr("I-scan ang QR para mag-reserve ng kanta", "Scan the QR to reserve a song"), color = DIM, fontSize = 16.sp,
+                Text(if (qrMode == "hide") tr("Sumali sa room gamit ang code sa phone, o pindutin ang # dito", "Join the room with the code on your phone, or press # here")
+                    else tr("I-scan ang QR para mag-reserve ng kanta", "Scan the QR to reserve a song"), color = DIM, fontSize = 16.sp,
                     textAlign = if (align == Alignment.CenterHorizontally) TextAlign.Center else TextAlign.Start)
                 if (waiting > 0) {
                     Spacer(Modifier.height(14.dp))

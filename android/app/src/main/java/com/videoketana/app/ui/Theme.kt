@@ -147,6 +147,10 @@ fun DotText(
             else { StyledText(text, height, color, modifier, FontWeight.Bold); return }
         "bold" -> { StyledText(text, height, color, modifier, FontWeight.ExtraBold); return }
         "thin" -> { StyledText(text, height, color, modifier, FontWeight.Light); return }
+        "neon" -> { StyledText(text, height, color, modifier, FontWeight.Light, neon = true); return }
+        "serif" -> { StyledText(text, height, color, modifier, FontWeight.Bold, family = androidx.compose.ui.text.font.FontFamily.Serif); return }
+        "mono" -> { StyledText(text, height, color, modifier, FontWeight.Bold, family = androidx.compose.ui.text.font.FontFamily.Monospace); return }
+        "pixel" -> { PixelText(text, height, color, modifier, ghost); return }
     }
     val chars = text.uppercase()
     val cell = height / 7f
@@ -169,9 +173,21 @@ fun DotText(
 
 /** Numero/orasan bilang ordinaryong letra (makapal o manipis), kasing-taas ng DotText. */
 @Composable
-private fun StyledText(text: String, height: Dp, color: Color, modifier: Modifier, weight: FontWeight) {
+private fun StyledText(text: String, height: Dp, color: Color, modifier: Modifier, weight: FontWeight, neon: Boolean = false,
+                       family: androidx.compose.ui.text.font.FontFamily? = null) {
     val fs = with(androidx.compose.ui.platform.LocalDensity.current) { (height * 1.32f).toSp() }
-    Text(text, modifier = modifier, color = color, fontSize = fs, fontWeight = weight, maxLines = 1, softWrap = false,
+    if (neon) {   // neon: manipis na letra na may malakas na liwanag sa paligid
+        Box(modifier) {
+            Text(text, color = color.copy(alpha = 0.55f), fontSize = fs, fontWeight = FontWeight.Normal, maxLines = 1, softWrap = false,
+                style = TextStyle(lineHeight = fs, platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                    shadow = androidx.compose.ui.graphics.Shadow(color, Offset.Zero, 40f)))
+            Text(text, color = Color.White.copy(alpha = 0.92f), fontSize = fs, fontWeight = FontWeight.Light, maxLines = 1, softWrap = false,
+                style = TextStyle(lineHeight = fs, platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                    shadow = androidx.compose.ui.graphics.Shadow(color, Offset.Zero, 14f)))
+        }
+        return
+    }
+    Text(text, modifier = modifier, color = color, fontSize = fs, fontWeight = weight, fontFamily = family, maxLines = 1, softWrap = false,
         style = TextStyle(letterSpacing = if (weight == FontWeight.Light) (fs.value * 0.02f).sp else (-fs.value * 0.02f).sp,
             lineHeight = fs, platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
             shadow = androidx.compose.ui.graphics.Shadow(color.copy(alpha = 0.35f), Offset.Zero, 18f)))
@@ -276,3 +292,26 @@ fun Panel(modifier: Modifier = Modifier, display: Boolean = false, content: @Com
 
 @Composable
 fun RowScope.Gap() = Spacer(Modifier.weight(1f))
+
+
+/** Lahat ng estilo ng numero at orasan (kapareho ng web). */
+val DISPLAY_FONTS = listOf("dot", "seg", "bold", "thin", "pixel", "neon", "serif", "mono")
+
+/** Parisukat na pixel (parang lumang arcade), gamit ang parehong 5x7 na hugis ng LCD. */
+@Composable
+private fun PixelText(text: String, height: Dp, color: Color, modifier: Modifier, ghost: Boolean) {
+    val chars = text.uppercase()
+    val ghostColor = color.copy(alpha = 0.08f)
+    Canvas(modifier.size(width = height / 7f * (chars.length * 6 - 1).toFloat(), height = height)) {
+        val c = size.height / 7f
+        val gap = c * 0.12f
+        chars.forEachIndexed { i, ch ->
+            val g = GLYPHS[ch] ?: GLYPHS[' ']!!
+            for (row in 0 until 7) for (col in 0 until 5) {
+                val on = g[row][col] == '#'
+                if (!on && !ghost) continue
+                drawRect(if (on) color else ghostColor, Offset((i * 6 + col) * c + gap / 2, row * c + gap / 2), androidx.compose.ui.geometry.Size(c - gap, c - gap))
+            }
+        }
+    }
+}

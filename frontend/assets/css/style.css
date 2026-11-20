@@ -194,3 +194,8 @@ html[data-numfont="bold"] { --font-dot: "Bricolage Grotesque", system-ui, sans-s
 html[data-numfont="thin"] { --font-dot: "Helvetica Neue", "Segoe UI Light", "Roboto", system-ui, sans-serif; }
 html[data-numfont="thin"] .clock, html[data-numfont="thin"] [class*="lcd"], html[data-numfont="thin"] .dot { font-weight: 300 !important; }
 html[data-numfont="bold"] .clock, html[data-numfont="bold"] [class*="lcd"], html[data-numfont="bold"] .dot { font-weight: 800 !important; letter-spacing: -.02em; }
+html[data-numfont="pixel"] { --font-dot: "Silkscreen", "Doto", monospace; }
+html[data-numfont="neon"] { --font-dot: "Tilt Neon", "Bricolage Grotesque", system-ui, sans-serif; }
+html[data-numfont="neon"] .clock, html[data-numfont="neon"] [class*="lcd"], html[data-numfont="neon"] .dot { font-weight: 400 !important; text-shadow: 0 0 6px currentColor, 0 0 18px currentColor, 0 0 36px currentColor; }
+html[data-numfont="serif"] { --font-dot: "DM Serif Display", Georgia, serif; }
+html[data-numfont="mono"] { --font-dot: "JetBrains Mono", ui-monospace, monospace; }

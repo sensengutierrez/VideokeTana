@@ -116,7 +116,11 @@ object Prefs {
         set(v) = sp.edit().putString("clockTz", v).apply()
     fun tvTimeZone(): java.util.TimeZone {
         val r = str("remoteTz")
-        return if (clockTz == "auto" && r.isNotEmpty()) java.util.TimeZone.getTimeZone(r) else java.util.TimeZone.getDefault()
+        return when {
+            clockTz == "auto" && r.isNotEmpty() -> java.util.TimeZone.getTimeZone(r)
+            clockTz != "auto" && clockTz != "device" -> java.util.TimeZone.getTimeZone(clockTz)   // piniling bansa
+            else -> java.util.TimeZone.getDefault()
+        }
     }
     fun str(k: String) = sp.getString(k, "") ?: ""
     fun putStr(k: String, v: String) = sp.edit().putString(k, v).apply()

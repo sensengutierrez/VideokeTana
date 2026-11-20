@@ -575,7 +575,7 @@ function handleCmd(action, value) {
       showCE();
       if (!value.key) { clearTimeout(ceT); ceT = setTimeout(() => { ceCode = ''; ceSong = null; showCE(); clearTimeout(ceT); }, 4000); }
     } return;
-    case 'font': if (['dot', 'seg', 'bold', 'thin'].includes(value)) VK_PREFS.set('numFont', value); break;
+    case 'font': if (['dot', 'seg', 'bold', 'thin', 'pixel', 'neon', 'serif', 'mono'].includes(value)) VK_PREFS.set('numFont', value); break;
     case 'lyr': if (value && typeof value === 'object') {   // lyrics settings mula sa phone app
       if (['s', 'm', 'l', 'xl'].includes(value.lyricSize)) VK_PREFS.set('lyricSize', value.lyricSize);
       if (/^#[0-9a-f]{6}$/i.test(value.hlColor || '')) { VK_PREFS.set('hlColor', value.hlColor); VK_PREFS.set('hlRandom', false); }

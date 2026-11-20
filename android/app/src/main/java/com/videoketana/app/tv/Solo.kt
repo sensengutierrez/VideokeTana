@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.videoketana.app.data.LocalSong
 import com.videoketana.app.data.Song
 import com.videoketana.app.data.Supa
+import com.videoketana.app.data.Prefs
 import com.videoketana.app.data.tr
 import com.videoketana.app.ui.DotText
 import com.videoketana.app.ui.Haptic
@@ -92,11 +93,15 @@ fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, 
     val tabReq = remember { List(5) { FocusRequester() } }
     val xReq = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(200); try { tabReq[0].requestFocus() } catch (e: Exception) { } }
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color(0x99000000)).focusProperties { canFocus = false }.clickable(onClick = onClose)) {
+    val glass = Prefs.str("soloStyle") != "solid"
+    val kb = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val fm = androidx.compose.ui.platform.LocalFocusManager.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    BoxWithConstraints(Modifier.fillMaxSize().background(if (glass) Color(0x40000000) else Color(0x99000000)).focusProperties { canFocus = false }.clickable(onClick = onClose)) {
         val wide = maxWidth > maxHeight
         val panelMod = if (wide) Modifier.align(Alignment.CenterEnd).width(minOf(maxWidth * 0.46f, 460.dp)).fillMaxHeight()
         else Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(maxHeight * 0.82f)
-        Column(panelMod.clip(RoundedCornerShape(26.dp)).background(Brush.verticalGradient(listOf(Color(0xFA181C24), Color(0xFA0D1015))))
+        Column(panelMod.clip(RoundedCornerShape(26.dp)).background(Brush.verticalGradient(if (glass) listOf(Color(0x8C1A2026), Color(0x990B0F14)) else listOf(Color(0xFA181C24), Color(0xFA0D1015))))
             .border(1.dp, ACC.copy(alpha = 0.3f), RoundedCornerShape(26.dp)).clickable(enabled = false) {}.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f)) {
@@ -119,8 +124,12 @@ fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, 
             }
             Spacer(Modifier.height(10.dp))
             when (tab) {
-                0 -> SoloKeypad(local, hasAccess, onAccess, tabReq[0], onReserve)
-                1 -> SoloSearch(local, onReserve)
+                0 -> SoloKeypad(local, hasAccess, onAccess, tabReq[0], glass, onReserve)
+                // pagkatapos mag-reserve sa Hanap: isara ang keyboard at bumalik agad sa Numero
+                1 -> SoloSearch(local) { s, l, how ->
+                    onReserve(s, l, how); kb?.hide(); fm.clearFocus(); tab = 0
+                    scope.launch { delay(150); try { tabReq[0].requestFocus() } catch (e: Exception) { } }
+                }
                 2 -> SoloYouTube(onYt)
                 3 -> SoloQueue(queue, currentId, onRemove, onCmd)
                 else -> SoloMic()
@@ -130,7 +139,7 @@ fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, 
 }
 
 @Composable
-private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, upTo: FocusRequester, onReserve: (Song?, LocalSong?, String) -> Unit) {
+private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, upTo: FocusRequester, glass: Boolean, onReserve: (Song?, LocalSong?, String) -> Unit) {
     var code by remember { mutableStateOf("") }
     var found by remember { mutableStateOf<Song?>(null) }
     var foundLocal by remember { mutableStateOf<LocalSong?>(null) }
@@ -168,7 +177,7 @@ private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () 
                 Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { k ->
                         Box(Modifier.weight(1f).fillMaxHeight().then(if (k in listOf("1", "2", "3")) Modifier.focusProperties { up = upTo } else Modifier).clip(RoundedCornerShape(14.dp))
-                            .background(Brush.verticalGradient(listOf(Color(0xFF232832), Color(0xFF161A21))))
+                            .background(Brush.verticalGradient(if (glass) listOf(Color(0x24FFFFFF), Color(0x0FFFFFFF)) else listOf(Color(0xFF232832), Color(0xFF161A21))))
                             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
                             .tvFocus().clickable {
                                 Haptic.tap(); Voice.key(k)

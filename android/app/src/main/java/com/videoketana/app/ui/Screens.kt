@@ -196,6 +196,8 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var after by remember { mutableStateOf(Prefs.standbyAfter) }
     var sbColor by remember { mutableStateOf(Prefs.standbyColor) }
     var lySize by remember { mutableStateOf(Prefs.lyricSize) }
+    var qrMode by remember { mutableStateOf(Prefs.str("qrMode").ifEmpty { "show" }) }
+    var soloStyle by remember { mutableStateOf(Prefs.str("soloStyle").ifEmpty { "glass" }) }
     var lyLines by remember { mutableStateOf(Prefs.lyricLines) }
     var hlColor by remember { mutableStateOf(Prefs.hlColor) }
     var lyOutline by remember { mutableStateOf(Prefs.lyricOutline) }
@@ -231,8 +233,11 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                 Column(Modifier.padding(16.dp)) {
                     Text(tr("Para sa orasan, song number at room code.", "For the clock, song numbers and room code."), color = c.muted, style = VkType.small)
                     Spacer(Modifier.height(10.dp))
+                    listOf(listOf("dot" to "LCD", "seg" to "Digital", "bold" to tr("Makapal", "Bold"), "thin" to tr("Manipis", "Thin")),
+                        listOf("pixel" to "Pixel", "neon" to "Neon", "serif" to "Serif", "mono" to "Mono")).forEachIndexed { ri, rowItems ->
+                    if (ri > 0) Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("dot" to "LCD", "seg" to "Digital", "bold" to tr("Makapal", "Bold"), "thin" to tr("Manipis", "Thin")).forEach { (v, label) ->
+                        rowItems.forEach { (v, label) ->
                             val on = Prefs.displayFont == v
                             Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(androidx.compose.ui.graphics.Color.Black)
                                 .border(if (on) 2.dp else 1.dp, if (on) c.accent else c.line, RoundedCornerShape(14.dp))
@@ -247,6 +252,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                                 Text(label, color = if (on) c.accent else androidx.compose.ui.graphics.Color(0xFFB9C0CA), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
+                    }
                     }
                 }
             }
@@ -287,8 +293,27 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                 Text(tr("Sabay na nagbabago ang TV na konektado (web o app).", "The connected TV (web or app) changes too."), color = c.muted, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp))
             }
             Group(tr("TV screen sa phone o tablet", "TV screen on a phone or tablet")) {
+                SetRow(tr("QR sa TV", "QR on the TV"), tr("Itago o paliitin kung nakaka-distract. Kapag nakatago, room code lang ang makikita.", "Hide or shrink it if distracting. When hidden, only the room code shows.")) {
+                    Seg(listOf("show" to tr("Buo", "Full"), "small" to tr("Maliit", "Small"), "hide" to tr("Itago", "Hide")), qrMode) { qrMode = it; Prefs.putStr("qrMode", if (it == "show") "" else it) }
+                }
+                SetRow(tr("Itsura ng # sa TV", "Look of # on the TV"), tr("Salamin: kita ang likod. Buo: madilim na panel.", "Glass: see-through. Solid: dark panel.")) {
+                    Seg(listOf("glass" to tr("Salamin", "Glass"), "solid" to tr("Buo", "Solid")), soloStyle) { soloStyle = it; Prefs.putStr("soloStyle", if (it == "glass") "" else it) }
+                }
                 SetRow(tr("Oras sa TV", "TV clock"), tr("Sundan: kukunin ang oras ng bansa mula sa phone na nakakonekta (para tama kahit mali ang timezone ng Mi TV).", "Follow phone: uses the time zone of the connected phone (correct even if the TV's time zone is wrong).")) {
-                    Seg(listOf("auto" to tr("Sundan phone", "Follow phone"), "device" to "Device"), clockTz) { clockTz = it; Prefs.clockTz = it }
+                    Seg(listOf("auto" to tr("Sundan phone", "Follow phone"), "device" to "Device", "pick" to tr("Pumili", "Pick")),
+                        if (clockTz == "auto" || clockTz == "device") clockTz else "pick") { v -> clockTz = if (v == "pick") "Asia/Riyadh" else v; Prefs.clockTz = clockTz }
+                }
+                if (clockTz != "auto" && clockTz != "device") Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Asia/Riyadh" to tr("Bahrain/Saudi/Qatar/Kuwait", "Bahrain/Saudi/Qatar/Kuwait"), "Asia/Dubai" to "UAE/Oman", "Asia/Manila" to tr("Pilipinas", "Philippines"),
+                            "Asia/Singapore" to "Singapore/Malaysia", "Asia/Hong_Kong" to "Hong Kong/Taiwan", "Asia/Tokyo" to "Japan/Korea", "Europe/London" to "UK",
+                            "Europe/Rome" to "Italy/Europe", "America/New_York" to "US East", "America/Los_Angeles" to "US West", "Australia/Sydney" to "Australia").forEach { (z, label) ->
+                            val on = clockTz == z
+                            Box(Modifier.clip(RoundedCornerShape(50)).background(if (on) c.accent else c.surface2).clickable { clockTz = z; Prefs.clockTz = z }.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                Text(label, color = if (on) c.accentInk else c.text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
                 Toggle(tr("Pahiga (landscape)", "Landscape"), tr("Kusang nakahiga ang screen pagbukas ng Buksan sa TV.", "The screen turns sideways when you open the TV screen."), tvLand) { tvLand = it; Prefs.tvLandscape = it }
                 SetRow(tr("Intro pagbukas ng app", "Intro when the app opens"), tr("Ang umiikot na numero at tunog sa simula.", "The spinning number and sound at the start.")) {

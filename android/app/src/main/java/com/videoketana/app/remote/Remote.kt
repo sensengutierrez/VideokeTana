@@ -143,7 +143,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
                             ?.takeIf { it.length() <= com.videoketana.app.data.FileSend.MAX }?.also { sentFiles[qid] = it }
                         if (f != null) scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.videoketana.app.data.FileSend.send(rt, qid, f) }
                     }
-                    "who" -> if (phoneLocal.isNotEmpty()) sendPlist(rt, phoneLocal)
+                    "who" -> { rt?.broadcast("hello", JSONObject().put("tz", java.util.TimeZone.getDefault().id)); if (phoneLocal.isNotEmpty()) sendPlist(rt, phoneLocal) }
                     "score" -> Toast.makeText(ctx, tr("Score", "Score") + (p.optString("singer").takeIf { it.isNotBlank() }?.let { tr(" ni $it", " for $it") } ?: "") + ": " + p.optInt("score"), Toast.LENGTH_LONG).show()
                 }
             },
@@ -875,7 +875,7 @@ internal fun sendPlist(rt: com.videoketana.app.data.Realtime?, songs: List<com.v
     val id = Prefs.str("devId").ifEmpty { java.util.UUID.randomUUID().toString().take(12).also { Prefs.putStr("devId", it) } }
     val a = JSONArray()
     songs.take(1500).forEach { a.put(JSONObject().put("code", it.code).put("title", it.title).put("artist", it.artist)) }
-    rt?.broadcast("plist", JSONObject().put("id", id).put("name", Prefs.name).put("songs", a))
+    rt?.broadcast("plist", JSONObject().put("id", id).put("name", Prefs.name).put("tz", java.util.TimeZone.getDefault().id).put("songs", a))
 }
 
 internal fun localTitleMatches(s: com.videoketana.app.data.LocalSong, t: String): Boolean =
