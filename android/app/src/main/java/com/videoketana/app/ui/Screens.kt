@@ -529,7 +529,9 @@ fun SoundFontSection() {
         Seg(listOf("sf" to "SoundFont", "basic" to tr("Simple", "Basic")), engine) { engine = it; Prefs.putStr("midiEngine", if (it == "sf") "" else it) }
         // estado
         val d = def
-        Text(if (d != null) tr("✓ Nakahanda: GeneralUser GS (${d.length() / 1048576} MB)", "✓ Ready: GeneralUser GS (${d.length() / 1048576} MB)") + "\n" +
+        val inApp = remember { SF.bundled(ctx) }
+        if (inApp) Text(tr("✓ Kasama na sa app ang GeneralUser GS: hindi na kailangang i-download.", "✓ GeneralUser GS is built into the app: no download needed."), color = c.accent, fontSize = 14.sp)
+        else Text(if (d != null) tr("✓ Nakahanda: GeneralUser GS (${d.length() / 1048576} MB)", "✓ Ready: GeneralUser GS (${d.length() / 1048576} MB)") + "\n" +
                 (if (d.parentFile == SF.folder) "Download/VideokeTana/SoundFont" else tr("nasa loob ng app", "inside the app"))
             else tr("Hindi pa na-download ang GeneralUser GS (32 MB).", "GeneralUser GS is not downloaded yet (32 MB)."),
             color = if (d != null) c.accent else c.text, fontSize = 14.sp)
@@ -550,7 +552,7 @@ fun SoundFontSection() {
         Text(tr("Para magdagdag: ilagay ang .sf2 sa Download/VideokeTana/SoundFont, tapos pindutin ang I-scan.", "To add one: put the .sf2 in Download/VideokeTana/SoundFont, then tap Scan."), color = c.muted, fontSize = 12.sp)
         if (msg.isNotEmpty()) Text(msg, color = c.text, fontSize = 14.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (d == null) VkButton(if (prog >= 0f) "${(prog * 100).toInt()}%" else tr("I-download", "Download"), primary = true, enabled = prog < 0f, height = 42.dp, onClick = {
+            if (d == null && !inApp) VkButton(if (prog >= 0f) "${(prog * 100).toInt()}%" else tr("I-download", "Download"), primary = true, enabled = prog < 0f, height = 42.dp, onClick = {
                 prog = 0f; msg = ""
                 scope.launch {
                     try { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { SF.download(ctx) { prog = it } }; msg = tr("Na-download!", "Downloaded!") }

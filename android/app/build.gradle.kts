@@ -7,6 +7,10 @@ plugins {
 val runNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
 
 android {
+    // GeneralUser GS (SoundFont) kasama na sa app: kinukuha mula sa frontend/sf (iisang kopya sa repo).
+    // Hindi kino-compress para mabasa nang diretso (mmap) mula sa APK, walang download at walang kopya.
+    sourceSets["main"].assets.srcDir(file("../../frontend/sf"))
+    androidResources { noCompress += "sf2" }
     namespace = "com.videoketana.app"
     compileSdk = 34
 

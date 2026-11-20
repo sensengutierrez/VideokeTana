@@ -109,7 +109,17 @@ class SfZone(val g: HashMap<Int, Int>, val lo: Int, val hi: Int, val vlo: Int, v
 class SfSet(val global: SfZone?, val zones: List<SfZone>)
 class SfSample(val start: Int, val end: Int, val ls: Int, val le: Int, val rate: Int, val pitch: Int, val corr: Int)
 
-class SoundFont(file: File) {
+class SoundFont(ch: FileChannel, base: Long, size: Long) {
+    constructor(file: File) : this(RandomAccessFile(file, "r").channel, 0L, file.length())
+    companion object {
+        /** Mula sa APK (assets, hindi naka-compress): mmap nang diretso, walang kopya. */
+        fun fromAsset(ctx: Context, name: String): SoundFont {
+            val fd = ctx.assets.openFd(name)
+            val ch = java.io.FileInputStream(fd.fileDescriptor).channel
+            return SoundFont(ch, fd.startOffset, fd.length)
+        }
+    }
+
     val presets = HashMap<Int, SfSet>()
     val instruments = ArrayList<SfSet>()
     val shdr = ArrayList<SfSample>()
@@ -117,9 +127,7 @@ class SoundFont(file: File) {
     val count: Int
 
     init {
-        val raf = RandomAccessFile(file, "r")
-        val ch = raf.channel
-        val map = ch.map(FileChannel.MapMode.READ_ONLY, 0, ch.size()).order(ByteOrder.LITTLE_ENDIAN)
+        val map = ch.map(FileChannel.MapMode.READ_ONLY, base, size).order(ByteOrder.LITTLE_ENDIAN)
         fun str(o: Int, n: Int): String { val sb = StringBuilder(); for (i in 0 until n) { val c = map.get(o + i).toInt() and 0xFF; if (c == 0) break; sb.append(c.toChar()) }; return sb.toString() }
         require(str(0, 4) == "RIFF" && str(8, 4) == "sfbk") { "Hindi SoundFont (.sf2) ang file" }
         val chunks = HashMap<String, Pair<Int, Int>>()
@@ -132,7 +140,7 @@ class SoundFont(file: File) {
                 o += 8 + len + (len and 1)
             }
         }
-        walk(12, ch.size().toInt())
+        walk(12, size.toInt())
         listOf("phdr", "pbag", "pgen", "inst", "ibag", "igen", "shdr").forEach { require(chunks.containsKey(it)) { "Sirang SoundFont: walang $it" } }
         fun u16(o: Int) = map.getShort(o).toInt() and 0xFFFF
         fun <T> recs(k: String, size: Int, f: (Int) -> T): List<T> { val (o, len) = chunks[k]!!; return (0 until len / size).map { f(o + it * size) } }
@@ -164,7 +172,6 @@ class SoundFont(file: File) {
         sb.limit(smpl.second and 1.inv())
         data = sb.asShortBuffer()
         count = data.limit()
-        raf.close()
     }
 
     class Region(val g: HashMap<Int, Int>, val s: SfSample)
@@ -222,11 +229,25 @@ object SoundFonts {
         return dst
     }
 
+    private val lock = kotlinx.coroutines.sync.Mutex()
+    /** Kasama na sa app ang GeneralUser GS? (mula sa APK) */
+    fun bundled(ctx: Context): Boolean = try { ctx.assets.openFd(DEFAULT).use { it.length > 1_000_000 } } catch (e: Exception) { false }
+
     suspend fun get(ctx: Context, onStatus: (String) -> Unit = {}): SoundFont = withContext(Dispatchers.IO) {
-        val chosen = chosenName()
-        val f = localFiles().firstOrNull { chosen.isNotEmpty() && it.name == chosen } ?: defaultFile(ctx) ?: run { onStatus("download"); download(ctx) }
-        val key = f.absolutePath + ":" + f.length()
-        cached?.takeIf { it.first == key }?.second ?: SoundFont(f).also { cached = key to it }
+        lock.lock()
+        try {
+            val chosen = chosenName()
+            val own = localFiles().firstOrNull { chosen.isNotEmpty() && it.name == chosen }
+            when {
+                own != null -> { val key = own.absolutePath + ":" + own.length(); cached?.takeIf { it.first == key }?.second ?: SoundFont(own).also { cached = key to it } }
+                bundled(ctx) -> cached?.takeIf { it.first == "asset" }?.second ?: SoundFont.fromAsset(ctx, DEFAULT).also { cached = "asset" to it }
+                else -> {
+                    val f = defaultFile(ctx) ?: run { onStatus("download"); download(ctx) }
+                    val key = f.absolutePath + ":" + f.length()
+                    cached?.takeIf { it.first == key }?.second ?: SoundFont(f).also { cached = key to it }
+                }
+            }
+        } finally { lock.unlock() }
     }
 
     /** Maikling tugtog para subukan ang SoundFont: piano, bass, strings at drums (mga 6 segundo). */
