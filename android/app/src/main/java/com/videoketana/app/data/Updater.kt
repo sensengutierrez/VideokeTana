@@ -39,26 +39,55 @@ object Updater {
         } catch (e: Exception) { null }
     }
 
-    /** I-download ang APK; tinatawag ang progress(0..1). Ibinabalik ang file kapag tapos. */
+    /**
+     * I-download ang APK; tinatawag ang progress(0..1). Ibinabalik ang file kapag tapos.
+     * Tinitiyak na buo ang file (kapag naputol, itinutuloy hanggang 4 na beses) at may sapat na space,
+     * dahil ang putol na APK ay "hindi ma-install" / "problem parsing the package".
+     */
     suspend fun download(c: Context, rel: Release, progress: (Float) -> Unit): File = withContext(Dispatchers.IO) {
-        val dir = File(c.getExternalFilesDir(null), "updates").apply { mkdirs() }
+        val dir = File(c.getExternalFilesDir(null) ?: c.cacheDir, "updates").apply { mkdirs() }
         dir.listFiles()?.forEach { it.delete() }
         val f = File(dir, "VideokeTana-${rel.number}.apk")
-        Supa.http.newCall(Request.Builder().url(rel.apkUrl).build()).execute().use { res ->
-            if (!res.isSuccessful) throw RuntimeException("HTTP ${res.code}")
-            val body = res.body ?: throw RuntimeException("Walang laman")
-            val total = body.contentLength().takeIf { it > 0 } ?: 1L
-            body.byteStream().use { input ->
-                f.outputStream().use { out ->
-                    val buf = ByteArray(64 * 1024); var done = 0L
-                    while (true) {
-                        val n = input.read(buf); if (n < 0) break
-                        out.write(buf, 0, n); done += n
-                        withContext(Dispatchers.Main) { progress((done.toFloat() / total).coerceAtMost(1f)) }
+        var total = -1L
+        var tries = 0
+        while (true) {
+            val have = if (f.exists()) f.length() else 0L
+            if (total > 0 && have >= total) break
+            val req = Request.Builder().url(rel.apkUrl).apply { if (have > 0) header("Range", "bytes=$have-") }.build()
+            try {
+                Supa.http.newCall(req).execute().use { res ->
+                    if (!res.isSuccessful) throw RuntimeException("HTTP ${res.code}")
+                    val body = res.body ?: throw RuntimeException("Walang laman")
+                    val resumed = res.code == 206
+                    if (!resumed && have > 0) f.delete()
+                    val start = if (resumed) have else 0L
+                    if (total < 0) {
+                        val len = body.contentLength()
+                        total = if (len > 0) start + len else -1L
+                        // ~3x ang kailangan: ang APK + ang pag-install ng Android
+                        if (total > 0 && dir.usableSpace < total * 3)
+                            throw IllegalStateException(tr("Kulang ang space sa device (kailangan mga ${total * 3 / 1_000_000} MB). Magbura muna ng ibang app o file.",
+                                "Not enough space on the device (needs about ${total * 3 / 1_000_000} MB). Free up space first."))
+                    }
+                    body.byteStream().use { input ->
+                        java.io.FileOutputStream(f, resumed).use { out ->
+                            val buf = ByteArray(64 * 1024); var done = start
+                            while (true) {
+                                val n = input.read(buf); if (n < 0) break
+                                out.write(buf, 0, n); done += n
+                                if (total > 0) withContext(Dispatchers.Main) { progress((done.toFloat() / total).coerceAtMost(1f)) }
+                            }
+                        }
                     }
                 }
-            }
+                if (total <= 0) break   // hindi alam ang laki: tanggapin
+            } catch (e: IllegalStateException) { throw e }
+            catch (e: Exception) { if (++tries >= 4) throw RuntimeException(tr("Naputol ang download. Subukan ulit.", "The download was cut off. Try again.") + " (${e.message})") }
+            if (total > 0 && f.length() < total && ++tries >= 4) throw RuntimeException(tr("Hindi buo ang na-download. Subukan ulit.", "The download is incomplete. Try again."))
         }
+        // dapat ZIP ang APK
+        val ok = try { java.util.zip.ZipFile(f).use { it.getEntry("AndroidManifest.xml") != null } } catch (e: Exception) { false }
+        if (!ok) { f.delete(); throw RuntimeException(tr("Sira ang na-download na file. Subukan ulit.", "The downloaded file is damaged. Try again.")) }
         f
     }
 
