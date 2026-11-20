@@ -186,6 +186,12 @@ object Supa {
         return withContext(Dispatchers.IO) { http.newCall(r).execute().use { JSONObject(it.body?.string() ?: "{}") } }
     }
 
+    /** Mga background video (BGV): id, title, path. */
+    suspend fun backgrounds(): List<Triple<String, String, String>> {
+        val a = arr(call(req("backgrounds", mapOf("select" to "id,title,path", "order" to "created_at.asc")).get().build()))
+        return (0 until a.length()).map { val o = a.getJSONObject(it); Triple(o.optString("id"), o.optString("title"), o.optString("path")) }
+    }
+
     suspend fun text(url: String): String = withContext(Dispatchers.IO) {
         http.newCall(Request.Builder().url(url).build()).execute().use { if (it.isSuccessful) it.body?.string() ?: "" else "" }
     }

@@ -190,6 +190,21 @@ object Admin {
         return JSONArray(rest("POST", "songs", mapOf("select" to "code"), o.toString())).getJSONObject(0).optInt("code")
     }
 
+    /** Background video (BGV) para sa TV: folder na bgv/ at table na backgrounds (kapareho ng web). */
+    suspend fun uploadBackground(ctx: Context, f: PickedFile, title: String, progress: (Float) -> Unit) {
+        if (f.ext !in VIDEO) throw RuntimeException(tr("Video lang (MP4 o WEBM).", "Video only (MP4 or WEBM)."))
+        if (f.size > MAX_BYTES) throw RuntimeException(tr("Masyadong malaki (max 50 MB).", "Too large (max 50 MB)."))
+        val path = "bgv/${UUID.randomUUID()}.${f.ext}"
+        putObject(ctx, path, f, MIME[f.ext] ?: f.mime, false, progress)
+        try { rest("POST", "backgrounds", emptyMap(), JSONObject().put("title", title.trim().ifEmpty { f.name }.take(120)).put("path", path).put("size_bytes", f.size).toString()) }
+        catch (e: Exception) { removeObjects(listOf(path)); throw e }
+    }
+
+    suspend fun deleteBackground(id: String, path: String) {
+        rest("DELETE", "backgrounds", mapOf("id" to "eq.$id"), null)
+        removeObjects(listOf(path))
+    }
+
     suspend fun updateSong(id: String, title: String, artist: String, category: String?) {
         rest("PATCH", "songs", mapOf("id" to "eq.$id"), JSONObject().put("title", title.trim().take(200))
             .put("artist", artist.trim().take(200).ifEmpty { JSONObject.NULL }).put("category", category ?: JSONObject.NULL).toString())

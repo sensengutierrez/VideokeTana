@@ -121,12 +121,13 @@ private fun LibraryBody() {
     var tab by remember { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-            Seg(listOf("0" to tr("Mga kanta", "Songs"), "1" to tr("Upload", "Upload"), "2" to "YouTube"), tab.toString()) { tab = it.toInt() }
+            Seg(listOf("0" to tr("Mga kanta", "Songs"), "1" to tr("Upload", "Upload"), "2" to "YouTube", "3" to "BGV"), tab.toString()) { tab = it.toInt() }
         }
         when (tab) {
             0 -> SongsTab()
             1 -> UploadTab { tab = 0 }
-            else -> YouTubeAddTab { tab = 0 }
+            2 -> YouTubeAddTab { tab = 0 }
+            else -> BgvTab()
         }
     }
 }
@@ -348,6 +349,55 @@ private fun YouTubeAddTab(onDone: () -> Unit) {
                 }
             }, enabled = title.isNotBlank()) { Text(tr("Idagdag", "Add")) } },
             dismissButton = { TextButton({ pick = null }) { Text(tr("Huwag", "Cancel")) } })
+    }
+}
+
+// ---------- background video (BGV) ----------
+@Composable
+private fun BgvTab() {
+    val c = vk
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var list by remember { mutableStateOf<List<Triple<String, String, String>>?>(null) }
+    var reload by remember { mutableIntStateOf(0) }
+    var busy by remember { mutableStateOf(false) }
+    var prog by remember { mutableFloatStateOf(0f) }
+    var rights by remember { mutableStateOf(false) }
+    LaunchedEffect(reload) { list = try { Supa.backgrounds() } catch (e: Exception) { emptyList() } }
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val f = pickedFile(ctx, uri)
+        busy = true; prog = 0f
+        scope.launch {
+            try { Admin.uploadBackground(ctx, f, f.name.substringBeforeLast('.')) { prog = it }; toast(ctx, tr("Naidagdag ang BGV.", "BGV added.")); reload++ }
+            catch (e: Exception) { toast(ctx, tr("Hindi na-upload: ", "Upload failed: ") + e.message) }
+            busy = false
+        }
+    }
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(tr("Mga video na umiikot sa likod ng TV habang naghihintay at habang kumakanta (walang tunog). Gumamit ng sariling kuha o video na may libreng lisensya.",
+            "Videos that loop behind the TV while waiting and while singing (muted). Use your own footage or freely licensed video."), color = c.muted, fontSize = 13.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { rights = !rights }) {
+            Checkbox(rights, { rights = it }, colors = CheckboxDefaults.colors(checkedColor = c.accent, checkmarkColor = c.accentInk))
+            Text(tr("May karapatan akong gamitin ang video.", "I have the right to use the video."), color = c.text, fontSize = 14.sp)
+        }
+        if (busy) LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth(), color = c.accent)
+        VkButton(if (busy) tr("Ina-upload... ${(prog * 100).toInt()}%", "Uploading... ${(prog * 100).toInt()}%") else tr("Magdagdag ng BGV (MP4/WEBM)", "Add a BGV (MP4/WEBM)"),
+            primary = true, icon = "plus", enabled = !busy && rights, modifier = Modifier.fillMaxWidth(), onClick = { pick.launch(arrayOf("video/*")) })
+        LazyColumn(Modifier.fillMaxSize()) {
+            items(list ?: emptyList(), key = { it.first }) { b ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    VkIcon("tv", 20.dp, c.accent); Spacer(Modifier.width(12.dp))
+                    Text(b.second, color = c.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    VkIconButton("trash", {
+                        scope.launch {
+                            try { Admin.deleteBackground(b.first, b.third); toast(ctx, tr("Nabura.", "Deleted.")); reload++ } catch (e: Exception) { toast(ctx, e.message ?: "Error") }
+                        }
+                    }, size = 38.dp, tint = c.danger)
+                }
+            }
+            if (list?.isEmpty() == true) item { Text(tr("Wala pang BGV. Animation muna ang ipapakita ng TV.", "No BGV yet. The TV shows an animation for now."), color = c.muted) }
+        }
     }
 }
 

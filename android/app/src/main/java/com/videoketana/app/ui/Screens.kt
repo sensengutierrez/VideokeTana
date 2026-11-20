@@ -143,6 +143,8 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var checking by remember { mutableStateOf(false) }
     var standby by remember { mutableStateOf(Prefs.standby) }
     var tvLand by remember { mutableStateOf(Prefs.tvLandscape) }
+    var interlude by remember { mutableStateOf(Prefs.interlude) }
+    var bgMode by remember { mutableStateOf(Prefs.bgMode) }
     var after by remember { mutableStateOf(Prefs.standbyAfter) }
     var sbColor by remember { mutableStateOf(Prefs.standbyColor) }
     val pickWall = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
@@ -185,6 +187,11 @@ fun SettingsScreen(go: (Screen) -> Unit) {
             }
             Group(tr("TV screen sa phone o tablet", "TV screen on a phone or tablet")) {
                 Toggle(tr("Pahiga (landscape)", "Landscape"), tr("Kusang nakahiga ang screen pagbukas ng Buksan sa TV.", "The screen turns sideways when you open the TV screen."), tvLand) { tvLand = it; Prefs.tvLandscape = it }
+                Toggle(tr("Interlude habang naghihintay", "Interlude while waiting"), tr("Malumanay na musika sa TV kapag walang kanta. Gawa ng app, walang kinopya.", "Soft music on the TV when no song is playing. Made by the app, nothing copied."), interlude) { interlude = it; Prefs.interlude = it }
+                if (interlude) SliderRow(tr("Lakas ng interlude", "Interlude volume"), "", Prefs.interludeVol, 0, 100, "%") { Prefs.interludeVol = it; com.videoketana.app.tv.Interlude.setVolume(it) }
+                SetRow(tr("Background ng TV", "TV background"), tr("BGV: mga video na in-upload sa Library. Kung wala, animation.", "BGV: videos uploaded in the Library. If none, animation.")) {
+                    Seg(listOf("auto" to "BGV", "anim" to tr("Animation", "Animation")), bgMode) { bgMode = it; Prefs.bgMode = it }
+                }
             }
             Group(tr("Wallpaper at transparency", "Wallpaper and transparency")) {
                 SetRow(tr("Wallpaper", "Wallpaper"), if (Prefs.wallpaper.isEmpty()) tr("Sariling larawan bilang background. Nasa device lang, hindi ina-upload.", "Your own picture as the background. Stays on this device.") else tr("Naka-set ang sariling larawan.", "Your picture is set.")) {

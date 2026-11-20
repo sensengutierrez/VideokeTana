@@ -136,6 +136,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var lyricOffset by remember { mutableStateOf(0.0) }
     var view by remember { mutableStateOf(LyricView("", 0f, "", 0)) }
     var busy by remember { mutableStateOf(false) }
+    var armed by remember { mutableStateOf(false) }
+    var startIds by remember { mutableStateOf<Set<String>?>(null) }
+    var bgvs by remember { mutableStateOf<List<String>>(emptyList()) }
     var ytPlaying by remember { mutableStateOf(false) }   // true kapag talagang tumutugtog na ang YouTube
     var ytTry by remember { mutableIntStateOf(0) }        // dagdag bawat bagong YouTube na kanta
     val hostId = remember { Random.nextLong().toString(36) }
@@ -196,12 +199,14 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
     suspend fun loadQueue() {
         if (standby) return
-        queue = try { Supa.queue(room) } catch (e: Exception) { queue }
+        queue = try { Supa.queue(room).also { if (startIds == null) startIds = it.map { q -> q.id }.toSet() } } catch (e: Exception) { queue }
         val cur = current
         if (cur != null && queue.none { it.id == cur.id }) { stopMedia(); current = null; mode = "idle" }   // inalis mula sa remote
     }
 
     lateinit var startNext: suspend () -> Unit
+    // walang auto-play pagbukas: ang naiwang pila ay naghihintay ng Play mula sa remote, o ng bagong reserve
+    fun arm() { armed = true }
 
     suspend fun finish(reason: String) {
         val done = current ?: return
@@ -223,7 +228,12 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     }
 
     startNext = suspend sn@{
-        if (!busy && current == null && !standby) {
+        if (!armed) {
+            val ids = startIds
+            if (ids != null && queue.any { it.id !in ids }) armed = true
+        }
+        if (!armed) { if (current == null) mode = "idle" }
+        else if (!busy && current == null && !standby) {
             busy = true
             val next = queue.firstOrNull { it.status == "playing" } ?: queue.firstOrNull { it.status == "waiting" }
             // mga naipit sa "Kinakanta" (galing sa ibang TV): ibalik sa pila
@@ -280,17 +290,18 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     fun handleCmd(action: String, value: Any?) {
         when (action) {
             "toggle", "pause", "play" -> {
+                if (!armed && current == null) { arm(); scope.launch { startNext() }; return }
                 paused = when (action) { "pause" -> true; "play" -> false; else -> !paused }
                 if (mode == "youtube") { if (paused) yt.pause() else yt.play() }
                 else if (midi.active) { if (paused) midi.pause() else midi.play() }
                 else exo.playWhenReady = !paused
             }
-            "skip" -> scope.launch { finish("skip") }
+            "skip" -> { if (current == null) { arm(); scope.launch { startNext() } } else scope.launch { finish("skip") } }
             "restart" -> { if (mode == "youtube") yt.seek(0) else if (midi.active) midi.restart() else exo.seekTo(0) }
             "volup" -> { volume = (volume + 10).coerceAtMost(100); applyVolume(); note = "Volume $volume" }
             "voldown" -> { volume = (volume - 10).coerceAtLeast(0); applyVolume(); note = "Volume $volume" }
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
-            "refresh" -> scope.launch { loadQueue(); startNext() }
+            "refresh" -> { arm(); scope.launch { loadQueue(); startNext() } }
             "fx" -> {
                 val o = value as? JSONObject ?: return
                 val k = o.optString("key"); val v = o.optInt("value")
@@ -364,6 +375,15 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); midi.stop(); yt.destroy(); try { geq?.release() } catch (e: Throwable) {} }
     }
 
+    // ---- interlude: musika habang naghihintay ng kanta ----
+    LaunchedEffect(mode, splash, score, standby) {
+        if (mode == "idle" && splash == null && score == null && !standby && Prefs.interlude) { delay(2500); Interlude.start(Prefs.interludeVol) }
+        else Interlude.stop()
+    }
+    DisposableEffect(Unit) { onDispose { Interlude.stop() } }
+    // ---- listahan ng BGV (bawat 10 minuto) ----
+    LaunchedEffect(Unit) { while (true) { bgvs = try { Supa.backgrounds().mapNotNull { Supa.mediaUrl(it.third) } } catch (e: Exception) { bgvs }; delay(600_000) } }
+
     // ---- lyrics habang tumutugtog ----
     LaunchedEffect(mode, lyrics) {
         while (mode == "audio") { view = lyricAt(lyrics, (if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset); delay(40) }
@@ -373,7 +393,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
     // ================= ITSURA =================
     Box(Modifier.fillMaxSize().background(if (mode == "youtube") Color.Transparent else Color(0xFF0B0C10)).clickable(remember { MutableInteractionSource() }, null) { showUi = true }) {
-        Background(mode == "idle" || mode == "audio")
+        // background: sariling BGV (mula sa Library) o animation
+        val showBg = mode == "idle" || mode == "audio"
+        if (showBg && Prefs.bgMode == "auto" && bgvs.isNotEmpty()) BgvLayer(bgvs) else Background(showBg)
 
         // YouTube player (laging nakahanda para mabilis magsimula)
         DisposableEffect(Unit) {
@@ -433,7 +455,10 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         if (mode == "audio") current?.let { q -> AudioStage(q, view, lyrics.isEmpty()) }
 
         // walang kanta: orasan, QR, "Pumili ng kanta"
-        if (mode == "idle" && splash == null && score == null) Idle(room, qr)
+        if (mode == "idle" && splash == null && score == null) {
+            val waiting = if (armed) 0 else queue.size
+            Idle(room, qr, waiting) { arm(); scope.launch { startNext() } }
+        }
 
         // itaas: susunod sa pila + orasan
         TopStrip(queue, current, mode)
@@ -512,7 +537,7 @@ private fun Clock(height: androidx.compose.ui.unit.Dp) {
 }
 
 @Composable
-private fun Idle(room: String, qr: ImageBitmap) {
+private fun Idle(room: String, qr: ImageBitmap, waiting: Int, onStart: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 28.dp), contentAlignment = Alignment.Center) {
         val mw = maxWidth; val mh = maxHeight
         val wide = mw > mh
@@ -538,6 +563,13 @@ private fun Idle(room: String, qr: ImageBitmap) {
                 Text(date, color = INK, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Text(tr("I-scan ang QR para mag-reserve ng kanta", "Scan the QR to reserve a song"), color = DIM, fontSize = 16.sp,
                     textAlign = if (align == Alignment.CenterHorizontally) TextAlign.Center else TextAlign.Start)
+                if (waiting > 0) {
+                    Spacer(Modifier.height(14.dp))
+                    Text(tr("May $waiting na kanta sa pila. Pindutin ang Play sa remote o dito para magsimula.", "$waiting songs in the queue. Press Play on the remote or here to start."),
+                        color = INK, fontSize = 15.sp, textAlign = if (align == Alignment.CenterHorizontally) TextAlign.Center else TextAlign.Start)
+                    Spacer(Modifier.height(8.dp))
+                    com.videoketana.app.ui.VkButton(tr("Simulan", "Start"), primary = true, icon = "play", onClick = onStart)
+                }
             }
         }
         if (wide) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
@@ -638,4 +670,25 @@ fun android.content.Context.findActivity(): android.app.Activity? {
     var c: android.content.Context? = this
     while (c is android.content.ContextWrapper) { if (c is android.app.Activity) return c; c = c.baseContext }
     return null
+}
+
+/** Background video (BGV) na umiikot, walang tunog. Mga video na in-upload sa Library (BGV). */
+@OptIn(UnstableApi::class)
+@Composable
+private fun BgvLayer(urls: List<String>) {
+    val ctx = LocalContext.current
+    val p = remember {
+        ExoPlayer.Builder(ctx).build().apply {
+            volume = 0f; repeatMode = Player.REPEAT_MODE_ALL; shuffleModeEnabled = true
+        }
+    }
+    LaunchedEffect(urls) {
+        p.setMediaItems(urls.map { MediaItem.fromUri(it) })
+        p.prepare(); p.playWhenReady = true
+    }
+    DisposableEffect(Unit) { onDispose { p.release() } }
+    AndroidView(factory = { c -> PlayerView(c).apply { useController = false; player = p; resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM } },
+        modifier = Modifier.fillMaxSize())
+    // pampadilim para mabasa ang lyrics at QR
+    Box(Modifier.fillMaxSize().background(Color(0x66000000)))
 }

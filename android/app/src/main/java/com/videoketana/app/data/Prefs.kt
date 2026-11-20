@@ -89,6 +89,16 @@ object Prefs {
     fun putStr(k: String, v: String) = sp.edit().putString(k, v).apply()
     fun long(k: String) = sp.getLong(k, 0L)
     fun putLong(k: String, v: Long) = sp.edit().putLong(k, v).apply()
+    /** Interlude (musika habang naghihintay ng kanta) at background ng TV. */
+    var interlude: Boolean
+        get() = sp.getBoolean("interlude", true)
+        set(v) = sp.edit().putBoolean("interlude", v).apply()
+    var interludeVol: Int
+        get() = sp.getInt("interludeVol", 40)
+        set(v) = sp.edit().putInt("interludeVol", v).apply()
+    var bgMode: String                          // "auto" = video kung meron, "anim" = animation lang
+        get() = sp.getString("bgMode", "auto") ?: "auto"
+        set(v) = sp.edit().putString("bgMode", v).apply()
     var skipUpdate: Int
         get() = sp.getInt("skipUpdate", 0)
         set(v) = sp.edit().putInt("skipUpdate", v).apply()
