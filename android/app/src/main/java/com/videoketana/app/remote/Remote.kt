@@ -203,7 +203,12 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (tab) {
                     0 -> NumberTab(now?.local ?: emptyList()) { s, local, mode -> scope.launch { if (local) reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title, mode = mode) else reserve(songId = s.id, mode = mode) } }
-                    1 -> SearchTab { s -> scope.launch { reserve(songId = s.id) } }
+                    1 -> SearchTab(now?.local ?: emptyList()) { s ->
+                        scope.launch {
+                            if (s.kind == "local") reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title)
+                            else reserve(songId = s.id)
+                        }
+                    }
                     2 -> YouTubeTab { id, title -> scope.launch { reserve(ytId = id, ytTitle = title) } }
                     3 -> QueueTab(queue, now?.id,
                         onRemove = { q -> scope.launch { try { Supa.removeFromQueue(q.id); loadQueue() } catch (e: Exception) { Toast.makeText(ctx, e.message, Toast.LENGTH_SHORT).show() } } },
@@ -493,7 +498,7 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, onReserve: (Song
 
 // ---------------- HANAP ----------------
 @Composable
-private fun SearchTab(onReserve: (Song) -> Unit) {
+private fun SearchTab(local: List<Triple<Int, String, String>>, onReserve: (Song) -> Unit) {
     val c = vk
     var q by remember { mutableStateOf("") }
     var list by remember { mutableStateOf<List<Song>>(emptyList()) }
@@ -506,7 +511,12 @@ private fun SearchTab(onReserve: (Song) -> Unit) {
             Spacer(Modifier.width(8.dp))
             VkIconButton("star", { onlyFavs = !onlyFavs }, size = 50.dp, primary = onlyFavs)
         }
-        val shown = if (onlyFavs) list.filter { it.code in favs } else list
+        // mga kanta sa folder ng TV (MIDI at iba pa; 90001+)
+        val ql = q.trim().lowercase()
+        val locals = local.filter { ql.isEmpty() || it.second.lowercase().contains(ql) || it.third.lowercase().contains(ql) || it.first.toString() == ql }
+            .map { Song("local:${it.first}", it.first, it.second, it.third, "local", null, null, null, tr("Sa TV", "On TV"), null) }
+        val all = locals + list
+        val shown = if (onlyFavs) all.filter { it.code in favs } else all
         LazyColumn(contentPadding = PaddingValues(bottom = 20.dp)) {
             items(shown, key = { it.id }) { s ->
                 SongRow(s) {

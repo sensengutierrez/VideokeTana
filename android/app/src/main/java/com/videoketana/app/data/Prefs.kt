@@ -96,7 +96,10 @@ object Prefs {
     var interludeVol: Int
         get() = sp.getInt("interludeVol", 40)
         set(v) = sp.edit().putInt("interludeVol", v).apply()
-    var bgMode: String                          // "auto" = video kung meron, "anim" = animation lang
+    var bgScene: String                         // "cycle" o isa sa BG_SCENES
+        get() = sp.getString("bgScene", "cycle") ?: "cycle"
+        set(v) = sp.edit().putString("bgScene", v).apply()
+    var bgMode: String                          // "auto" = device + online, "device", "online", "anim" = sariling animation lang
         get() = sp.getString("bgMode", "auto") ?: "auto"
         set(v) = sp.edit().putString("bgMode", v).apply()
     var skipUpdate: Int

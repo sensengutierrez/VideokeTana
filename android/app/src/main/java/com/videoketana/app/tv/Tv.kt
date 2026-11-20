@@ -138,7 +138,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var busy by remember { mutableStateOf(false) }
     var armed by remember { mutableStateOf(false) }
     var startIds by remember { mutableStateOf<Set<String>?>(null) }
-    var bgvs by remember { mutableStateOf<List<String>>(emptyList()) }
+    var bgvs by remember { mutableStateOf<List<String>>(emptyList()) }          // BGV online (Library)
+    var localBgv by remember { mutableStateOf<List<String>>(emptyList()) }      // BGV sa folder ng device
+    var localSongs by remember { mutableStateOf<List<com.videoketana.app.data.LocalSong>>(emptyList()) }
     var ytPlaying by remember { mutableStateOf(false) }   // true kapag talagang tumutugtog na ang YouTube
     var ytTry by remember { mutableIntStateOf(0) }        // dagdag bawat bagong YouTube na kanta
     val hostId = remember { Random.nextLong().toString(36) }
@@ -188,7 +190,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         if (standby) return
         val q = current
         val now = q?.let { JSONObject().put("code", it.code).put("title", it.title).put("artist", it.artist).put("source", it.source).put("singer", it.singer ?: "").put("id", it.id) }
-        rt?.broadcast("state", JSONObject().put("now", now ?: JSONObject.NULL).put("paused", paused).put("volume", volume).put("room", room).put("local", JSONArray()).put("fx", fxJson()))
+        rt?.broadcast("state", JSONObject().put("now", now ?: JSONObject.NULL).put("paused", paused).put("volume", volume).put("room", room).put("local", JSONArray(localSongs.map { JSONObject().put("code", it.code).put("title", it.title).put("artist", it.artist) })).put("fx", fxJson()))
     }
 
     fun stopMedia() {
@@ -246,6 +248,24 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 if (current?.id == next.id) {
                     val s = next.song
                     when {
+                        next.localCode != null && s == null && localSongs.any { it.code == next.localCode } -> {
+                            val ls = localSongs.first { it.code == next.localCode }
+                            lyrics = emptyList(); lyricOffset = 0.0; key = 0; tempo = 0
+                            try {
+                                when {
+                                    ls.isMidi -> { mode = "audio"; lyrics = midi.loadFile(ls.file, volume) }
+                                    else -> {
+                                        mode = if (ls.isVideo) "video" else "audio"
+                                        ls.lrc?.let { f -> val (l, off) = parseLrc(try { f.readText() } catch (e: Exception) { "" }); lyrics = l; lyricOffset = off }
+                                        exo.setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(ls.file)))
+                                        exo.prepare(); applyVolume(); applyFx(); exo.play()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(ctx, tr("Hindi ma-play ang ${ls.file.name}: ", "Cannot play ${ls.file.name}: ") + e.message, Toast.LENGTH_LONG).show()
+                                busy = false; finish("error"); return@sn
+                            }
+                        }
                         next.localCode != null && s == null -> { Toast.makeText(ctx, tr("Wala sa device na ito ang kantang ${next.localCode}", "Song ${next.localCode} is not on this device"), Toast.LENGTH_LONG).show(); busy = false; finish("error"); return@sn }
                         s != null && s.kind == "audio" && isMidiPath(s.mediaPath) -> {
                             // MIDI/KAR: synth ng Android; lyrics mula sa loob ng file (o sa .lrc kung meron)
@@ -381,6 +401,21 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         else Interlude.stop()
     }
     DisposableEffect(Unit) { onDispose { Interlude.stop() } }
+    // ---- folder ng device: Download/VideokeTana (bawat minuto) ----
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (com.videoketana.app.data.LocalLib.hasPermission(ctx)) {
+                val (songs, bg) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    com.videoketana.app.data.LocalLib.ensureFolders()
+                    com.videoketana.app.data.LocalLib.scan() to com.videoketana.app.data.LocalLib.bgvFiles().map { android.net.Uri.fromFile(it).toString() }
+                }
+                val changed = songs.map { it.code } != localSongs.map { it.code }
+                localSongs = songs; localBgv = bg
+                if (changed) broadcastState()
+            }
+            delay(60_000)
+        }
+    }
     // ---- listahan ng BGV (bawat 10 minuto) ----
     LaunchedEffect(Unit) { while (true) { bgvs = try { Supa.backgrounds().mapNotNull { Supa.mediaUrl(it.third) } } catch (e: Exception) { bgvs }; delay(600_000) } }
 
@@ -395,7 +430,8 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     Box(Modifier.fillMaxSize().background(if (mode == "youtube") Color.Transparent else Color(0xFF0B0C10)).clickable(remember { MutableInteractionSource() }, null) { showUi = true }) {
         // background: sariling BGV (mula sa Library) o animation
         val showBg = mode == "idle" || mode == "audio"
-        if (showBg && Prefs.bgMode == "auto" && bgvs.isNotEmpty()) BgvLayer(bgvs) else Background(showBg)
+        val bgList = when (Prefs.bgMode) { "auto" -> localBgv + bgvs; "device" -> localBgv; "online" -> bgvs; else -> emptyList() }
+        if (showBg && bgList.isNotEmpty()) BgvLayer(bgList) else Background(showBg)
 
         // YouTube player (laging nakahanda para mabilis magsimula)
         DisposableEffect(Unit) {
@@ -506,22 +542,94 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 // ---------------- mga bahagi ng TV screen ----------------
 
 /** Gumagalaw na background: mga bilog na liwanag na parang ilaw ng entablado. */
+/** Mga sariling BGV na gawa ng app (animation, walang video file). */
+val BG_SCENES = listOf("lights", "stage", "stars", "sunset", "retro")
+
 @Composable
 private fun Background(show: Boolean) {
     if (!show) return
+    // "cycle": palit ng eksena bawat 2 minuto
+    val pick = Prefs.bgScene
+    var idx by remember { mutableIntStateOf(Random.nextInt(BG_SCENES.size)) }
+    LaunchedEffect(pick) { if (pick == "cycle") while (true) { delay(120_000); idx = (idx + 1) % BG_SCENES.size } }
+    val scene = if (pick == "cycle") BG_SCENES[idx] else pick
+    androidx.compose.animation.Crossfade(scene, animationSpec = tween(2000), label = "scene") { sc -> SceneCanvas(sc) }
+}
+
+@Composable
+fun SceneCanvas(scene: String, modifier: Modifier = Modifier.fillMaxSize()) {
     val t = rememberInfiniteTransition(label = "bg")
-    val p by t.animateFloat(0f, 1f, infiniteRepeatable(tween(18000, easing = LinearEasing), RepeatMode.Reverse), label = "p")
-    Canvas(Modifier.fillMaxSize()) {
-        drawRect(Brush.verticalGradient(listOf(Color(0xFF1A1730), Color(0xFF0E0F18))))
-        val lights = listOf(Color(0x5562E3D2), Color(0x55A06BFF), Color(0x44FF7AB6), Color(0x3362A0FF))
-        lights.forEachIndexed { i, col ->
-            val x = size.width * (0.15f + 0.7f * ((p + i * 0.27f) % 1f))
-            val y = size.height * (0.25f + 0.45f * ((i * 0.37f + p * 0.6f) % 1f))
-            drawCircle(Brush.radialGradient(listOf(col, Color.Transparent), center = Offset(x, y), radius = size.minDimension * 0.45f), radius = size.minDimension * 0.45f, center = Offset(x, y))
+    val p by t.animateFloat(0f, 1f, infiniteRepeatable(tween(600000, easing = LinearEasing), RepeatMode.Restart), label = "p")
+    val stars = remember { List(160) { Triple(Random.nextFloat(), Random.nextFloat(), Random.nextFloat()) } }
+    Canvas(modifier) {
+        val w = size.width; val h = size.height
+        val T = p * 600f                              // segundo (0..600)
+        when (scene) {
+            "stage" -> {
+                drawRect(Brush.verticalGradient(listOf(Color(0xFF07060F), Color(0xFF151027), Color(0xFF2A1640))))
+                val cols = listOf(Color(0x66FF4FA3), Color(0x6662E3D2), Color(0x66FFD54A), Color(0x667C6BFF), Color(0x66FF7A45))
+                cols.forEachIndexed { i, col ->
+                    val baseX = w * (0.1f + i * 0.2f)
+                    val ang = kotlin.math.sin(T * 0.6f + i * 1.3f) * 0.45f
+                    val tipX = baseX + kotlin.math.tan(ang) * h
+                    val path = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(baseX - 6f, 0f); lineTo(baseX + 6f, 0f); lineTo(tipX + w * 0.09f, h); lineTo(tipX - w * 0.09f, h); close()
+                    }
+                    drawPath(path, Brush.verticalGradient(listOf(col, Color.Transparent), 0f, h))
+                }
+                // sahig na kumikislap
+                for (k in 0 until 9) {
+                    val x = w * (k + 0.5f) / 9f
+                    val a = 0.15f + 0.15f * kotlin.math.sin(T * 2f + k)
+                    drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = a), Color.Transparent), Offset(x, h * 0.97f), w * 0.08f), w * 0.08f, Offset(x, h * 0.97f))
+                }
+            }
+            "stars" -> {
+                drawRect(Brush.radialGradient(listOf(Color(0xFF1B1840), Color(0xFF05050C)), Offset(w / 2, h / 2), maxOf(w, h) * 0.8f))
+                stars.forEach { (sx, sy, sz) ->
+                    val z = ((sz + T * 0.05f) % 1f)
+                    val dx = (sx - 0.5f) / (1.05f - z); val dy = (sy - 0.5f) / (1.05f - z)
+                    val x = w / 2 + dx * w * 0.5f; val y = h / 2 + dy * h * 0.5f
+                    if (x in 0f..w && y in 0f..h) drawCircle(Color.White.copy(alpha = z * 0.9f), 0.6f + z * 2.6f, Offset(x, y))
+                }
+            }
+            "sunset" -> {
+                drawRect(Brush.verticalGradient(listOf(Color(0xFF231B4A), Color(0xFF7A2D6B), Color(0xFFE9725A), Color(0xFFF7B46A)), 0f, h * 0.62f))
+                drawCircle(Brush.radialGradient(listOf(Color(0xFFFFE3A3), Color(0x00FFC37A)), Offset(w / 2, h * 0.58f), h * 0.22f), h * 0.22f, Offset(w / 2, h * 0.58f))
+                drawRect(Brush.verticalGradient(listOf(Color(0xFF3B2B5E), Color(0xFF0F1530)), h * 0.6f, h), Offset(0f, h * 0.6f), androidx.compose.ui.geometry.Size(w, h * 0.4f))
+                for (k in 0 until 14) {
+                    val y = h * 0.62f + k * k * h * 0.0021f
+                    val off = kotlin.math.sin(T * 1.2f + k) * w * 0.02f
+                    val len = w * (0.08f + 0.02f * k)
+                    drawLine(Color(0x88FFD7A0).copy(alpha = 0.5f - k * 0.03f), Offset(w / 2 - len + off, y), Offset(w / 2 + len + off, y), strokeWidth = 2f + k * 0.3f)
+                }
+            }
+            "retro" -> {
+                drawRect(Brush.verticalGradient(listOf(Color(0xFF0B0221), Color(0xFF2B0B4A), Color(0xFF0B0221))))
+                val hz = h * 0.55f
+                drawCircle(Brush.verticalGradient(listOf(Color(0xFFFFD54A), Color(0xFFFF4FA3)), hz - h * 0.3f, hz), h * 0.2f, Offset(w / 2, hz - h * 0.08f))
+                for (k in 0 until 6) drawRect(Color(0xFF0B0221), Offset(0f, hz - h * 0.12f + k * h * 0.022f), androidx.compose.ui.geometry.Size(w, h * (0.004f + k * 0.0015f)))
+                val grid = Color(0xCCFF4FA3)
+                for (k in -12..12) drawLine(grid, Offset(w / 2 + k * w * 0.02f, hz), Offset(w / 2 + k * w * 0.16f, h), 1.5f)
+                for (k in 0 until 14) {
+                    val z = ((k / 14f) + T * 0.08f) % 1f
+                    val y = hz + (h - hz) * z * z
+                    drawLine(grid.copy(alpha = z), Offset(0f, y), Offset(w, y), 1.5f)
+                }
+            }
+            else -> {   // "lights": bokeh na ilaw
+                drawRect(Brush.verticalGradient(listOf(Color(0xFF1A1730), Color(0xFF0E0F18))))
+                val lights = listOf(Color(0x5562E3D2), Color(0x55A06BFF), Color(0x44FF7AB6), Color(0x3362A0FF), Color(0x33FFD54A))
+                lights.forEachIndexed { i, col ->
+                    val x = w * (0.5f + 0.4f * kotlin.math.sin(T * 0.11f + i * 1.7f))
+                    val y = h * (0.5f + 0.35f * kotlin.math.cos(T * 0.07f + i * 2.3f))
+                    drawCircle(Brush.radialGradient(listOf(col, Color.Transparent), center = Offset(x, y), radius = size.minDimension * 0.45f), radius = size.minDimension * 0.45f, center = Offset(x, y))
+                }
+                val step = 22f
+                var yy = step / 2
+                while (yy < h) { var xx = step / 2; while (xx < w) { drawCircle(Color(0x0DFFFFFF), 1.2f, Offset(xx, yy)); xx += step }; yy += step }
+            }
         }
-        val step = 22f
-        var yy = step / 2
-        while (yy < size.height) { var xx = step / 2; while (xx < size.width) { drawCircle(Color(0x0DFFFFFF), 1.2f, Offset(xx, yy)); xx += step }; yy += step }
     }
 }
 

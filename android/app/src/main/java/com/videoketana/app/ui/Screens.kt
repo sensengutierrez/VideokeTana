@@ -131,6 +131,7 @@ fun SongbookScreen(go: (Screen) -> Unit) {
 }
 
 // ================= SETTINGS =================
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(go: (Screen) -> Unit) {
     val c = vk
@@ -145,6 +146,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var tvLand by remember { mutableStateOf(Prefs.tvLandscape) }
     var interlude by remember { mutableStateOf(Prefs.interlude) }
     var bgMode by remember { mutableStateOf(Prefs.bgMode) }
+    var bgScene by remember { mutableStateOf(Prefs.bgScene) }
     var after by remember { mutableStateOf(Prefs.standbyAfter) }
     var sbColor by remember { mutableStateOf(Prefs.standbyColor) }
     val pickWall = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
@@ -158,6 +160,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
         TopBar(tr("Settings", "Settings"), tr("Naka-save sa device na ito", "Saved on this device"), onClose = { go(Screen.Home) })
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Group(tr("Pagkonekta", "Connecting")) { ConnectGuide(go) }
+            Group(tr("Folder sa device", "Folder on this device")) { FolderSection() }
             Group(tr("Itsura", "Appearance")) {
                 SetRow(tr("Wika", "Language"), tr("Ang wika ng buong app.", "The language of the whole app.")) {
                     Seg(listOf("fil" to "Tagalog", "en" to "English"), Prefs.lang) { Prefs.changeLang(it) }
@@ -189,9 +192,28 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                 Toggle(tr("Pahiga (landscape)", "Landscape"), tr("Kusang nakahiga ang screen pagbukas ng Buksan sa TV.", "The screen turns sideways when you open the TV screen."), tvLand) { tvLand = it; Prefs.tvLandscape = it }
                 Toggle(tr("Interlude habang naghihintay", "Interlude while waiting"), tr("Malumanay na musika sa TV kapag walang kanta. Gawa ng app, walang kinopya.", "Soft music on the TV when no song is playing. Made by the app, nothing copied."), interlude) { interlude = it; Prefs.interlude = it }
                 if (interlude) SliderRow(tr("Lakas ng interlude", "Interlude volume"), "", Prefs.interludeVol, 0, 100, "%") { Prefs.interludeVol = it; com.videoketana.app.tv.Interlude.setVolume(it) }
-                SetRow(tr("Background ng TV", "TV background"), tr("BGV: mga video na in-upload sa Library. Kung wala, animation.", "BGV: videos uploaded in the Library. If none, animation.")) {
-                    Seg(listOf("auto" to "BGV", "anim" to tr("Animation", "Animation")), bgMode) { bgMode = it; Prefs.bgMode = it }
+                SetRow(tr("Background ng TV (BGV)", "TV background (BGV)"), tr("Saan kukunin ang background video.", "Where to get the background video.")) {}
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    Seg(listOf("auto" to tr("Lahat", "All"), "device" to tr("Device", "Device"), "online" to "Library", "anim" to tr("Sarili", "Built-in")), bgMode) { bgMode = it; Prefs.bgMode = it }
                 }
+                Text(tr("Lahat/Device/Library: video kung meron (Device = folder na Download/VideokeTana/BGV). Sarili: animation na gawa ng app. Kapag walang video, ang napiling eksena sa ibaba.",
+                    "All/Device/Library: video when available (Device = Download/VideokeTana/BGV folder). Built-in: the app's own animation. With no video, the scene below is used."),
+                    color = c.muted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+                SetRow(tr("Eksena (sariling BGV)", "Scene (built-in BGV)"), "") {}
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        (listOf("cycle") + com.videoketana.app.tv.BG_SCENES).forEach { k ->
+                            val label = when (k) { "cycle" -> tr("Iikot", "Rotate"); "lights" -> tr("Ilaw", "Lights"); "stage" -> tr("Entablado", "Stage"); "stars" -> tr("Bituin", "Stars"); "sunset" -> tr("Dapithapon", "Sunset"); else -> "Retro" }
+                            val on = k == bgScene
+                            Column(Modifier.width(96.dp).clip(RoundedCornerShape(12.dp)).border(if (on) 3.dp else 1.dp, if (on) c.accent else c.line, RoundedCornerShape(12.dp)).clickable { bgScene = k; Prefs.bgScene = k }) {
+                                if (k == "cycle") Box(Modifier.fillMaxWidth().height(54.dp).background(c.surface2), contentAlignment = Alignment.Center) { VkIcon("refresh", 22.dp, c.accent) }
+                                else com.videoketana.app.tv.SceneCanvas(k, Modifier.fillMaxWidth().height(54.dp))
+                                Text(label, color = c.text, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(6.dp))
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
             }
             Group(tr("Wallpaper at transparency", "Wallpaper and transparency")) {
                 SetRow(tr("Wallpaper", "Wallpaper"), if (Prefs.wallpaper.isEmpty()) tr("Sariling larawan bilang background. Nasa device lang, hindi ina-upload.", "Your own picture as the background. Stays on this device.") else tr("Naka-set ang sariling larawan.", "Your picture is set.")) {
@@ -347,4 +369,48 @@ fun ConnectGuide(go: (Screen) -> Unit) {
         tr("Walang app? I-scan lang ng camera ang QR: bubukas ang remote sa browser.", "No app? Just scan the QR with the camera: the remote opens in the browser."),
         tr("Pwedeng sabay-sabay ang maraming phone sa iisang room.", "Many phones can join the same room at once.")
     ), tr("Sumali sa room", "Join a room")) { go(Screen.Home) }
+}
+
+
+/** Folder na Download/VideokeTana: MIDI, Kanta, BGV. Para sa mga file na na-download o in-extract sa device. */
+@Composable
+fun FolderSection() {
+    val c = vk
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val L = com.videoketana.app.data.LocalLib
+    var ok by remember { mutableStateOf(L.hasPermission(ctx)) }
+    var info by remember { mutableStateOf("") }
+    fun refresh() {
+        ok = L.hasPermission(ctx)
+        if (!ok) { info = ""; return }
+        scope.launch {
+            info = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val made = L.ensureFolders()
+                val songs = L.scan(); val bg = L.bgvFiles()
+                if (!made && !L.root.isDirectory) tr("Hindi magawa ang folder. Gumawa ng folder na VideokeTana sa Download, at sa loob nito: MIDI, Kanta, BGV.",
+                    "Could not create the folder. Make a VideokeTana folder in Download, with MIDI, Kanta and BGV inside.")
+                else tr("${songs.count { it.isMidi }} MIDI, ${songs.count { !it.isMidi }} kanta, ${bg.size} BGV. Numero: 90001 pataas.",
+                    "${songs.count { it.isMidi }} MIDI, ${songs.count { !it.isMidi }} songs, ${bg.size} BGV. Numbers: 90001 and up.")
+            }
+        }
+    }
+    val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { refresh() }
+    LaunchedEffect(Unit) { refresh() }
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(L.shownPath, color = c.accent, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(tr("MIDI → .mid / .kar (pwedeng i-extract dito ang zip)\nKanta → .mp3 / .mp4 (+ .lrc na kapareho ng pangalan)\nBGV → background video (.mp4)",
+            "MIDI → .mid / .kar (you can extract a zip here)\nKanta → .mp3 / .mp4 (+ .lrc with the same name)\nBGV → background video (.mp4)"), color = c.text, fontSize = 14.sp)
+        Text(tr("Sa TV na device ito binabasa (ang device na nagpapatugtog). Hindi ina-upload ang mga file. Siguraduhing may karapatan ka sa mga ito.",
+            "Read on the TV device (the one that plays). Files are not uploaded. Make sure you have the rights to them."), color = c.muted, fontSize = 12.sp)
+        if (info.isNotEmpty()) Text(info, color = c.text, fontSize = 14.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (!ok) VkButton(tr("Payagan ang access", "Allow access"), primary = true, height = 42.dp, onClick = { ask.launch(L.permissions()) })
+            else VkButton(tr("I-scan ulit", "Scan again"), icon = "refresh", height = 42.dp, onClick = { refresh() })
+            if (android.os.Build.VERSION.SDK_INT >= 30) VkButton(tr("Buong access", "Full access"), height = 42.dp, onClick = {
+                if (!L.openAllFilesSetting(ctx)) Toast.makeText(ctx, tr("Walang ganitong setting sa device na ito.", "This device has no such setting."), Toast.LENGTH_LONG).show()
+            })
+        }
+        Text(tr("Kung hindi lumalabas ang .kar o ilang file, gamitin ang \"Buong access\".", "If .kar or some files do not show, use \"Full access\"."), color = c.muted, fontSize = 12.sp)
+    }
 }

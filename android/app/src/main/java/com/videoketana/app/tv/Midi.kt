@@ -67,7 +67,7 @@ fun parseMidiLyrics(b: ByteArray): List<LyricLine> {
         val events = texts.filter { (if (useLyric) it.second == 0x05 else it.second == 0x01) && !it.third.startsWith("@") }.sortedBy { it.first }
         val out = mutableListOf<LyricLine>()
         var cur = StringBuilder(); var curT = -1.0
-        fun flush() { if (cur.isNotBlank()) out += LyricLine(curT, cur.toString().trim()); cur = StringBuilder(); curT = -1.0 }
+        fun flush() { val line = cur.toString().trim(); if (line.isNotBlank() && line.any { it.isLetterOrDigit() }) out += LyricLine(curT, line); cur = StringBuilder(); curT = -1.0 }
         for ((tick, _, raw) in events) {
             var t = raw
             if (t.startsWith("/") || t.startsWith("\\")) { flush(); t = t.drop(1) }
@@ -100,6 +100,16 @@ class MidiPlayer {
             }
         }
         val f = File(ctx.cacheDir, "song.mid"); withContext(Dispatchers.IO) { f.writeBytes(bytes) }
+        return start(f, bytes, volume)
+    }
+
+    /** MIDI na nasa device mismo (folder na VideokeTana/MIDI). */
+    suspend fun loadFile(f: File, volume: Int): List<LyricLine> {
+        val bytes = withContext(Dispatchers.IO) { f.readBytes() }
+        return start(f, bytes, volume)
+    }
+
+    private fun start(f: File, bytes: ByteArray, volume: Int): List<LyricLine> {
         stop()
         mp = MediaPlayer().apply {
             setDataSource(f.absolutePath)
