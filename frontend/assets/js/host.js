@@ -533,6 +533,7 @@ function handleCmd(action, value) {
     case 'setvol': volume = Math.max(0, Math.min(100, parseInt(value, 10) || 0)); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
     case 'refresh': loadQueue(); break;
     case 'scene': nextScene(); break;
+    case 'font': if (['dot', 'seg', 'bold', 'thin'].includes(value)) VK_PREFS.set('numFont', value); break;
     case 'fx': {   // mula sa phone: echo, reverb, lakas ng mic, bass, treble
       const k = value && value.key, r = FX_KEYS[k];
       // interlude at background ng TV (mula sa "Tunog sa TV" ng app)

@@ -189,27 +189,62 @@ class SoundFont(file: File) {
 
 /** Saan kukunin ang SoundFont: sariling .sf2 sa Download/VideokeTana/SoundFont, o GeneralUser GS mula sa site (isang beses i-download). */
 object SoundFonts {
+    const val DEFAULT = "GeneralUser-GS.sf2"
     @Volatile private var cached: Pair<String, SoundFont>? = null
-    fun localFiles(): List<File> = try { File(LocalLib.root, "SoundFont").listFiles()?.filter { it.isFile && it.extension.equals("sf2", true) }?.sortedBy { it.name } ?: emptyList() } catch (e: Exception) { emptyList() }
+    val folder: File get() = File(LocalLib.root, "SoundFont")
+    fun localFiles(): List<File> = try { folder.listFiles()?.filter { it.isFile && it.extension.equals("sf2", true) && it.length() > 100_000 }?.sortedBy { it.name.lowercase() } ?: emptyList() } catch (e: Exception) { emptyList() }
+
+    /** Saan nakalagay ang GeneralUser GS: sa folder na Download/VideokeTana/SoundFont (permanente, nakikita), o sa loob ng app. */
+    fun defaultFile(ctx: Context): File? =
+        listOf(File(folder, DEFAULT), File(ctx.filesDir, DEFAULT)).firstOrNull { it.exists() && it.length() > 1_000_000 }
+
+    /** Ang napili sa Settings ("" = GeneralUser GS). */
+    fun chosenName(): String = com.videoketana.app.data.Prefs.str("soundfont")
+
+    /** I-download ang GeneralUser GS (isang beses). Inilalagay sa folder kung may access, para hindi na ulit kahit i-reinstall. */
+    fun download(ctx: Context, progress: (Float) -> Unit = {}): File {
+        val canFolder = LocalLib.hasPermission(ctx) && (folder.isDirectory || folder.mkdirs())
+        val dst = if (canFolder) File(folder, DEFAULT) else File(ctx.filesDir, DEFAULT)
+        val tmp = File(dst.parentFile, "sf-download.tmp")
+        Supa.http.newBuilder().readTimeout(5, java.util.concurrent.TimeUnit.MINUTES).build()
+            .newCall(Request.Builder().url(Config.SITE + "sf/" + DEFAULT).build()).execute().use { r ->
+                if (!r.isSuccessful) throw RuntimeException("SoundFont: HTTP ${r.code}")
+                val total = r.body!!.contentLength()
+                tmp.outputStream().use { o ->
+                    r.body!!.byteStream().use { i ->
+                        val buf = ByteArray(64 * 1024); var got = 0L
+                        while (true) { val n = i.read(buf); if (n < 0) break; o.write(buf, 0, n); got += n; if (total > 0) progress(got.toFloat() / total) }
+                    }
+                }
+            }
+        if (dst.exists()) dst.delete()
+        if (!tmp.renameTo(dst)) { tmp.copyTo(dst, true); tmp.delete() }
+        return dst
+    }
 
     suspend fun get(ctx: Context, onStatus: (String) -> Unit = {}): SoundFont = withContext(Dispatchers.IO) {
-        val chosen = com.videoketana.app.data.Prefs.str("soundfont")
-        val f = localFiles().firstOrNull { it.name == chosen } ?: localFiles().firstOrNull().takeIf { chosen.isEmpty() || chosen != "builtin" } ?: run {
-            val dst = File(ctx.filesDir, "GeneralUser-GS.sf2")
-            if (!dst.exists() || dst.length() < 1_000_000) {
-                onStatus("download")
-                val tmp = File(ctx.filesDir, "sf.tmp")
-                Supa.http.newBuilder().readTimeout(5, java.util.concurrent.TimeUnit.MINUTES).build()
-                    .newCall(Request.Builder().url(Config.SITE + "sf/GeneralUser-GS.sf2").build()).execute().use { r ->
-                        if (!r.isSuccessful) throw RuntimeException("SoundFont: HTTP ${r.code}")
-                        tmp.outputStream().use { o -> r.body!!.byteStream().copyTo(o) }
-                    }
-                tmp.renameTo(dst)
-            }
-            dst
-        }
+        val chosen = chosenName()
+        val f = localFiles().firstOrNull { chosen.isNotEmpty() && it.name == chosen } ?: defaultFile(ctx) ?: run { onStatus("download"); download(ctx) }
         val key = f.absolutePath + ":" + f.length()
         cached?.takeIf { it.first == key }?.second ?: SoundFont(f).also { cached = key to it }
+    }
+
+    /** Maikling tugtog para subukan ang SoundFont: piano, bass, strings at drums (mga 6 segundo). */
+    fun testSong(): MidiSong {
+        val n = ArrayList<MNote>()
+        fun add(t: Double, d: Double, m: Int, ch: Int, prog: Int, v: Int = 100) { n += MNote(t, d, m, ch, v, 0.8, 0, prog, 64, 0.0) }
+        val chords = listOf(listOf(60, 64, 67), listOf(57, 60, 64), listOf(53, 57, 60), listOf(55, 59, 62))
+        chords.forEachIndexed { i, c ->
+            val t = i * 1.4
+            c.forEach { add(t, 1.3, it, 0, 0) }                 // piano
+            c.forEach { add(t, 1.4, it + 12, 1, 48, 60) }       // strings
+            add(t, 0.6, c[0] - 24, 2, 33); add(t + 0.7, 0.6, c[0] - 24, 2, 33)   // bass
+            add(t, 0.2, 36, 9, 0); add(t + 0.7, 0.2, 38, 9, 0)  // kick, snare
+            for (h in 0 until 4) add(t + h * 0.35, 0.1, 42, 9, 0, 70)
+        }
+        add(5.6, 1.2, 72, 0, 0); add(5.6, 0.2, 49, 9, 0)
+        n.sortBy { it.t }
+        return MidiSong(n, emptyList(), 7.5)
     }
 }
 

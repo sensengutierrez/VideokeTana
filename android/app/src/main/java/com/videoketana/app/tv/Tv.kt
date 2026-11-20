@@ -381,6 +381,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             "voldown" -> { volume = (volume - 10).coerceAtLeast(0); applyVolume(); note = "Volume $volume" }
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
             "refresh" -> { arm(); scope.launch { loadQueue(); startNext() } }
+            "font" -> { val v = value?.toString() ?: return; if (v in listOf("dot", "seg", "bold", "thin")) Prefs.changeDisplayFont(v) }
             "scene" -> {
                 // susunod na eksena (o susunod na BGV kapag video)
                 val cur = if (bgSceneS == "cycle") BG_SCENES[0] else bgSceneS

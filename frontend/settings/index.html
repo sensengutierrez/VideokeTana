@@ -9,16 +9,16 @@
 <link rel="icon" href="../assets/icons/favicon-48.png">
 <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<script src="../assets/js/icons.js?v=0.12.6"></script>
-<script src="../assets/js/theme.js?v=0.12.6"></script>
-<script src="../assets/js/prefs.js?v=0.12.6"></script>
-<script src="../assets/js/i18n.js?v=0.12.6"></script>
-<script src="../assets/js/wallpaper.js?v=0.12.6"></script>
+<script src="../assets/js/icons.js?v=0.12.7"></script>
+<script src="../assets/js/theme.js?v=0.12.7"></script>
+<script src="../assets/js/prefs.js?v=0.12.7"></script>
+<script src="../assets/js/i18n.js?v=0.12.7"></script>
+<script src="../assets/js/wallpaper.js?v=0.12.7"></script>
 <title>VideokeTana Settings</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/style.css?v=0.12.6">
-<link rel="stylesheet" href="../assets/css/settings.css?v=0.12.6">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css?v=0.12.7">
+<link rel="stylesheet" href="../assets/css/settings.css?v=0.12.7">
 </head>
 <body>
 <div class="app">
@@ -239,6 +239,28 @@
   </section>
 
   <!-- TUNOG -->
+  <section id="s-midi">
+    <h2>MIDI at SoundFont</h2>
+    <div class="group">
+      <div class="set">
+        <div class="set-txt"><b>Tunog ng MIDI</b><small>SoundFont: tunay na tunog ng instrumento. Simple: magaan pero parang laruan.</small></div>
+        <div class="seg" data-pref="midiEngine"><button data-v="sf">SoundFont</button><button data-v="basic">Simple</button></div>
+      </div>
+      <div class="set">
+        <div class="set-txt"><b>Aling SoundFont</b><small id="sfInfo">GeneralUser GS (kasama, libre, mga 300 instrumento).</small></div>
+        <div class="seg" data-pref="sfChoice"><button data-v="builtin">GeneralUser GS</button><button data-v="own">Sarili</button></div>
+      </div>
+      <div class="set">
+        <div class="set-txt"><b>Sariling SoundFont (.sf2)</b><small>Naka-save sa device na ito lang. Siguraduhing libre o may lisensya ang file.</small></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn" for="sfFile">Pumili ng .sf2</label><input type="file" id="sfFile" accept=".sf2" hidden><button class="btn" id="sfClear" type="button">Alisin</button></div>
+      </div>
+      <div class="set">
+        <div class="set-txt"><b>Subukan ang tunog</b><small id="sfStatus">Pindutin para marinig ang piano, strings, bass at drums.</small></div>
+        <button class="btn primary" id="sfTest" type="button">Subukan</button>
+      </div>
+    </div>
+  </section>
+
   <section id="s-tunog">
     <h2>Tunog</h2>
     <div class="group">
@@ -335,9 +357,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../assets/js/config.js?v=0.12.6"></script>
-<script src="../assets/js/common.js?v=0.12.6"></script>
-<script src="../assets/js/screensaver.js?v=0.12.6"></script>
-<script src="../assets/js/settings.js?v=0.12.6"></script>
+<script src="../assets/js/config.js?v=0.12.7"></script>
+<script src="../assets/js/common.js?v=0.12.7"></script>
+<script src="../assets/js/screensaver.js?v=0.12.7"></script>
+<script src="../assets/js/sf2.js?v=0.12.7"></script>
+<script src="../assets/js/sfset.js?v=0.12.7"></script>
+<script src="../assets/js/settings.js?v=0.12.7"></script>
 </body>
 </html>

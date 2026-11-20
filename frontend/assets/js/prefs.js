@@ -12,8 +12,10 @@
     pitchBar: 'on',
     // interlude habang naghihintay ng kanta
     interlude: true, interludeVol: 40,
+    // estilo ng numero at orasan: dot (LCD) | seg (Digital) | bold | thin (kapareho ng app)
+    numFont: 'dot',
     // MIDI: 'sf' = SoundFont, 'basic' = simpleng synth
-    midiEngine: 'sf',
+    midiEngine: 'sf', sfChoice: 'builtin', sfOwnName: '',
     // soundboard
     sbNoOverlap: true, sbVol: 80,
     // screensaver
@@ -69,6 +71,9 @@
       return p;
     }
   };
+  // estilo ng numero/orasan sa buong page
+  const applyFont = () => { try { document.documentElement.dataset.numfont = read().numFont || 'dot'; } catch (e) {} };
+  applyFont(); window.addEventListener('vkprefs', applyFont);
   // Sabay-sabay na update kapag binago sa ibang tab
   window.addEventListener('storage', e => {
     if (e.key === KEY) window.dispatchEvent(new CustomEvent('vkprefs', { detail: read() }));

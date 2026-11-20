@@ -221,20 +221,22 @@
   }
 
   // ---------------- pag-load (naka-cache sa browser) ----------------
-  const DEFAULT_URL = (window.VK_SITE || '') + '/sf/GeneralUser-GS.sf2';
-  let loading = null;
-  async function load(url) {
-    if (loading) return loading;
+  // Kasama: GeneralUser GS (nasa site: /sf/). Sariling .sf2: naka-save sa Cache Storage ng device na ito ("own").
+  const OWN_KEY = '/__vk-own.sf2';
+  let loading = null, loadedKey = '';
+  function choice() { try { return (window.VK_PREFS && VK_PREFS.get().sfChoice) || 'builtin'; } catch (e) { return 'builtin'; } }
+  async function load() {
+    const key = choice();
+    if (loading && loadedKey === key) return loading;
+    loadedKey = key;
     loading = (async () => {
       let ab = null;
-      try {
-        if (window.VKLocal && VKLocal.getSoundfont) { const own = await VKLocal.getSoundfont(); if (own) ab = await own.arrayBuffer(); }
-      } catch (e) { }
+      const c = await caches.open('vk-sf').catch(() => null);
+      if (key === 'own' && c) { const r = await c.match(OWN_KEY); if (r) ab = await r.arrayBuffer(); }
       if (!ab) {
-        const u = url || new URL('../sf/GeneralUser-GS.sf2', document.baseURI).href;
-        let res = null;
-        try { const c = await caches.open('vk-sf'); res = await c.match(u); if (!res) { res = await fetch(u); if (res.ok) await c.put(u, res.clone()); } } catch (e) { res = await fetch(u); }
-        if (!res || !res.ok) throw new Error('Hindi ma-download ang SoundFont');
+        const u = new URL('../sf/GeneralUser-GS.sf2', document.baseURI).href;
+        let res = c ? await c.match(u) : null;
+        if (!res) { res = await fetch(u); if (!res.ok) throw new Error('Hindi ma-download ang SoundFont (HTTP ' + res.status + ')'); if (c) await c.put(u, res.clone()); }
         ab = await res.arrayBuffer();
       }
       return parse(ab);
@@ -242,6 +244,38 @@
     loading.catch(() => { loading = null; });
     return loading;
   }
+  async function saveOwn(file) {
+    const ab = await file.arrayBuffer();
+    parse(ab);                                  // susuriin muna kung tunay na SF2
+    const c = await caches.open('vk-sf');
+    await c.put(OWN_KEY, new Response(ab, { headers: { 'Content-Type': 'application/octet-stream' } }));
+    if (window.VK_PREFS) { VK_PREFS.set('sfOwnName', file.name); VK_PREFS.set('sfChoice', 'own'); }
+    loading = null;
+  }
+  async function clearOwn() {
+    const c = await caches.open('vk-sf'); await c.delete(OWN_KEY);
+    if (window.VK_PREFS) { VK_PREFS.set('sfOwnName', ''); VK_PREFS.set('sfChoice', 'builtin'); }
+    loading = null;
+  }
+  // maikling tugtog para subukan: piano, strings, bass at drums
+  function testSong() {
+    const notes = [], add = (t, dur, midi, ch, prog, v) => notes.push({ t, dur, midi, ch, prog, v: v || 100, cg: 0.8, bank: 0, pan: 64, bend: 0 });
+    [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]].forEach((c, i) => {
+      const t = i * 1.4;
+      c.forEach(m => add(t, 1.3, m, 0, 0)); c.forEach(m => add(t, 1.4, m + 12, 1, 48, 60));
+      add(t, 0.6, c[0] - 24, 2, 33); add(t + 0.7, 0.6, c[0] - 24, 2, 33);
+      add(t, 0.2, 36, 9, 0); add(t + 0.7, 0.2, 38, 9, 0);
+      for (let h = 0; h < 4; h++) add(t + h * 0.35, 0.1, 42, 9, 0, 70);
+    });
+    add(5.6, 1.2, 72, 0, 0); add(5.6, 0.2, 49, 9, 0);
+    return { notes: notes.sort((a, b) => a.t - b.t), lyrics: [], melody: [], duration: 7 };
+  }
+  async function test() {
+    const sf = await load();
+    const blob = await render(testSong(), sf, {});
+    const a = new Audio(URL.createObjectURL(blob)); await a.play();
+    return Object.keys(sf.presets).length;
+  }
 
-  window.VKSF2 = { parse, render, load, regions, DEFAULT_URL };
+  window.VKSF2 = { parse, render, load, regions, saveOwn, clearOwn, test };
 })();

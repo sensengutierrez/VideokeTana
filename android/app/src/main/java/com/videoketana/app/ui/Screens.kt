@@ -201,6 +201,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Group(tr("Pagkonekta", "Connecting")) { ConnectGuide(go) }
             Group(tr("Folder sa device", "Folder on this device")) { FolderSection() }
+            Group(tr("MIDI at SoundFont", "MIDI and SoundFont")) { SoundFontSection() }
             Group(tr("Songbook", "Songbook")) { SongbookExport() }
             Group(tr("Itsura", "Appearance")) {
                 SetRow(tr("Wika", "Language"), tr("Ang wika ng buong app.", "The language of the whole app.")) {
@@ -219,7 +220,11 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                             val on = Prefs.displayFont == v
                             Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(androidx.compose.ui.graphics.Color.Black)
                                 .border(if (on) 2.dp else 1.dp, if (on) c.accent else c.line, RoundedCornerShape(14.dp))
-                                .clickable { Prefs.changeDisplayFont(v) }.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                .clickable {
+                                    Prefs.changeDisplayFont(v)
+                                    // sabay ang TV na konektado (web o app)
+                                    listOf(Prefs.lastRoom, Prefs.hostRoom).filter { it.isNotEmpty() }.distinct().forEach { r -> com.videoketana.app.data.RoomPing.cmd(r, "font", v) }
+                                }.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                 // halimbawa ng bawat estilo
                                 DotText("8:30", 22.dp, androidx.compose.ui.graphics.Color(0xFF62E3D2), ghost = false, style = v)
                                 Spacer(Modifier.height(6.dp))
@@ -492,5 +497,73 @@ fun SongbookExport() {
                     busy = false
                 }
             })
+    }
+}
+
+
+/** SoundFont: estado, download, pagpili ng .sf2, at "Subukan ang tunog". */
+@Composable
+fun SoundFontSection() {
+    val c = vk
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val SF = com.videoketana.app.tv.SoundFonts
+    var engine by remember { mutableStateOf(Prefs.str("midiEngine").ifEmpty { "sf" }) }
+    var chosen by remember { mutableStateOf(SF.chosenName()) }
+    var files by remember { mutableStateOf(SF.localFiles()) }
+    var def by remember { mutableStateOf(SF.defaultFile(ctx)) }
+    var prog by remember { mutableStateOf(-1f) }
+    var msg by remember { mutableStateOf("") }
+    val player = remember { com.videoketana.app.tv.SynthPlayer() }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { player.clear() } }
+    fun refresh() { files = SF.localFiles(); def = SF.defaultFile(ctx) }
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(tr("Ang SoundFont ang nagbibigay ng tunog ng mga instrumento sa MIDI. Kasama ang GeneralUser GS (libre, mga 300 instrumento).",
+            "The SoundFont gives MIDI its instrument sounds. GeneralUser GS is included (free, about 300 instruments)."), color = c.muted, fontSize = 13.sp)
+        Seg(listOf("sf" to "SoundFont", "basic" to tr("Simple", "Basic")), engine) { engine = it; Prefs.putStr("midiEngine", if (it == "sf") "" else it) }
+        // estado
+        val d = def
+        Text(if (d != null) tr("✓ Nakahanda: GeneralUser GS (${d.length() / 1048576} MB)", "✓ Ready: GeneralUser GS (${d.length() / 1048576} MB)") + "\n" +
+                (if (d.parentFile == SF.folder) "Download/VideokeTana/SoundFont" else tr("nasa loob ng app", "inside the app"))
+            else tr("Hindi pa na-download ang GeneralUser GS (32 MB).", "GeneralUser GS is not downloaded yet (32 MB)."),
+            color = if (d != null) c.accent else c.text, fontSize = 14.sp)
+        if (prog >= 0f) androidx.compose.material3.LinearProgressIndicator(progress = { prog }, modifier = Modifier.fillMaxWidth(), color = c.accent)
+        // pagpili
+        if (files.any { it.name != SF.DEFAULT }) {
+            Text(tr("Piliin ang SoundFont", "Choose the SoundFont"), color = c.text, fontWeight = FontWeight.Bold)
+            (listOf("" to "GeneralUser GS") + files.filter { it.name != SF.DEFAULT }.map { it.name to it.nameWithoutExtension + " (" + it.length() / 1048576 + " MB)" }).forEach { (k, label) ->
+                val on = chosen == k
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if (on) c.accent.copy(alpha = 0.14f) else androidx.compose.ui.graphics.Color.Transparent)
+                    .border(1.dp, if (on) c.accent else c.line, RoundedCornerShape(12.dp)).clickable { chosen = k; Prefs.putStr("soundfont", k) }.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, color = c.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (on) VkIcon("check", 18.dp, c.accent)
+                }
+            }
+        }
+        Text(tr("Para magdagdag: ilagay ang .sf2 sa Download/VideokeTana/SoundFont, tapos pindutin ang I-scan.", "To add one: put the .sf2 in Download/VideokeTana/SoundFont, then tap Scan."), color = c.muted, fontSize = 12.sp)
+        if (msg.isNotEmpty()) Text(msg, color = c.text, fontSize = 14.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (d == null) VkButton(if (prog >= 0f) "${(prog * 100).toInt()}%" else tr("I-download", "Download"), primary = true, enabled = prog < 0f, height = 42.dp, onClick = {
+                prog = 0f; msg = ""
+                scope.launch {
+                    try { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { SF.download(ctx) { prog = it } }; msg = tr("Na-download!", "Downloaded!") }
+                    catch (e: Exception) { msg = tr("Hindi na-download: ", "Download failed: ") + e.message }
+                    prog = -1f; refresh()
+                }
+            })
+            VkButton(tr("Subukan ang tunog", "Test the sound"), icon = "play", height = 42.dp, enabled = prog < 0f, onClick = {
+                msg = tr("Inihahanda...", "Preparing...")
+                scope.launch {
+                    try {
+                        val sf = SF.get(ctx) { st -> if (st == "download") msg = tr("Dina-download muna (32 MB)...", "Downloading first (32 MB)...") }
+                        player.start(sf, SF.testSong(), 100)
+                        msg = tr("Gumagana ang SoundFont: may ${sf.presets.size} na tunog. Naririnig mo ba ang piano, bass, strings at drums?", "The SoundFont works: ${sf.presets.size} sounds. Do you hear piano, bass, strings and drums?")
+                    } catch (e: Throwable) { msg = tr("Hindi gumana: ", "Did not work: ") + e.message }
+                    refresh()
+                }
+            })
+            VkButton(tr("I-scan", "Scan"), icon = "refresh", height = 42.dp, onClick = { refresh(); msg = "" })
+        }
     }
 }
