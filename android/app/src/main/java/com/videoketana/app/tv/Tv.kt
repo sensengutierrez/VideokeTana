@@ -212,7 +212,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         .put("micVolume", Prefs.int("micVolume", 100)).put("micEcho", Prefs.int("micEcho", 30)).put("micReverb", Prefs.int("micReverb", 20)).put("micClarity", Prefs.int("micClarity", 30))
         .put("eq", true).put("ytTempo", true).put("ytEq", geq != null)
         .put("skipIntro", 1).put("autoSkipIntro", if (Prefs.autoSkipIntro) 1 else 0).put("micIp", micIp ?: "").put("micPort", com.videoketana.app.data.MicLink.PORT)
-        .put("interlude", if (interludeOn) 1 else 0).put("interludeVol", interludeVol).put("bgVideo", if (bgModeS == "anim") 0 else 1)
+        .put("interlude", if (interludeOn) 1 else 0).put("interludeVol", interludeVol).put("bgVideo", when (bgModeS) { "anim" -> 0; "mix" -> 2; else -> 1 })
 
     fun broadcastState() {
         if (standby) return
@@ -233,6 +233,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             val sf = SoundFonts.get(ctx) { st -> if (st == "download") scope.launch { Toast.makeText(ctx, tr("Dina-download ang SoundFont (isang beses lang, mga 32 MB)...", "Downloading the SoundFont (one time, about 32 MB)..."), Toast.LENGTH_LONG).show() } }
             val song = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { parseMidiSong(bytes) }
             synth.key = key
+            synth.lite = when (Prefs.str("synthQuality")) { "high" -> false; "lite" -> true; else -> lowPowerDevice(ctx) }
             synth.start(sf, song, volume)
             return song.lyrics
         } catch (e: Throwable) {
@@ -396,6 +397,15 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 else if (midi.active) { if (paused) midi.pause() else midi.play() }
                 else exo.playWhenReady = !paused
             }
+            "stop" -> scope.launch {
+                // ihinto ang kanta: walang score, hindi kusang tutugtog ang susunod (hintayin ang Play)
+                val done = current ?: return@launch
+                stopMedia(); current = null; paused = false; mode = "idle"
+                queue = queue.filter { it.id != done.id }
+                try { Supa.removeFromQueue(done.id) } catch (e: Exception) { }
+                armed = false; startIds = queue.map { it.id }.toSet()
+                note = tr("Inihinto ang kanta", "Song stopped"); broadcastState()
+            }
             "skip" -> { if (current == null) { arm(); scope.launch { startNext() } } else scope.launch { finish("skip") } }
             "restart" -> { if (mode == "youtube") yt.seek(0) else if (synth.active) synth.restart() else if (midi.active) midi.restart() else exo.seekTo(0) }
             "volup" -> { volume = (volume + 10).coerceAtMost(100); applyVolume(); note = "Volume $volume" }
@@ -430,7 +440,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                     "interlude" -> { interludeOn = v == 1; Prefs.interlude = interludeOn; if (!interludeOn) Interlude.stop() else if (mode == "idle") Interlude.start(interludeVol) }
                     "interludeVol" -> { interludeVol = v.coerceIn(0, 100); Prefs.interludeVol = interludeVol; Interlude.setVolume(interludeVol) }
                     "autoSkipIntro" -> Prefs.autoSkipIntro = v == 1
-                    "bgVideo" -> { bgModeS = if (v == 1) "auto" else "anim"; Prefs.bgMode = bgModeS }
+                    "bgVideo" -> { bgModeS = when (v) { 1 -> "auto"; 2 -> "mix"; else -> "anim" }; Prefs.bgMode = bgModeS }
                 }
                 applyFx()
             }
@@ -493,6 +503,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         exo.addListener(l)
         midi.onEnd = { if (current != null) scope.launch { finish("ended") } }
         synth.onEnd = { if (current != null) scope.launch { finish("ended") } }
+        synth.onAutoLite = { note = tr("Magaan na mode (para makasabay ang device)", "Light mode (so the device keeps up)") }
         midi.onError = { code -> Toast.makeText(ctx, tr("Hindi ma-play ang MIDI ($code)", "Cannot play the MIDI ($code)"), Toast.LENGTH_LONG).show(); scope.launch { delay(1500); finish("error") } }
         onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); midi.stop(); synth.clear(); yt.destroy(); try { geq?.release() } catch (e: Throwable) {} }
     }
@@ -540,8 +551,13 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     Box(Modifier.fillMaxSize().background(if (mode == "youtube") Color.Transparent else Color(0xFF0B0C10)).clickable(remember { MutableInteractionSource() }, null) { showUi = true }) {
         // background: sariling BGV (mula sa Library) o animation
         val showBg = mode == "idle" || mode == "audio"
-        val bgList = when (bgModeS) { "auto" -> localBgv + bgvs; "device" -> localBgv; "online" -> bgvs; else -> emptyList() }
-        if (showBg && bgList.isNotEmpty()) BgvLayer(bgList, bgvSkip) else Background(showBg, bgSceneS)
+        val bgList = when (bgModeS) { "auto", "mix" -> localBgv + bgvs; "device" -> localBgv; "online" -> bgvs; else -> emptyList() }
+        // "mix": salitan ang video at animation bawat 90 segundo
+        var mixVideo by remember { mutableStateOf(true) }
+        LaunchedEffect(bgModeS) { if (bgModeS == "mix") while (true) { delay(90_000); mixVideo = !mixVideo } else mixVideo = true }
+        androidx.compose.animation.Crossfade(showBg && bgList.isNotEmpty() && mixVideo, animationSpec = tween(1500), label = "bgmix") { vidOn ->
+            if (vidOn) BgvLayer(bgList, bgvSkip) else Background(showBg, bgSceneS)
+        }
 
         // YouTube player (laging nakahanda para mabilis magsimula)
         DisposableEffect(Unit) {
@@ -637,7 +653,13 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         if (!solo && !standby) SoloTab(dim = mode != "idle", onClick = { solo = true }, modifier = Modifier.align(Alignment.CenterEnd))
         if (solo) {
             androidx.activity.compose.BackHandler { solo = false }
-            SoloPanel(localSongs, onClose = { solo = false }) { s, l, how ->
+            SoloPanel(localSongs, queue, current?.id, onClose = { solo = false },
+                onRemove = { q -> scope.launch { if (q.id == current?.id) handleCmd("stop", null) else { try { Supa.removeFromQueue(q.id) } catch (e: Exception) {}; loadQueue() } } },
+                onYt = { id, title -> scope.launch {
+                    try { Supa.reserve(room, Prefs.name, ytId = id, ytTitle = title); Synth.play("ding", 0.5f); Toast.makeText(ctx, tr("Naka-reserve.", "Reserved."), Toast.LENGTH_SHORT).show(); arm(); loadQueue(); startNext() }
+                    catch (e: Exception) { Toast.makeText(ctx, tr("Hindi na-reserve: ", "Could not reserve: ") + e.message, Toast.LENGTH_LONG).show() }
+                } },
+                onCmd = { c -> handleCmd(c, null) }) { s, l, how ->
                 scope.launch {
                     try {
                         val minBefore = queue.filter { it.status == "waiting" }.minOfOrNull { it.sortOrder }
@@ -948,4 +970,11 @@ private fun BgvLayer(urls: List<String>, skip: Int = 0) {
     }
     // pampadilim para mabasa ang lyrics at QR
     Box(Modifier.fillMaxSize().background(Color(0x66000000)))
+}
+
+/** Mahinang device? (hal. Smart TV na 4 core o kaunting RAM) → magaan na tunog para walang putol. */
+fun lowPowerDevice(ctx: android.content.Context): Boolean {
+    val am = ctx.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+    val mi = android.app.ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
+    return am.isLowRamDevice || Runtime.getRuntime().availableProcessors() <= 4 || mi.totalMem < 2_500_000_000L
 }

@@ -3,6 +3,7 @@ package com.videoketana.app.tv
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -46,6 +47,7 @@ import com.videoketana.app.ui.SearchField
 import com.videoketana.app.ui.VkIcon
 import com.videoketana.app.ui.Voice
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val ACC = Color(0xFF62E3D2)
 private val INK2 = Color(0xFF062320)
@@ -71,7 +73,9 @@ fun SoloTab(dim: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
  * mode ng reserve: "reserve" (sa dulo), "now" (patugtugin ngayon).
  */
 @Composable
-fun SoloPanel(local: List<LocalSong>, onClose: () -> Unit, onReserve: (Song?, LocalSong?, String) -> Unit) {
+fun SoloPanel(local: List<LocalSong>, queue: List<com.videoketana.app.data.QItem>, currentId: String?, onClose: () -> Unit,
+              onRemove: (com.videoketana.app.data.QItem) -> Unit, onYt: (String, String) -> Unit, onCmd: (String) -> Unit,
+              onReserve: (Song?, LocalSong?, String) -> Unit) {
     var tab by remember { mutableStateOf(0) }
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(0x99000000)).clickable(onClick = onClose)) {
         val wide = maxWidth > maxHeight
@@ -80,20 +84,29 @@ fun SoloPanel(local: List<LocalSong>, onClose: () -> Unit, onReserve: (Song?, Lo
         Column(panelMod.clip(RoundedCornerShape(26.dp)).background(Brush.verticalGradient(listOf(Color(0xFA181C24), Color(0xFA0D1015))))
             .border(1.dp, ACC.copy(alpha = 0.3f), RoundedCornerShape(26.dp)).clickable(enabled = false) {}.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                listOf("#" to tr("Numero", "Number"), "⌕" to tr("Hanap", "Search")).forEachIndexed { i, (ic, label) ->
-                    val on = tab == i
-                    Box(Modifier.padding(end = 8.dp).clip(RoundedCornerShape(50)).background(if (on) ACC else Color.White.copy(alpha = 0.06f)).clickable { tab = i }
-                        .padding(horizontal = 16.dp, vertical = 9.dp)) {
-                        Text("$ic  $label", color = if (on) INK2 else Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(Modifier.weight(1f).horizontalScroll(androidx.compose.foundation.rememberScrollState())) {
+                    listOf("hash" to tr("Numero", "Number"), "search" to tr("Hanap", "Search"), "yt" to "YouTube", "list" to tr("Pila", "Queue"), "mic" to "Mic").forEachIndexed { i, (ic, label) ->
+                        val on = tab == i
+                        Row(Modifier.padding(end = 6.dp).clip(RoundedCornerShape(50)).background(if (on) ACC else Color.White.copy(alpha = 0.06f)).clickable { tab = i }
+                            .padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                            VkIcon(ic, 16.dp, if (on) INK2 else Color.White)
+                            if (on) { Spacer(Modifier.width(6.dp)); Text(label, color = INK2, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                        }
                     }
                 }
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.width(8.dp))
                 Box(Modifier.size(40.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f)).clickable(onClick = onClose), contentAlignment = Alignment.Center) {
                     VkIcon("x", 18.dp, Color.White)
                 }
             }
             Spacer(Modifier.height(10.dp))
-            if (tab == 0) SoloKeypad(local, onReserve) else SoloSearch(local, onReserve)
+            when (tab) {
+                0 -> SoloKeypad(local, onReserve)
+                1 -> SoloSearch(local, onReserve)
+                2 -> SoloYouTube(onYt)
+                3 -> SoloQueue(queue, currentId, onRemove, onCmd)
+                else -> SoloMic()
+            }
         }
     }
 }
@@ -185,5 +198,103 @@ private fun SoloRow(code: Int, title: String, artist: String, tag: String, onRes
         Box(Modifier.clip(RoundedCornerShape(50)).background(ACC).clickable { Haptic.reserved(); onReserve() }.padding(horizontal = 14.dp, vertical = 8.dp)) {
             Text("Reserve", color = INK2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
         }
+    }
+}
+
+
+@Composable
+private fun SoloYouTube(onYt: (String, String) -> Unit) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var q by remember { mutableStateOf("") }
+    var res by remember { mutableStateOf<List<Triple<String, String, String>>>(emptyList()) }
+    var msg by remember { mutableStateOf("") }
+    fun run() {
+        val id = com.videoketana.app.data.parseYouTubeId(q)
+        if (q.contains("youtu") && id != null) { onYt(id, "YouTube video"); q = ""; return }
+        if (q.isBlank()) return
+        msg = tr("Hinahanap…", "Searching…")
+        scope.launch {
+            try {
+                val j = Supa.ytSearch(q)
+                val a = j.optJSONArray("items") ?: org.json.JSONArray()
+                res = (0 until a.length()).map { val o = a.getJSONObject(it); Triple(o.optString("id"), o.optString("title"), o.optString("channel")) }
+                msg = if (j.optString("error").isNotEmpty()) tr("Hindi gumana ang search. Pwedeng mag-paste ng link.", "Search failed. You can paste a link.") else if (res.isEmpty()) tr("Walang nahanap.", "Nothing found.") else ""
+            } catch (e: Exception) { msg = tr("Walang internet?", "No internet?") }
+        }
+    }
+    Column(Modifier.fillMaxSize()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SearchField(q, { q = it }, tr("Hanapin o i-paste ang link", "Search or paste a link"), Modifier.weight(1f))
+            Spacer(Modifier.width(8.dp))
+            Box(Modifier.clip(RoundedCornerShape(14.dp)).background(ACC).clickable { run() }.padding(horizontal = 14.dp, vertical = 14.dp)) { VkIcon("search", 18.dp, INK2) }
+        }
+        if (msg.isNotEmpty()) Text(msg, color = MUTE, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp)) {
+            items(res, key = { it.first }) { r ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    VkIcon("yt", 20.dp, Color(0xFFFF6B6B)); Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(r.second, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(r.third, color = MUTE, fontSize = 12.sp, maxLines = 1)
+                    }
+                    Box(Modifier.clip(RoundedCornerShape(50)).background(ACC).clickable { Haptic.reserved(); onYt(r.first, r.second) }.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                        Text("Reserve", color = INK2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SoloQueue(queue: List<com.videoketana.app.data.QItem>, currentId: String?, onRemove: (com.videoketana.app.data.QItem) -> Unit, onCmd: (String) -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        // kontrol ng kanta
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("restart" to "restart", "stop" to "stop", "pause" to "toggle", "next" to "skip").forEach { (ic, cmd) ->
+                Box(Modifier.weight(1f).height(46.dp).clip(RoundedCornerShape(14.dp)).background(if (cmd == "stop") Color(0x33FF7A7A) else Color.White.copy(alpha = 0.07f))
+                    .clickable { Haptic.tap(); onCmd(cmd) }, contentAlignment = Alignment.Center) { VkIcon(ic, 20.dp, if (cmd == "stop") Color(0xFFFF8A8A) else Color.White) }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        if (queue.isEmpty()) Text(tr("Walang laman ang pila.", "The queue is empty."), color = MUTE)
+        LazyColumn(Modifier.fillMaxSize()) {
+            items(queue, key = { it.id }) { q ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.width(70.dp)) { if (q.source == "youtube") VkIcon("yt", 18.dp, Color(0xFFFF6B6B)) else DotText(q.code, 13.dp, ghost = false) }
+                    Column(Modifier.weight(1f)) {
+                        Text(q.title, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (q.id == currentId) tr("Kinakanta ngayon", "Now singing") else (q.singer ?: ""), color = if (q.id == currentId) ACC else MUTE, fontSize = 12.sp)
+                    }
+                    Box(Modifier.size(36.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.07f)).clickable { onRemove(q) }, contentAlignment = Alignment.Center) {
+                        VkIcon("trash", 16.dp, Color(0xFFFF8A8A))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Mic sa iisang device: ang mic ng device na ito → sariling speaker (dumadaan sa parehong echo/reverb ng TV). */
+@Composable
+private fun SoloMic() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var on by remember { mutableStateOf(com.videoketana.app.data.MicSender.isOn) }
+    var level by remember { mutableStateOf(0f) }
+    var err by remember { mutableStateOf("") }
+    LaunchedEffect(on) { while (on) { level = com.videoketana.app.data.MicSender.level; delay(50) }; level = 0f }
+    fun go() { err = ""; com.videoketana.app.data.MicSender.start("127.0.0.1") { e -> err = e; on = false }; on = true }
+    val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { if (it) go() else err = tr("Kailangan ang pahintulot sa mic.", "Microphone permission is needed.") }
+    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Box(Modifier.size((110 * (1f + (level * 2f).coerceAtMost(0.4f))).dp).clip(RoundedCornerShape(50)).background(if (on) ACC else Color.White.copy(alpha = 0.08f))
+            .clickable {
+                if (on) { com.videoketana.app.data.MicSender.stop(); on = false }
+                else if (ctx.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) go()
+                else ask.launch(android.Manifest.permission.RECORD_AUDIO)
+            }, contentAlignment = Alignment.Center) { VkIcon("mic", 46.dp, if (on) INK2 else Color.White) }
+        Spacer(Modifier.height(12.dp))
+        Text(if (on) tr("Bukas ang mic", "Mic is on") else tr("Pindutin para gamitin ang mic ng device na ito", "Tap to use this device's mic"), color = Color.White, fontWeight = FontWeight.Bold)
+        Text(tr("Gumamit ng earphone na may mic para walang ugong.", "Use earphones with a mic to avoid feedback."), color = MUTE, fontSize = 13.sp)
+        if (err.isNotEmpty()) Text(err, color = Color(0xFFFF7A7A), fontSize = 13.sp)
     }
 }

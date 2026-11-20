@@ -246,7 +246,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                 if (interlude) SliderRow(tr("Lakas ng interlude", "Interlude volume"), "", Prefs.interludeVol, 0, 100, "%") { Prefs.interludeVol = it; com.videoketana.app.tv.Interlude.setVolume(it) }
                 SetRow(tr("Background ng TV (BGV)", "TV background (BGV)"), tr("Saan kukunin ang background video.", "Where to get the background video.")) {}
                 Box(Modifier.padding(horizontal = 16.dp)) {
-                    Seg(listOf("auto" to tr("Lahat", "All"), "device" to tr("Device", "Device"), "online" to "Library", "anim" to tr("Sarili", "Built-in")), bgMode) { bgMode = it; Prefs.bgMode = it }
+                    Seg(listOf("auto" to tr("Lahat", "All"), "mix" to tr("Halo", "Mix"), "device" to tr("Device", "Device"), "online" to "Library", "anim" to tr("Sarili", "Built-in")), bgMode) { bgMode = it; Prefs.bgMode = it }
                 }
                 Text(tr("Lahat/Device/Library: video kung meron (Device = folder na Download/VideokeTana/BGV). Sarili: animation na gawa ng app. Kapag walang video, ang napiling eksena sa ibaba.",
                     "All/Device/Library: video when available (Device = Download/VideokeTana/BGV folder). Built-in: the app's own animation. With no video, the scene below is used."),
@@ -527,6 +527,10 @@ fun SoundFontSection() {
         Text(tr("Ang SoundFont ang nagbibigay ng tunog ng mga instrumento sa MIDI. Kasama ang GeneralUser GS (libre, mga 300 instrumento).",
             "The SoundFont gives MIDI its instrument sounds. GeneralUser GS is included (free, about 300 instruments)."), color = c.muted, fontSize = 13.sp)
         Seg(listOf("sf" to "SoundFont", "basic" to tr("Simple", "Basic")), engine) { engine = it; Prefs.putStr("midiEngine", if (it == "sf") "" else it) }
+        var quality by remember { mutableStateOf(Prefs.str("synthQuality").ifEmpty { "auto" }) }
+        Text(tr("Kalidad", "Quality") + ": " + if (quality == "auto") (if (com.videoketana.app.tv.lowPowerDevice(ctx)) tr("Auto (magaan sa device na ito)", "Auto (light on this device)") else tr("Auto (mataas sa device na ito)", "Auto (high on this device)")) else "",
+            color = c.muted, fontSize = 13.sp)
+        Seg(listOf("auto" to "Auto", "high" to tr("Mataas", "High"), "lite" to tr("Magaan", "Light")), quality) { quality = it; Prefs.putStr("synthQuality", if (it == "auto") "" else it) }
         // estado
         val d = def
         val inApp = remember { SF.bundled(ctx) }

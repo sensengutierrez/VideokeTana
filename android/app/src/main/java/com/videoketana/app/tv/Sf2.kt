@@ -295,6 +295,9 @@ class SynthPlayer {
     @Volatile private var running = false
     @Volatile var paused = false
     @Volatile var key = 0                  // semitono (Key ±)
+    /** Magaan na mode para sa mahinang device (Mi TV): linear interpolation, walang chorus, mas maikling reverb. Kusang bumubukas kapag may putol (underrun). */
+    @Volatile var lite = false
+    var onAutoLite: () -> Unit = {}
     @Volatile var gain = 1f
     private var track: AudioTrack? = null
     private var thread: Thread? = null
@@ -429,6 +432,7 @@ class SynthPlayer {
         val startFrame = frame
         while (ni < notes.size && notes[ni].t < from) ni++
         val data = sf.data
+        val underruns0 = if (android.os.Build.VERSION.SDK_INT >= 24) t.underrunCount else 0
         try {
             while (running && frame < total) {
                 if (paused) { Thread.sleep(20); continue }
@@ -474,9 +478,13 @@ class SynthPlayer {
                             val ip = pos.toInt()
                             if (ip + 2 >= v.end) { v.done = true; break }
                             val fr = pos - ip
-                            val xm1 = data.get(ip - 1).toDouble(); val x0 = data.get(ip).toDouble(); val xp1 = data.get(ip + 1).toDouble(); val xp2 = data.get(ip + 2).toDouble()
-                            val c1 = 0.5 * (xp1 - xm1); val c2 = xm1 - 2.5 * x0 + 2 * xp1 - 0.5 * xp2; val c3 = 0.5 * (xp2 - xm1) + 1.5 * (x0 - xp1)
-                            var smp = (((c3 * fr + c2) * fr + c1) * fr + x0) / 32768.0
+                            var smp: Double
+                            if (lite) { val a0 = data.get(ip).toDouble(); smp = (a0 + (data.get(ip + 1) - a0) * fr) / 32768.0 }
+                            else {
+                                val xm1 = data.get(ip - 1).toDouble(); val x0 = data.get(ip).toDouble(); val xp1 = data.get(ip + 1).toDouble(); val xp2 = data.get(ip + 2).toDouble()
+                                val c1 = 0.5 * (xp1 - xm1); val c2 = xm1 - 2.5 * x0 + 2 * xp1 - 0.5 * xp2; val c3 = 0.5 * (xp2 - xm1) + 1.5 * (x0 - xp1)
+                                smp = (((c3 * fr + c2) * fr + c1) * fr + x0) / 32768.0
+                            }
                             if (filt) { val y = b0 * smp + b1 * v.x1 + b2 * v.x2 - a1 * v.y1 - a2 * v.y2; v.x2 = v.x1; v.x1 = smp; v.y2 = v.y1; v.y1 = y; smp = y }
                             val l = smp * gl; val r = smp * gr
                             L[k] += l; R[k] += r; RV[k] += (l + r) * v.rvb; CL[k] += l * v.cho; CR[k] += r * v.cho
@@ -491,7 +499,8 @@ class SynthPlayer {
                 for (k in 0 until BLK) {
                     val inp = RV[k] * 0.03
                     var ol = 0.0; var or = 0.0
-                    for (j in 0 until 8) {
+                    val nc = if (lite) 4 else 8
+                    for (j in 0 until nc) {
                         var b = cbL[j]; var y = b[ciL[j]]; cfL[j] = y * (1 - damp) + cfL[j] * damp; b[ciL[j]] = inp + cfL[j] * room; if (++ciL[j] >= b.size) ciL[j] = 0; ol += y
                         b = cbR[j]; y = b[ciR[j]]; cfR[j] = y * (1 - damp) + cfR[j] * damp; b[ciR[j]] = inp + cfR[j] * room; if (++ciR[j] >= b.size) ciR[j] = 0; or += y
                     }
@@ -499,18 +508,26 @@ class SynthPlayer {
                         var b = apL[j]; var bo = b[aiL[j]]; var y = -ol + bo; b[aiL[j]] = ol + bo * 0.5; if (++aiL[j] >= b.size) aiL[j] = 0; ol = y
                         b = apR[j]; bo = b[aiR[j]]; y = -or + bo; b[aiR[j]] = or + bo * 0.5; if (++aiR[j] >= b.size) aiR[j] = 0; or = y
                     }
-                    chBL[chI] = CL[k]; chBR[chI] = CR[k]
-                    val m = sin(chPh) * 0.004 * SR; val base = 0.018 * SR
-                    val rl = (chI - (base + m) + cLen) % cLen; val rr = (chI - (base - m) + cLen) % cLen
-                    val il = rl.toInt(); val ir = rr.toInt(); val fl = rl - il; val frr = rr - ir
-                    val cl = chBL[il] * (1 - fl) + chBL[(il + 1) % cLen] * fl; val cr = chBR[ir] * (1 - frr) + chBR[(ir + 1) % cLen] * frr
-                    chPh += 2 * PI * 0.45 / SR; if (++chI >= cLen) chI = 0
+                    var cl = 0.0; var cr = 0.0
+                    if (!lite) {
+                        chBL[chI] = CL[k]; chBR[chI] = CR[k]
+                        val m = sin(chPh) * 0.004 * SR; val base = 0.018 * SR
+                        val rl = (chI - (base + m) + cLen) % cLen; val rr = (chI - (base - m) + cLen) % cLen
+                        val il = rl.toInt(); val ir = rr.toInt(); val fl = rl - il; val frr = rr - ir
+                        cl = chBL[il] * (1 - fl) + chBL[(il + 1) % cLen] * fl; cr = chBR[ir] * (1 - frr) + chBR[(ir + 1) % cLen] * frr
+                        chPh += 2 * PI * 0.45 / SR; if (++chI >= cLen) chI = 0
+                    }
+                    if (lite) { ol *= 2.0; or *= 2.0 }
                     out[k * 2] = (softClip(L[k] + ol * wet + cl * 0.5) * 32767).toInt().toShort()
                     out[k * 2 + 1] = (softClip(R[k] + or * wet + cr * 0.5) * 32767).toInt().toShort()
                 }
                 var off = 0
                 while (off < out.size && running) { val w = t.write(out, off, out.size - off); if (w <= 0) break; off += w }
                 frame += BLK
+                // may putol (hindi makasabay ang device)? kusang lumipat sa magaan na mode
+                if (!lite && android.os.Build.VERSION.SDK_INT >= 24 && t.underrunCount > underruns0 + 2 && frame - startFrame > SR * 2) {
+                    lite = true; android.os.Handler(android.os.Looper.getMainLooper()).post { onAutoLite() }
+                }
             }
             while (running && ((t.playbackHeadPosition.toLong() and 0xFFFFFFFFL) < frame - startFrame - SR / 20)) Thread.sleep(30)
             if (running) { running = false; android.os.Handler(android.os.Looper.getMainLooper()).post { onEnd() } }

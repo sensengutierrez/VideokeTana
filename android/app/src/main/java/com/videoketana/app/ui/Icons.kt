@@ -28,6 +28,7 @@ object VkIcons {
         "yt" to listOf("M6.5 5.0H17.5A4.0 4.0 0 0 1 21.5 9.0V15.0A4.0 4.0 0 0 1 17.5 19.0H6.5A4.0 4.0 0 0 1 2.5 15.0V9.0A4.0 4.0 0 0 1 6.5 5.0Z", "m10 9.2 5 2.8-5 2.8Z"),
         "play" to listOf("M7 4.5v15l12-7.5Z"),
         "pause" to listOf("M8 5v14M16 5v14"),
+        "stop" to listOf("M7.0 6.0H17.0A1.0 1.0 0 0 1 18.0 7.0V17.0A1.0 1.0 0 0 1 17.0 18.0H7.0A1.0 1.0 0 0 1 6.0 17.0V7.0A1.0 1.0 0 0 1 7.0 6.0Z"),
         "next" to listOf("M5 5v14l10-7ZM19 5v14"),
         "restart" to listOf("M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5"),
         "voldown" to listOf("M4 9.5v5h3.5L12 18.5v-13L7.5 9.5Z", "M16 12h4"),

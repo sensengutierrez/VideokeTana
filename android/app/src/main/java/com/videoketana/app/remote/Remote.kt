@@ -303,6 +303,7 @@ private fun NowCard(now: NowState?, hostSeen: Boolean, room: String, onCmd: (Str
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 CtlBtn("restart") { onCmd("restart") }
+                CtlBtn("stop") { onCmd("stop"); com.videoketana.app.ui.Haptic.tap() }
                 CtlBtn("voldown") { onCmd("voldown") }
                 Box(Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(50))
                     .background(Brush.horizontalGradient(listOf(c.accent, c.accent.copy(alpha = 0.75f))))
@@ -454,9 +455,9 @@ private fun SoundSheet(fx: JSONObject?, source: String, send: (String, Int) -> U
             }
             if (fx.optInt("interlude") == 1) FxSlider(tr("Lakas ng interlude", "Interlude volume"), "interludeVol", 0, 100, fx, send, unit = "%")
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                val vid = fx.optInt("bgVideo") == 1
-                listOf(1 to "BGV", 0 to tr("Animation", "Animation")).forEach { (v, label) ->
-                    val on = (v == 1) == vid
+                val cur = fx.optInt("bgVideo")
+                listOf(1 to "BGV", 2 to tr("Halo", "Mix"), 0 to tr("Animation", "Animation")).forEach { (v, label) ->
+                    val on = v == cur
                     Box(Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(50)).background(if (on) c.accent else c.surface).border(1.dp, if (on) c.accent else c.line, RoundedCornerShape(50))
                         .clickable { send("bgVideo", v) }, contentAlignment = Alignment.Center) {
                         Text(label, color = if (on) c.accentInk else c.text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
