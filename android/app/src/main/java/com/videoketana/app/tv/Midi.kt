@@ -73,7 +73,7 @@ fun parseMidiLyrics(b: ByteArray): List<LyricLine> {
             if (t.startsWith("/") || t.startsWith("\\")) { flush(); t = t.drop(1) }
             val breakAfter = t.endsWith("\r") || t.endsWith("\n")
             if (t.startsWith("\r") || t.startsWith("\n")) flush()
-            t = t.replace("\r", "").replace("\n", "")
+            t = t.replace("\r", "").replace("\n", "").replace("#", "")
             if (t.isNotEmpty()) { if (curT < 0) curT = sec(tick); cur.append(t) }
             if (breakAfter) flush()
         }

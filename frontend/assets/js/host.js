@@ -219,18 +219,69 @@ function stopMedia() {
 }
 
 let localUrl = null;
+
+// ---- MIDI: gawing WAV gamit ang sariling synth, tapos patugtugin sa <audio> ----
+async function midiSong(ab, info) {
+  toast('Inihahanda ang MIDI...', 'info', 2500);
+  const parsed = VKMidi.parse(ab);
+  const blob = await VKMidi.render(parsed);
+  if (localUrl) URL.revokeObjectURL(localUrl);
+  localUrl = URL.createObjectURL(blob);
+  return { code: info.code, title: info.title, artist: info.artist || '', kind: 'audio', local: true, lrcText: '', midiLyrics: parsed.lyrics, midiMelody: parsed.melody };
+}
+
+// ---- file na ipinasa ng phone (remote): paisa-isang piraso sa broadcast na "file" ----
+const phoneParts = new Map(), phoneFiles = new Map();
+function onPhoneFile(p) {
+  if (!p || !p.qid || !(p.n > 0) || p.n > 400 || !(p.i >= 0 && p.i < p.n)) return;
+  let a = phoneParts.get(p.qid);
+  if (!a || a.length !== p.n) { a = new Array(p.n).fill(null); phoneParts.set(p.qid, a); }
+  a[p.i] = p.data;
+  if (a.every(x => x !== null)) {
+    phoneParts.delete(p.qid);
+    const bytes = a.map(d => Uint8Array.from(atob(d), c => c.charCodeAt(0)));
+    phoneFiles.set(p.qid, { blob: new Blob(bytes), ext: String(p.ext || '').toLowerCase().replace(/[^a-z0-9]/g, '') });
+    for (const k of phoneFiles.keys()) if (k !== p.qid && !queue.some(q => q.id === k)) phoneFiles.delete(k);
+  }
+}
+async function waitPhoneFile(item) {
+  for (let w = 0; w < 15000; w += 500) {
+    if (phoneFiles.has(item.id)) return phoneFiles.get(item.id);
+    if (w % 5000 === 0 && channel) channel.send({ type: 'broadcast', event: 'need', payload: { qid: item.id } });
+    await new Promise(r => setTimeout(r, 500));
+    if (!current || current.id !== item.id) return null;
+  }
+  return phoneFiles.get(item.id) || null;
+}
 async function playItem(item) {
   const i = itemInfo(item);
   $('nowTag').innerHTML = `<span class="dot">${esc(i.code)}</span><span>${esc(i.title)}</span>${item.singer ? `<span class="nt-s">${esc(item.singer)}</span>` : ''}`;
   applyVolume();
 
-  // kanta na nasa device na ito (IndexedDB)
+  // kanta na nasa device na ito (IndexedDB), o ipinasa ng phone (remote) sa broadcast
   if (item.local_code && !item.song) {
     const rec = window.VKLocal ? await VKLocal.get(item.local_code).catch(() => null) : null;
-    if (!rec) throw new Error(`Wala sa device na ito ang kantang ${item.local_code}`);
-    if (localUrl) URL.revokeObjectURL(localUrl);
-    localUrl = URL.createObjectURL(rec.blob);
-    item.song = { code: rec.code, title: rec.title, artist: rec.artist, kind: rec.kind, local: true, lrcText: rec.lrc || '' };
+    if (rec) {
+      if (localUrl) URL.revokeObjectURL(localUrl);
+      localUrl = URL.createObjectURL(rec.blob);
+      item.song = { code: rec.code, title: rec.title, artist: rec.artist, kind: rec.kind, local: true, lrcText: rec.lrc || '' };
+    } else {
+      const f = await waitPhoneFile(item);
+      if (!f) throw new Error(`Wala sa device na ito ang kantang ${item.local_code}. Kung nasa phone, buksan ang remote ng phone na nag-reserve.`);
+      const [artist, title] = (item.local_title || '').includes(' - ') ? item.local_title.split(' - ', 2) : ['', item.local_title || ('Kanta ' + item.local_code)];
+      if (VKMidi.isMidi('x.' + f.ext)) item.song = await midiSong(await f.blob.arrayBuffer(), { code: item.local_code, title, artist });
+      else {
+        if (localUrl) URL.revokeObjectURL(localUrl);
+        localUrl = URL.createObjectURL(f.blob);
+        item.song = { code: item.local_code, title, artist, kind: /^(mp4|webm|mkv|3gp)$/.test(f.ext) ? 'video' : 'audio', local: true, lrcText: '' };
+      }
+    }
+  }
+  // MIDI na nasa Library (storage)
+  if (item.song && item.song.kind === 'audio' && !item.song.local && VKMidi.isMidi(item.song.media_path)) {
+    const r = await fetch(mediaUrl(item.song.media_path));
+    if (!r.ok) throw new Error('Hindi ma-download ang MIDI');
+    item.song = await midiSong(await r.arrayBuffer(), item.song);
   }
   const src = s => s.local ? localUrl : mediaUrl(s.media_path);
   if (item.song && item.song.kind === 'video') {
@@ -244,7 +295,8 @@ async function playItem(item) {
     $('aS').textContent = item.singer ? 'Kumakanta: ' + item.singer : '';
     $('lyCur').textContent = ''; lineText = null; $('lyNext').textContent = '';
     lyrics = []; lyricOffset = 0;
-    if (item.song.lrcText) parseLrc(item.song.lrcText);
+    if (item.song.midiLyrics) lyrics = item.song.midiLyrics;
+    else if (item.song.lrcText) parseLrc(item.song.lrcText);
     else if (item.song.lrc_path) {
       try {
         const r = await fetch(mediaUrl(item.song.lrc_path) + '?v=' + Date.now());
@@ -317,6 +369,7 @@ const songTime = () => aud.currentTime + lyricOffset + (VK_PREFS.get().lyricDela
 async function loadMelody(song) {
   VKPitch.clear(); document.body.classList.remove('has-pitch');
   if (VK_PREFS.get().pitchBar === 'off') return;
+  if (song.midiMelody) { if (VKPitch.load(song.midiMelody)) document.body.classList.add('has-pitch'); return; }
   if (song.local) return;
   const path = song.mel_path || (song.media_path || '').replace(/\.(mp3|m4a|ogg|wav)$/i, '.mel.json');
   if (!/\.mel\.json$/.test(path)) return;
@@ -548,6 +601,7 @@ function connect() {
   channel = sb.channel('room-' + ROOM, { config: { broadcast: { self: false } } })
     .on('broadcast', { event: 'cmd' }, ({ payload }) => { if (!standby) handleCmd(payload.action, payload.value); })
     .on('broadcast', { event: 'hello' }, () => { if (!standby) broadcastState(); })
+    .on('broadcast', { event: 'file' }, ({ payload }) => { if (!standby) onPhoneFile(payload); })
     .on('broadcast', { event: 'host' }, ({ payload }) => onOtherHost(payload))
     .on('broadcast', { event: 'rtc' }, ({ payload }) => { if (!standby && payload && payload.to === 'host') VKMicHost.handle(payload); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'queue' }, () => loadQueueSoon())
