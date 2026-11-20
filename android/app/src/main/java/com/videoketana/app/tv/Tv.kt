@@ -744,6 +744,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             SoloTab(dim = mode != "idle", onClick = { solo = true })
         }
         if (solo) {
+            androidx.activity.compose.BackHandler { solo = false }   // back gesture sa phone
             SoloPanel(localSongs, queue, current?.id, onClose = { solo = false },
                 onRemove = { q -> scope.launch { if (q.id == current?.id) handleCmd("stop", null) else { try { Supa.removeFromQueue(q.id) } catch (e: Exception) {}; loadQueue() } } },
                 onYt = { id, title -> scope.launch {
