@@ -212,7 +212,16 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             // ---------- laman ng tab ----------
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (tab) {
-                    0 -> NumberTab(now?.local ?: emptyList()) { s, local, mode -> scope.launch { if (local) reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title, mode = mode) else reserve(songId = s.id, mode = mode) } }
+                    0 -> NumberTab(now?.local ?: emptyList(), phoneLocal) { s, local, mode ->
+                        scope.launch {
+                            val pf = if (s.kind == "phone") phoneLocal.firstOrNull { it.code == s.code } else null
+                            when {
+                                pf != null -> reserve(localCode = pf.code, localTitle = (if (pf.artist.isNotBlank()) pf.artist + " - " else "") + pf.title, mode = mode, file = pf.file)
+                                local -> reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title, mode = mode)
+                                else -> reserve(songId = s.id, mode = mode)
+                            }
+                        }
+                    }
                     1 -> SearchTab(now?.local ?: emptyList(), phoneLocal, onDeleteLocal = { code -> cmd("localdel", code) }) { s ->
                         scope.launch {
                             val pf = if (s.kind == "phone") phoneLocal.firstOrNull { it.code == s.code } else null
@@ -454,7 +463,7 @@ private fun Soundboard(send: (String) -> Unit) {
 
 // ---------------- NUMERO ----------------
 @Composable
-private fun NumberTab(local: List<Triple<Int, String, String>>, onReserve: (Song, Boolean, String) -> Unit) {
+private fun NumberTab(local: List<Triple<Int, String, String>>, phoneLocal: List<com.videoketana.app.data.LocalSong>, onReserve: (Song, Boolean, String) -> Unit) {
     val c = vk
     var code by remember { mutableStateOf("") }
     var found by remember { mutableStateOf<Song?>(null) }
@@ -466,7 +475,9 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, onReserve: (Song
             searching = true
             val n = code.toInt()
             if (n >= 90000) {
+                // una ang nasa TV; kung wala, ang nasa folder ng phone na ito
                 local.firstOrNull { it.first == n }?.let { found = Song("local:$n", n, it.second, it.third, "local", null, null, null, null, null); isLocal = true }
+                if (found == null) phoneLocal.firstOrNull { it.code == n }?.let { found = Song("phone:$n", n, it.title, it.artist, "phone", null, null, null, tr("Sa phone", "On phone"), null); isLocal = true }
             } else found = try { Supa.songByCode(n) } catch (e: Exception) { null }
             searching = false
             found?.let { kotlinx.coroutines.delay(500); com.videoketana.app.ui.Voice.say(it.title) }
