@@ -77,6 +77,9 @@ object Prefs {
     var keyBeep: Boolean
         get() = sp.getBoolean("keyBeep", true)
         set(v) = sp.edit().putBoolean("keyBeep", v).apply()
+    var numVoice: Boolean                       // boses na nagbibilang sa pag-type ng numero
+        get() = sp.getBoolean("numVoice", true)
+        set(v) = sp.edit().putBoolean("numVoice", v).apply()
     var scoreOn: Boolean
         get() = sp.getBoolean("scoreOn", true)
         set(v) = sp.edit().putBoolean("scoreOn", v).apply()

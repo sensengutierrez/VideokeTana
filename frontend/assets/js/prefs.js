@@ -10,6 +10,10 @@
     tvOrient: 'landscape',
     // pitch bar (para sa kantang may melody)
     pitchBar: 'on',
+    // interlude habang naghihintay ng kanta
+    interlude: true, interludeVol: 40,
+    // MIDI: 'sf' = SoundFont, 'basic' = simpleng synth
+    midiEngine: 'sf',
     // soundboard
     sbNoOverlap: true, sbVol: 80,
     // screensaver

@@ -120,7 +120,7 @@
     'Wika': 'Language', 'Wika ng app': 'App language', 'Ang wikang gagamitin sa lahat ng screen ng app sa device na ito.': 'The language used on every screen of the app on this device.',
     'Tema': 'Theme', 'Ang Auto ay sumusunod sa setting ng device mo.': 'Auto follows your device setting.', 'Dark': 'Dark', 'Light': 'Light', 'Auto': 'Auto',
     'Wallpaper': 'Wallpaper', 'Sariling larawan bilang background ng app sa device na ito. Hindi ito ina-upload kahit saan.': 'Your own picture as the app background on this device. It is never uploaded.',
-    'Walang wallpaper': 'No wallpaper', 'Pumili ng larawan': 'Choose a picture', 'Dilim ng wallpaper': 'Wallpaper darkness',
+    'Walang wallpaper': 'No wallpaper', 'Pumili ng larawan': 'Choose a picture', 'Dilim ng wallpaper': 'Wallpaper darkness', 'Interlude habang naghihintay': 'Interlude while waiting', 'Malumanay na musika sa TV kapag walang kanta. Gawa ng app, walang kinopya.': 'Soft music on the TV when no song is playing. Made by the app, nothing copied.', 'Lakas ng interlude': 'Interlude volume', 'Mahina': 'Soft', 'Malakas': 'Loud', 'Inihahanda ang MIDI...': 'Preparing the MIDI...',
     'Mas madilim, mas madaling basahin ang mga letra.': 'Darker makes text easier to read.', 'Maliwanag': 'Bright', 'Madilim': 'Dark',
     'Transparency ng mga box': 'Box transparency', 'Gawing see-through ang mga box at button para makita ang wallpaper o background.': 'Make boxes and buttons see-through to show the wallpaper or background.',
     'Buo': 'Solid', 'See-through': 'See-through', 'Buo (walang transparency)': 'Solid (no transparency)',

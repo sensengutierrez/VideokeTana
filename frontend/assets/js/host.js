@@ -37,6 +37,15 @@ function renderQr() {
 }
 
 // ================= VIEW =================
+// ---- interlude habang naghihintay ----
+let interT = null;
+function interludeFor(m) {
+  clearTimeout(interT);
+  const p = VK_PREFS.get();
+  if (m === 'idle' && started && p.interlude !== false && window.VKInterlude) {
+    interT = setTimeout(() => { if (mode === 'idle' && $('splash').style.display !== 'flex') VKInterlude.start(p.interludeVol); }, 2500);
+  } else if (window.VKInterlude) VKInterlude.stop();
+}
 function show(m) {
   mode = m;
   vid.style.display = m === 'video' ? 'block' : 'none';
@@ -50,6 +59,7 @@ function show(m) {
   // ang background ay tumatakbo lang kapag hindi natatakpan ng video
   if (started) applyBg(false);
   renderNextBar();
+  interludeFor(m);
 }
 
 // Listahan ng naka-reserve sa itaas ng screen, parang tunay na videoke
@@ -164,6 +174,7 @@ function scoreMsg(n) {
     : n >= 80 ? 'Magaling! Palakpakan natin!' : 'Pwede na! Kanta pa ulit!';
 }
 function showScore(item) {
+  if (window.VKInterlude) { clearTimeout(interT); VKInterlude.stop(); }
   return new Promise(res => {
     scoring = true;
     const prS = VK_PREFS.get();
@@ -197,6 +208,7 @@ function showScore(item) {
 }
 
 function showSplash(item) {
+  if (window.VKInterlude) { clearTimeout(interT); VKInterlude.stop(); }
   return new Promise(res => {
     const i = itemInfo(item);
     $('spNum').textContent = i.code;
@@ -589,7 +601,7 @@ function onOtherHost(p) {
   if (p.since > hostSince) goStandby(); else announceHost();
 }
 function goStandby() {
-  standby = true;
+  standby = true; if (window.VKInterlude) VKInterlude.stop();
   stopMedia(); current = null; starting = false;
   try { VKMicHost.closeAll(); } catch (e) {}
   show('idle');

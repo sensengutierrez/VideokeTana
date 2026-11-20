@@ -469,10 +469,12 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, onReserve: (Song
                 local.firstOrNull { it.first == n }?.let { found = Song("local:$n", n, it.second, it.third, "local", null, null, null, null, null); isLocal = true }
             } else found = try { Supa.songByCode(n) } catch (e: Exception) { null }
             searching = false
+            found?.let { kotlinx.coroutines.delay(500); com.videoketana.app.ui.Voice.say(it.title) }
         }
     }
     fun key(k: String) {
-        if (Prefs.keyBeep) Synth.play("beep", 0.4f)
+        if (Prefs.keyBeep && !Prefs.numVoice) Synth.play("beep", 0.4f)
+        com.videoketana.app.ui.Voice.key(k)
         code = when (k) { "clr" -> ""; "del" -> code.dropLast(1); else -> if (code.length < 5) code + k else code }
     }
     // walang scroll: ang mga key ang lumiliit/lumalaki ayon sa natitirang espasyo
