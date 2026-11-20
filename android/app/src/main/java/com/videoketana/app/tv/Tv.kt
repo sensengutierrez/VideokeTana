@@ -271,9 +271,17 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             delay(1900)
             val n = (100 - Random.nextDouble().let { it * it } * 30).toInt()
             score = n to (done.singer ?: "")
-            Synth.play("fanfare"); Synth.play("applause", 0.7f)
             rt?.broadcast("score", JSONObject().put("score", n).put("singer", done.singer ?: ""))
-            delay(4200)
+            // sariling tunog ng score (Download/VideokeTana/Score), kung napili sa Settings
+            val own = if (Prefs.str("scoreSound") == "own") com.videoketana.app.data.LocalLib.scoreFileFor(n) else null
+            var waitMs = 4200L
+            if (own != null) {
+                try {
+                    val mp = android.media.MediaPlayer().apply { setDataSource(own.absolutePath); prepare(); setVolume(Prefs.sfxVolume / 100f, Prefs.sfxVolume / 100f); start(); setOnCompletionListener { it.release() } }
+                    waitMs = maxOf(4200L, minOf(14_000L, mp.duration.toLong() + 400))
+                } catch (e: Exception) { Synth.play("fanfare"); Synth.play("applause", 0.7f) }
+            } else { Synth.play("fanfare"); Synth.play("applause", 0.7f) }
+            delay(waitMs)
             score = null
         }
         startNext()

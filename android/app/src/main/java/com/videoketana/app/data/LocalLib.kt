@@ -36,6 +36,12 @@ object LocalLib {
     val midiDir: File get() = File(root, "MIDI")
     val songDir: File get() = File(root, "Kanta")
     val bgvDir: File get() = File(root, "BGV")
+    val scoreDir: File get() = File(root, "Score")
+    private val SCORE_RE = Regex("^score_(\\d{1,3})(?:_(\\d{1,3}))?\\.(mp3|m4a|wav|ogg|aac)$", RegexOption.IGNORE_CASE)
+    /** Mga sariling tunog ng score: score_61_75.mp3 → (61..75, file). */
+    fun scoreFiles(): List<Pair<IntRange, File>> = (try { scoreDir.listFiles()?.toList() ?: emptyList() } catch (e: Exception) { emptyList() })
+        .mapNotNull { f -> SCORE_RE.find(f.name)?.let { m -> val a = m.groupValues[1].toInt(); val b = m.groupValues[2].toIntOrNull() ?: a; (minOf(a, b)..maxOf(a, b)) to f } }
+    fun scoreFileFor(n: Int): File? = scoreFiles().filter { n in it.first }.minByOrNull { it.first.last - it.first.first }?.second
     val shownPath = "Download/VideokeTana"
 
     /** Mga permission na kailangan para mabasa ang folder. */
@@ -61,7 +67,7 @@ object LocalLib {
 
     /** Gawin ang mga folder (kung pinapayagan ng device). Totoo kung meron na ang lahat. */
     fun ensureFolders(): Boolean {
-        listOf(midiDir, songDir, bgvDir).forEach { try { it.mkdirs() } catch (e: Exception) { } }
+        listOf(midiDir, songDir, bgvDir, scoreDir).forEach { try { it.mkdirs() } catch (e: Exception) { } }
         return midiDir.isDirectory && songDir.isDirectory && bgvDir.isDirectory
     }
 

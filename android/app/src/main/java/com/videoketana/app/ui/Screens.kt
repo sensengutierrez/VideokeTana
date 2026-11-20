@@ -187,6 +187,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var interlude by remember { mutableStateOf(Prefs.interlude) }
     var introMode by remember { mutableStateOf(Prefs.str("introMode").ifEmpty { "full" }) }
     var autoSkip by remember { mutableStateOf(Prefs.autoSkipIntro) }
+    var scoreSnd by remember { mutableStateOf(Prefs.str("scoreSound").ifEmpty { "builtin" }) }
     var bgMode by remember { mutableStateOf(Prefs.bgMode) }
     var bgScene by remember { mutableStateOf(Prefs.bgScene) }
     var after by remember { mutableStateOf(Prefs.standbyAfter) }
@@ -240,6 +241,10 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                 Toggle(tr("Pahiga (landscape)", "Landscape"), tr("Kusang nakahiga ang screen pagbukas ng Buksan sa TV.", "The screen turns sideways when you open the TV screen."), tvLand) { tvLand = it; Prefs.tvLandscape = it }
                 SetRow(tr("Intro pagbukas ng app", "Intro when the app opens"), tr("Ang umiikot na numero at tunog sa simula.", "The spinning number and sound at the start.")) {
                     Seg(listOf("full" to tr("Buo", "Full"), "short" to tr("Maikli", "Short"), "off" to tr("Wala", "Off")), introMode) { introMode = it; Prefs.putStr("introMode", if (it == "full") "" else it) }
+                }
+                SetRow(tr("Tunog ng score", "Score sound"), tr("Sarili: mga file sa Download/VideokeTana/Score na pinangalanang score_61_75.mp3, score_100.mp3 (saklaw ng score). ${com.videoketana.app.data.LocalLib.scoreFiles().size} na file ngayon.",
+                    "Own: files in Download/VideokeTana/Score named score_61_75.mp3, score_100.mp3 (score range). ${com.videoketana.app.data.LocalLib.scoreFiles().size} files now.")) {
+                    Seg(listOf("builtin" to tr("Kasama", "Built-in"), "own" to tr("Sarili", "Own")), scoreSnd) { scoreSnd = it; Prefs.putStr("scoreSound", if (it == "own") "own" else "") }
                 }
                 Toggle(tr("Laktawan ang mahabang intro ng kanta", "Skip long song intros"), tr("Diretso sa 3 segundo bago ang unang linya ng lyrics (kapag ang device na ito ang TV). May \"⏭ Intro\" din sa remote.", "Jumps to 3 seconds before the first lyric line (when this device is the TV). The remote also has \"⏭ Intro\"."), autoSkip) { autoSkip = it; Prefs.autoSkipIntro = it }
                 Toggle(tr("Interlude habang naghihintay", "Interlude while waiting"), tr("Malumanay na musika sa TV kapag walang kanta. Gawa ng app, walang kinopya.", "Soft music on the TV when no song is playing. Made by the app, nothing copied."), interlude) { interlude = it; Prefs.interlude = it }

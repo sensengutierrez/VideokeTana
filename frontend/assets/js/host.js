@@ -106,8 +106,14 @@ async function loadQueue() {
 let loadTimer = null;
 function loadQueueSoon() { clearTimeout(loadTimer); loadTimer = setTimeout(loadQueue, 150); }
 
+// pagkatapos ng "Stop": hindi kusang tutugtog ang naiwang pila hanggang may Play/Next o bagong reserve
+let holdIds = null;
 async function startNext() {
   if (starting || current || scoring || standby) return;
+  if (holdIds) {
+    if (queue.some(q => !holdIds.has(q.id))) holdIds = null;
+    else { show('idle'); broadcastState(); return; }
+  }
   const next = queue.find(q => q.status === 'playing') || queue.find(q => q.status === 'waiting');
   // mga naipit sa "Kinakanta" (hal. galing sa ibang tab na nagsara): ibalik sa pila
   const stuck = queue.filter(q => q.status === 'playing' && q !== next);
@@ -159,6 +165,7 @@ async function finishCurrent(reason = 'skip') {
     if (error) toast('Hindi naalis sa pila: ' + error.message, 'err');
     if (reason === 'ended' && VK_PREFS.get().scoreMode !== 'off') await showScore(done);
   }
+  if (reason === 'stop') { holdIds = new Set(queue.map(q => q.id)); show('idle'); toast('Inihinto ang kanta', 'ok', 1500); broadcastState(); return; }
   startNext();
 }
 
@@ -197,12 +204,18 @@ function showScore(item) {
       $('scNum').textContent = k < 1 ? Math.floor(Math.random() * 100) : n;
       if (k < 1) return requestAnimationFrame(count);
       $('scMsg').textContent = scoreMsg(n);
-      if (pr.applause > 0) {
-        VKSfx.play('fanfare');
-        VKSfx.play('applause', { size: [0, .5, 1, 1.5][pr.applause] * (n >= 95 ? 1.2 : n >= 85 ? 1 : .7) });
-      }
       if (channel) channel.send({ type: 'broadcast', event: 'score', payload: { score: n, singer: item.singer || '', title: itemInfo(item).title } });
-      setTimeout(() => { el.style.display = 'none'; scoring = false; res(); }, 4200);
+      const done = ms => setTimeout(() => { el.style.display = 'none'; scoring = false; res(); }, ms);
+      const builtin = () => {
+        if (pr.applause > 0) {
+          VKSfx.play('fanfare');
+          VKSfx.play('applause', { size: [0, .5, 1, 1.5][pr.applause] * (n >= 95 ? 1.2 : n >= 85 ? 1 : .7) });
+        }
+        done(4200);
+      };
+      // sariling tunog ng score (Settings → Score): kapag may file para sa score na ito
+      if (pr.scoreSound === 'own' && window.VKScoreSnd) VKScoreSnd.play(n, pr.sfxVolume / 100).then(sec => sec ? done(Math.max(4200, sec * 1000 + 400)) : builtin()).catch(builtin);
+      else builtin();
     })(t0);
   });
 }
@@ -539,10 +552,11 @@ function restart() {
 
 function handleCmd(action, value) {
   switch (action) {
-    case 'toggle': setPaused(!paused); break;
+    case 'toggle': if (!current && holdIds) { holdIds = null; startNext(); } else setPaused(!paused); break;
     case 'pause': setPaused(true); break;
-    case 'play': setPaused(false); break;
-    case 'skip': if (current) finishCurrent('skip'); break;
+    case 'play': if (!current && holdIds) { holdIds = null; startNext(); } else setPaused(false); break;
+    case 'skip': if (current) finishCurrent('skip'); else { holdIds = null; startNext(); } break;
+    case 'stop': if (current) finishCurrent('stop'); break;
     case 'sfx': playSfx(value); return;
     case 'restart': restart(); break;
     case 'skipintro': skipIntro(); break;
@@ -559,7 +573,7 @@ function handleCmd(action, value) {
       if (k === 'interludeVol') { const v = Math.max(0, Math.min(100, Math.round(+value.value || 0))); VK_PREFS.set('interludeVol', v); if (window.VKInterlude) VKInterlude.setVolume(v); break; }
       if (k === 'pitchBar') { VK_PREFS.set('pitchBar', +value.value === 1 ? 'on' : 'off'); break; }
       if (k === 'autoSkipIntro') { VK_PREFS.set('autoSkipIntro', +value.value === 1); break; }
-      if (k === 'bgVideo') { VK_PREFS.set('bgMode', +value.value === 1 ? 'videos' : 'animated'); if (started) applyBg(true); break; }
+      if (k === 'bgVideo') { const v = +value.value; VK_PREFS.set('bgMode', v === 1 ? 'videos' : v === 2 ? 'mix' : 'animated'); if (started) applyBg(true); break; }
       if (!r) break;
       VK_PREFS.set(k, Math.max(r[0], Math.min(r[1], Math.round(+value.value || 0))));
       if (k === 'musicTempo') applyTempo();
@@ -605,7 +619,7 @@ function fxState() {
   Object.keys(FX_KEYS).forEach(k => { o[k] = +p[k] || 0; });
   o.eq = !!eqAC && (mode === 'audio' || mode === 'video');
   o.ytTempo = true; o.pitchBar = p.pitchBar === 'off' ? 0 : 1; o.skipIntro = 1;
-  o.interlude = p.interlude === false ? 0 : 1; o.interludeVol = p.interludeVol == null ? 40 : +p.interludeVol; o.bgVideo = p.bgMode === 'videos' ? 1 : 0;
+  o.interlude = p.interlude === false ? 0 : 1; o.interludeVol = p.interludeVol == null ? 40 : +p.interludeVol; o.bgVideo = p.bgMode === 'videos' ? 1 : p.bgMode === 'mix' ? 2 : 0;
   return o;
 }
 
@@ -953,8 +967,12 @@ bgv.addEventListener('loadedmetadata', bgvFit);
 bgv.addEventListener('play', () => { if (bgv.classList.contains('fit')) bgvBlur.play().catch(() => {}); });
 bgv.addEventListener('pause', () => bgvBlur && bgvBlur.pause());
 addEventListener('resize', bgvFit);
+// "mix": salitan ang video at animation bawat 90 segundo
+let mixVideo = true;
+setInterval(() => { if (VK_PREFS.get().bgMode === 'mix' && started) { mixVideo = !mixVideo; applyBg(true); } }, 90000);
 async function applyBg(change) {
-  const p = VK_PREFS.get();
+  const p0 = VK_PREFS.get();
+  const p = p0.bgMode === 'mix' ? Object.assign({}, p0, { bgMode: mixVideo ? 'videos' : 'animated' }) : p0;
   const covered = mode === 'video' || mode === 'youtube';
   const wall = $('wallImg');
   if (p.bgMode === 'image' && window.VKWall && VKWall.url()) {

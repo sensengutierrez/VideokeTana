@@ -23,6 +23,7 @@
     pause: '<path d="M8 5v14M16 5v14"/>',
     playpause: '<path d="M4 5v14l9-7ZM16 5v14M20 5v14"/>',
     next: '<path d="M5 5v14l10-7ZM19 5v14"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
     restart: '<path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5"/>',
     voldown: '<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5Z"/><path d="M16 12h4"/>',
     volup: '<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5Z"/><path d="M16 12h4M18 10v4"/>',

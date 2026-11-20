@@ -17,3 +17,21 @@
   };
   $('sfClear').onclick = async () => { await VKSF2.clearOwn(); $('sfStatus').textContent = 'Inalis. GeneralUser GS na ulit.'; };
 })();
+
+// Settings: sariling tunog ng score
+(function () {
+  const $ = id => document.getElementById(id);
+  if (!$('scSndFile') || !window.VKScoreSnd) return;
+  const show = async () => { const l = await VKScoreSnd.list(); $('scSndList').textContent = l.length ? l.sort().join(', ') : 'Wala pa.'; };
+  show();
+  $('scSndFile').onchange = async e => {
+    const files = [...e.target.files]; e.target.value = '';
+    const ok = await VKScoreSnd.save(files);
+    const bad = files.length - ok;
+    $('scSndList').textContent = 'Na-save: ' + ok + (bad ? ' (hindi tama ang pangalan ng ' + bad + ')' : '');
+    if (ok) VK_PREFS.set('scoreSound', 'own');
+    setTimeout(show, 1500);
+  };
+  $('scSndTest').onclick = async () => { const n = 61 + Math.floor(Math.random() * 40); const s = await VKScoreSnd.play(n, 1); $('scSndList').textContent = s ? 'Score ' + n + ': tumutunog' : 'Walang file para sa score ' + n; };
+  $('scSndClear').onclick = async () => { await VKScoreSnd.clear(); VK_PREFS.set('scoreSound', 'builtin'); show(); };
+})();

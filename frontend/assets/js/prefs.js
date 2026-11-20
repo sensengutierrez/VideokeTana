@@ -12,6 +12,8 @@
     pitchBar: 'on',
     // laktawan nang kusa ang mahabang intro ng kanta (may lyrics)
     autoSkipIntro: false,
+    // tunog ng score: 'builtin' (fanfare at palakpak) o 'own' (sariling mga file)
+    scoreSound: 'builtin',
     // interlude habang naghihintay ng kanta
     interlude: true, interludeVol: 40,
     // estilo ng numero at orasan: dot (LCD) | seg (Digital) | bold | thin (kapareho ng app)
