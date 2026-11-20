@@ -42,7 +42,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.displayCutout
@@ -165,6 +165,14 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var bgvs by remember { mutableStateOf<List<String>>(emptyList()) }
     var bgvSkip by remember { mutableIntStateOf(0) }          // BGV online (Library)
     var localBgv by remember { mutableStateOf<List<String>>(emptyList()) }      // BGV sa folder ng device
+    var scanTick by remember { mutableIntStateOf(0) }
+    var folderOk by remember { mutableStateOf(true) }
+    val askFolder = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { r ->
+        // kung ayaw ng TV sa karaniwang permission, ang "Buong access" na setting
+        if (!com.videoketana.app.data.LocalLib.hasPermission(ctx) && !com.videoketana.app.data.LocalLib.openAllFilesSetting(ctx))
+            Toast.makeText(ctx, tr("Hindi pumayag ang TV. Ilagay ang kanta sa phone at i-reserve doon.", "The TV did not allow it. Put songs on a phone and reserve from there."), Toast.LENGTH_LONG).show()
+        scanTick++
+    }
     var localSongs by remember { mutableStateOf<List<com.videoketana.app.data.LocalSong>>(emptyList()) }
     var ytPlaying by remember { mutableStateOf(false) }   // true kapag talagang tumutugtog na ang YouTube
     var ytTry by remember { mutableIntStateOf(0) }        // dagdag bawat bagong YouTube na kanta
@@ -564,9 +572,10 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     }
     DisposableEffect(Unit) { onDispose { Interlude.stop() } }
     // ---- folder ng device: Download/VideokeTana (bawat minuto) ----
-    LaunchedEffect(Unit) {
+    LaunchedEffect(scanTick) {
         while (true) {
-            if (com.videoketana.app.data.LocalLib.hasPermission(ctx)) {
+            folderOk = com.videoketana.app.data.LocalLib.hasPermission(ctx)
+            if (folderOk) {
                 val (songs, bg) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     com.videoketana.app.data.LocalLib.ensureFolders()
                     com.videoketana.app.data.LocalLib.scan() to com.videoketana.app.data.LocalLib.bgvFiles().map { android.net.Uri.fromFile(it).toString() }
@@ -575,7 +584,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 localSongs = songs; localBgv = bg
                 if (changed) broadcastState()
             }
-            delay(60_000)
+            delay(if (folderOk) 60_000 else 5_000)
         }
     }
     // ---- listahan ng BGV (bawat 10 minuto) ----
@@ -587,30 +596,31 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         while (mode == "audio") { view = lyricAt(lyrics, (if (synth.active) synth.positionMs else if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset); delay(40) }
     }
     LaunchedEffect(note) { if (note.isNotEmpty()) { delay(2200); note = "" } }
-    LaunchedEffect(showUi) { if (showUi) { tabSeen++; delay(4000); showUi = false } }
+    var keyTick by remember { mutableIntStateOf(0) }
+    var rootFocused by remember { mutableStateOf(false) }
+    val xFocus = remember { FocusRequester() }
+    LaunchedEffect(showUi) { if (showUi) tabSeen++ }
+    LaunchedEffect(showUi, keyTick) { if (showUi) { delay(if (rootFocused) 4000 else 8000); showUi = false } }
     var tabShown by remember { mutableStateOf(true) }
     LaunchedEffect(tabSeen) { tabShown = true; delay(6000); tabShown = false }
     // remote ng TV (Mi TV atbp.): kapag sarado ang panel, ibalik ang focus sa screen para gumana ang D-pad
-    LaunchedEffect(solo, standby) { if (!solo) { delay(150); try { rootFocus.requestFocus() } catch (e: Exception) { } } }
+    LaunchedEffect(solo, standby, showUi) { if (!solo && !showUi) { delay(150); try { rootFocus.requestFocus() } catch (e: Exception) { } } }
 
     // ================= ITSURA =================
     var lastBack by remember { mutableStateOf(0L) }
-    Box(Modifier.fillMaxSize().background(if (mode == "youtube") Color.Transparent else Color(0xFF0B0C10))
-        .onPreviewKeyEvent { e ->
-            // Back ng remote: isara muna ang # panel; sa main screen, dalawang Back para lumabas
-            if (e.key != Key.Back && e.key != Key.Escape) return@onPreviewKeyEvent false
-            if (e.type != KeyEventType.KeyUp) return@onPreviewKeyEvent true
-            when {
-                solo -> solo = false
-                showUi -> showUi = false
-                System.currentTimeMillis() - lastBack < 2500 -> onClose()
-                else -> { lastBack = System.currentTimeMillis(); Toast.makeText(ctx, tr("Pindutin ulit ang Back para lumabas", "Press Back again to exit"), Toast.LENGTH_SHORT).show() }
-            }
-            true
+    // Back (remote ng TV o back gesture): isara ang # panel, itago ang mga button, dalawang Back para lumabas
+    androidx.activity.compose.BackHandler {
+        when {
+            solo -> solo = false
+            showUi && !(isTv && mode == "idle") -> showUi = false
+            System.currentTimeMillis() - lastBack < 2500 -> onClose()
+            else -> { lastBack = System.currentTimeMillis(); Toast.makeText(ctx, tr("Pindutin ulit ang Back para lumabas", "Press Back again to exit"), Toast.LENGTH_SHORT).show() }
         }
+    }
+    Box(Modifier.fillMaxSize().background(if (mode == "youtube") Color.Transparent else Color(0xFF0B0C10))
         .onKeyEvent { e ->
             if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
-            tabSeen++
+            tabSeen++; keyTick++
             when (e.key) {
                 Key.MediaPlayPause -> { handleCmd("toggle", null); true }
                 Key.MediaPlay -> { handleCmd("play", null); true }
@@ -618,17 +628,24 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 Key.MediaNext, Key.MediaFastForward -> { handleCmd("skip", null); true }
                 Key.MediaStop -> { handleCmd("stop", null); true }
                 Key.MediaPrevious, Key.MediaRewind -> { handleCmd("restart", null); true }
-                else -> if (solo || standby) false else when (e.key) {
+                // kapag nasa button ang pointer (hal. X), hayaang gumalaw ang pointer at gumana ang OK
+                else -> if (solo || standby || !rootFocused) false else when (e.key) {
                     Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
                         if (current == null) { arm(); scope.launch { startNext() } } else handleCmd("toggle", null)
                         showUi = true; true
                     }
                     Key.DirectionRight, Key.Menu, Key.Pound, Key.Search -> { solo = true; true }
-                    Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft -> { showUi = true; true }
+                    Key.DirectionUp, Key.DirectionLeft -> {   // ipakita ang mga button at ilipat ang pointer sa X
+                        showUi = true
+                        scope.launch { delay(120); try { xFocus.requestFocus() } catch (x: Exception) { } }
+                        true
+                    }
+                    Key.DirectionDown -> { showUi = true; true }
                     else -> false
                 }
             }
         }
+        .onFocusChanged { rootFocused = it.isFocused }
         .focusRequester(rootFocus).focusable()
         .clickable(remember { MutableInteractionSource() }, null) { showUi = true; tabSeen++ }) {
         // background: sariling BGV (mula sa Library) o animation
@@ -735,7 +752,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                     room = makeRoomCode(); Prefs.hostRoom = room; queue = emptyList()
                     Toast.makeText(ctx, tr("Bagong room: $room", "New room: $room"), Toast.LENGTH_SHORT).show()
                 })
-                VkIconButton("x", onClose)
+                VkIconButton("x", onClose, Modifier.focusRequester(xFocus))
             }
         }
 
@@ -745,8 +762,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             SoloTab(dim = mode != "idle", onClick = { solo = true })
         }
         if (solo) {
-            androidx.activity.compose.BackHandler { solo = false }   // back gesture sa phone
-            SoloPanel(localSongs, queue, current?.id, onClose = { solo = false },
+            SoloPanel(localSongs, folderOk, { askFolder.launch(com.videoketana.app.data.LocalLib.permissions()) }, queue, current?.id, onClose = { solo = false },
                 onRemove = { q -> scope.launch { if (q.id == current?.id) handleCmd("stop", null) else { try { Supa.removeFromQueue(q.id) } catch (e: Exception) {}; loadQueue() } } },
                 onYt = { id, title -> scope.launch {
                     try { Supa.reserve(room, Prefs.name, ytId = id, ytTitle = title); Synth.play("ding", 0.5f); Toast.makeText(ctx, tr("Naka-reserve.", "Reserved."), Toast.LENGTH_SHORT).show(); arm(); loadQueue(); startNext() }

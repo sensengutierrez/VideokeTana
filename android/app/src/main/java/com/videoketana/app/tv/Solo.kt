@@ -85,7 +85,7 @@ fun SoloTab(dim: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
  * mode ng reserve: "reserve" (sa dulo), "now" (patugtugin ngayon).
  */
 @Composable
-fun SoloPanel(local: List<LocalSong>, queue: List<com.videoketana.app.data.QItem>, currentId: String?, onClose: () -> Unit,
+fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, queue: List<com.videoketana.app.data.QItem>, currentId: String?, onClose: () -> Unit,
               onRemove: (com.videoketana.app.data.QItem) -> Unit, onYt: (String, String) -> Unit, onCmd: (String) -> Unit,
               onReserve: (Song?, LocalSong?, String) -> Unit) {
     var tab by remember { mutableStateOf(0) }
@@ -115,7 +115,7 @@ fun SoloPanel(local: List<LocalSong>, queue: List<com.videoketana.app.data.QItem
             }
             Spacer(Modifier.height(10.dp))
             when (tab) {
-                0 -> SoloKeypad(local, onReserve)
+                0 -> SoloKeypad(local, hasAccess, onAccess, onReserve)
                 1 -> SoloSearch(local, onReserve)
                 2 -> SoloYouTube(onYt)
                 3 -> SoloQueue(queue, currentId, onRemove, onCmd)
@@ -126,7 +126,7 @@ fun SoloPanel(local: List<LocalSong>, queue: List<com.videoketana.app.data.QItem
 }
 
 @Composable
-private fun SoloKeypad(local: List<LocalSong>, onReserve: (Song?, LocalSong?, String) -> Unit) {
+private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, onReserve: (Song?, LocalSong?, String) -> Unit) {
     var code by remember { mutableStateOf("") }
     var found by remember { mutableStateOf<Song?>(null) }
     var foundLocal by remember { mutableStateOf<LocalSong?>(null) }
@@ -145,8 +145,18 @@ private fun SoloKeypad(local: List<LocalSong>, onReserve: (Song?, LocalSong?, St
         Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF05070A)).border(1.dp, ACC.copy(alpha = 0.25f), RoundedCornerShape(16.dp)).padding(10.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 DotText(if (code.isEmpty()) "-----" else code.padEnd(5, ' '), 30.dp)
-                Text(when { code.length < 5 -> tr("I-type ang numero", "Type the number"); ok -> title!!; else -> tr("Walang kanta sa numerong ito", "No song with this number") },
-                    color = when { ok -> ACC; code.length == 5 -> Color(0xFFFF7A7A); else -> MUTE }, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val mine = code.length == 5 && !ok && code.toInt() >= 90000
+                Text(when {
+                    code.length < 5 -> tr("I-type ang numero", "Type the number")
+                    ok -> title!!
+                    mine && !hasAccess -> tr("Hindi pa nababasa ang folder ng TV na ito", "This TV's folder can't be read yet")
+                    mine -> tr("Wala sa folder ng TV na ito (${local.size} kanta). Nasa phone? I-reserve sa phone.", "Not in this TV's folder (${local.size} songs). On a phone? Reserve from the phone.")
+                    else -> tr("Walang kanta sa numerong ito", "No song with this number") },
+                    color = when { ok -> ACC; code.length == 5 -> Color(0xFFFF7A7A); else -> MUTE }, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                if (mine && !hasAccess) Box(Modifier.padding(top = 6.dp).clip(RoundedCornerShape(50)).background(ACC).tvFocus().clickable { onAccess() }.padding(horizontal = 14.dp, vertical = 7.dp)) {
+                    Text(tr("Payagan ang folder", "Allow the folder"), color = INK2, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
