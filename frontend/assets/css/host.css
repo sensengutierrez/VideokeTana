@@ -181,6 +181,9 @@ body.lyr-4 #lyrics { bottom: 8vh; }
 
 /* background: sariling video / plain */
 #bgv { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+/* BGV na malayo ang hugis sa screen (hal. patayong video): buo ang video, malabong kopya sa likod */
+#bgv.fit { object-fit: contain; }
+#bgvBlur { position: absolute; inset: -40px; width: calc(100% + 80px); height: calc(100% + 80px); object-fit: cover; filter: blur(34px) brightness(.55) saturate(1.2); display: none; }
 body.bg-plain #stage { background: radial-gradient(ellipse at 30% 20%, #1c2230 0%, #07080b 70%); }
 
 /* teksto sa idle */

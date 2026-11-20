@@ -913,13 +913,32 @@ async function loadBgList() {
   const { data } = await sb.from('backgrounds').select('id, title, path');
   bgList = data || [];
 }
+// BGV: kung malayo ang hugis ng video sa screen, buo ang video at malabong kopya sa likod (hindi naputol, walang itim na gilid)
+const bgvBlur = document.getElementById('bgvBlur');
+function bgvFit() {
+  if (!bgvBlur) return;
+  const va = bgv.videoWidth && bgv.videoHeight ? bgv.videoWidth / bgv.videoHeight : 0;
+  const sa = innerWidth / innerHeight;
+  const fit = va > 0 && Math.abs(Math.log(va / sa)) > 0.35 && bgv.style.display !== 'none';
+  bgv.classList.toggle('fit', fit);
+  if (fit) {
+    if (bgvBlur.src !== bgv.src) bgvBlur.src = bgv.src;
+    bgvBlur.style.display = 'block';
+    try { bgvBlur.currentTime = bgv.currentTime; } catch (e) {}
+    if (!bgv.paused) bgvBlur.play().catch(() => {});
+  } else { bgvBlur.style.display = 'none'; bgvBlur.pause(); }
+}
+bgv.addEventListener('loadedmetadata', bgvFit);
+bgv.addEventListener('play', () => { if (bgv.classList.contains('fit')) bgvBlur.play().catch(() => {}); });
+bgv.addEventListener('pause', () => bgvBlur && bgvBlur.pause());
+addEventListener('resize', bgvFit);
 async function applyBg(change) {
   const p = VK_PREFS.get();
   const covered = mode === 'video' || mode === 'youtube';
   const wall = $('wallImg');
   if (p.bgMode === 'image' && window.VKWall && VKWall.url()) {
     if (window.VKScenes) VKScenes.pause();
-    bgv.pause(); bgv.style.display = 'none';
+    bgv.pause(); bgv.style.display = 'none'; bgvFit();
     $('scene').style.visibility = 'hidden';
     document.body.classList.remove('bg-plain');
     wall.style.backgroundImage = `url("${VKWall.url()}")`;
@@ -938,12 +957,12 @@ async function applyBg(change) {
         bgPick = choices[Math.floor(Math.random() * choices.length)];
         bgv.src = mediaUrl(bgPick.path);
       }
-      bgv.style.display = 'block';
+      bgv.style.display = 'block'; bgvFit();
       covered ? bgv.pause() : bgv.play().catch(() => {});
       return;
     }
   }
-  bgv.pause(); bgv.style.display = 'none';
+  bgv.pause(); bgv.style.display = 'none'; bgvFit();
   if (p.bgMode === 'plain') {
     if (window.VKScenes) VKScenes.pause();
     $('scene').style.visibility = 'hidden';

@@ -900,9 +900,26 @@ private fun BgvLayer(urls: List<String>, skip: Int = 0) {
         p.prepare(); p.playWhenReady = true
     }
     LaunchedEffect(skip) { if (skip > 0 && p.mediaItemCount > 1) p.seekToNextMediaItem() }
-    DisposableEffect(Unit) { onDispose { p.release() } }
-    AndroidView(factory = { c -> PlayerView(c).apply { useController = false; player = p; resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM } },
-        modifier = Modifier.fillMaxSize())
+    // sukat ng video: kung halos kapareho ng screen, punuin (zoom); kung malayo (hal. patayong video sa nakahigang screen),
+    // buo ang video (fit) at animation ang nasa gilid para hindi pangit ang putol o itim na bahagi
+    var vAspect by remember { mutableStateOf(0f) }
+    DisposableEffect(Unit) {
+        val l = object : Player.Listener {
+            override fun onVideoSizeChanged(v: androidx.media3.common.VideoSize) { if (v.width > 0 && v.height > 0) vAspect = v.width * v.pixelWidthHeightRatio / v.height }
+        }
+        p.addListener(l)
+        onDispose { p.removeListener(l); p.release() }
+    }
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val sAspect = maxWidth.value / maxHeight.value
+        val fit = vAspect > 0f && kotlin.math.abs(kotlin.math.ln(vAspect / sAspect)) > 0.35f
+        if (fit) SceneCanvas("lights")
+        AndroidView(factory = { c -> PlayerView(c).apply {
+                useController = false; player = p; setShutterBackgroundColor(android.graphics.Color.TRANSPARENT); setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            } },
+            update = { v -> v.resizeMode = if (fit) androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT else androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM },
+            modifier = Modifier.fillMaxSize())
+    }
     // pampadilim para mabasa ang lyrics at QR
     Box(Modifier.fillMaxSize().background(Color(0x66000000)))
 }
