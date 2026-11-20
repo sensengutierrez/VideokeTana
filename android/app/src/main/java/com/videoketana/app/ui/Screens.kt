@@ -155,6 +155,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         TopBar(tr("Settings", "Settings"), tr("Naka-save sa device na ito", "Saved on this device"), onClose = { go(Screen.Home) })
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Group(tr("Pagkonekta", "Connecting")) { ConnectGuide(go) }
             Group(tr("Itsura", "Appearance")) {
                 SetRow(tr("Wika", "Language"), tr("Ang wika ng buong app.", "The language of the whole app.")) {
                     Seg(listOf("fil" to "Tagalog", "en" to "English"), Prefs.lang) { Prefs.changeLang(it) }
@@ -301,4 +302,42 @@ fun Seg(options: List<Pair<String, String>>, value: String, onPick: (String) -> 
             }
         }
     }
+}
+
+
+/** Gabay: paano gawing main (TV) ang device, at paano sumali bilang remote. */
+@Composable
+fun ConnectGuide(go: (Screen) -> Unit) {
+    val c = vk
+    @Composable
+    fun Card(icon: String, title: String, steps: List<String>, button: String, onClick: () -> Unit) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                VkIcon(icon, 22.dp, c.accent); Spacer(Modifier.width(10.dp))
+                Text(title, color = c.text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+            Spacer(Modifier.height(8.dp))
+            steps.forEachIndexed { i, t ->
+                Row(Modifier.padding(vertical = 3.dp)) {
+                    Text("${i + 1}.", color = c.accent, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.width(22.dp))
+                    Text(t, color = c.text, fontSize = 14.sp)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            VkButton(button, onClick = onClick, icon = icon, height = 42.dp)
+        }
+    }
+    Card("tv", tr("Main: ito ang TV (dito tutugtog)", "Main: this is the TV (songs play here)"), listOf(
+        tr("Sa Mi TV o Android TV: buksan ang VideokeTana. Kusa itong magiging TV screen.", "On a Mi TV or Android TV: open VideokeTana. It becomes the TV screen by itself."),
+        tr("Sa phone o tablet: Home, tapos \"Buksan sa TV\". Pwedeng pahiga.", "On a phone or tablet: Home, then \"Open on TV\". It can go landscape."),
+        tr("Lalabas ang QR code at room code (hal. ABCD). Iwanang bukas ang screen.", "A QR code and room code appear (e.g. ABCD). Keep the screen open."),
+        tr("Iisang Wi-Fi para sa mic. Para sa kanta at remote, kahit anong internet.", "Same Wi-Fi for the mic. For songs and the remote, any internet works.")
+    ), tr("Gawing TV ang device na ito", "Use this device as the TV")) { go(Screen.Tv) }
+    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(c.line))
+    Card("phone", tr("Sumali: remote ang phone", "Join: the phone is the remote"), listOf(
+        tr("Sa Home, pindutin ang \"I-scan ang QR code\" at itapat sa QR ng TV.", "On Home, tap \"Scan the QR code\" and point it at the TV's QR."),
+        tr("O i-type ang room code (hal. ABCD) at pindutin ang Sumali.", "Or type the room code (e.g. ABCD) and tap Join."),
+        tr("Walang app? I-scan lang ng camera ang QR: bubukas ang remote sa browser.", "No app? Just scan the QR with the camera: the remote opens in the browser."),
+        tr("Pwedeng sabay-sabay ang maraming phone sa iisang room.", "Many phones can join the same room at once.")
+    ), tr("Sumali sa room", "Join a room")) { go(Screen.Home) }
 }

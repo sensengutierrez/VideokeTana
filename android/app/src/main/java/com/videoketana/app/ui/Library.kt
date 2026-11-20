@@ -166,7 +166,7 @@ private fun SongsTab() {
                         VkIconButton("trash", { confirm = s }, size = 38.dp, tint = c.danger)
                     }
                     val tags = buildList {
-                        if (s.kind == "audio") add(if (s.lrcPath != null) tr("May lyrics", "Has lyrics") else tr("Walang lyrics", "No lyrics"))
+                        if (s.kind == "audio") add(if (com.videoketana.app.tv.isMidiPath(s.mediaPath)) "MIDI" else if (s.lrcPath != null) tr("May lyrics", "Has lyrics") else tr("Walang lyrics", "No lyrics"))
                         add(s.licenseNote ?: tr("Walang nakasulat na lisensya", "No license note"))
                     }
                     Text(tags.joinToString(". "), color = if (s.licenseNote == null) c.danger else c.muted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
@@ -242,8 +242,8 @@ private fun UploadTab(onDone: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Panel(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(tr("Kanta (MP3, M4A, MP4, WEBM; hanggang 50 MB)", "Song (MP3, M4A, MP4, WEBM; up to 50 MB)"), color = c.text, fontWeight = FontWeight.Bold)
-                VkButton(media?.name ?: tr("Pumili ng file", "Choose a file"), icon = "music", modifier = Modifier.fillMaxWidth(), onClick = { pickMedia.launch(arrayOf("audio/*", "video/*")) })
+                Text(tr("Kanta (MP3, M4A, MP4, WEBM, MIDI/KAR; hanggang 50 MB)", "Song (MP3, M4A, MP4, WEBM, MIDI/KAR; up to 50 MB)"), color = c.text, fontWeight = FontWeight.Bold)
+                VkButton(media?.name ?: tr("Pumili ng file", "Choose a file"), icon = "music", modifier = Modifier.fillMaxWidth(), onClick = { pickMedia.launch(arrayOf("audio/*", "video/*", "application/x-midi", "application/octet-stream")) })
                 media?.let { Text("%.1f MB".format(it.size / 1048576f), color = if (it.size > 50L * 1048576) c.danger else c.muted, fontSize = 13.sp) }
                 Text(tr("Lyrics (.lrc, opsyonal; para sa audio)", "Lyrics (.lrc, optional; for audio)"), color = c.text, fontWeight = FontWeight.Bold)
                 VkButton(lrc?.name ?: tr("Pumili ng .lrc", "Choose a .lrc"), icon = "list", modifier = Modifier.fillMaxWidth(), onClick = { pickLrc.launch(arrayOf("*/*")) })

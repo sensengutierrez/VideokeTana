@@ -153,16 +153,19 @@ object Admin {
     }
 
     private val MIME = mapOf("mp3" to "audio/mpeg", "m4a" to "audio/mp4", "aac" to "audio/aac", "ogg" to "audio/ogg", "wav" to "audio/wav",
-        "mp4" to "video/mp4", "webm" to "video/webm", "mkv" to "video/x-matroska")
+        "mp4" to "video/mp4", "webm" to "video/webm", "mkv" to "video/x-matroska",
+        "mid" to "audio/midi", "midi" to "audio/midi", "kar" to "audio/midi")
     val AUDIO = setOf("mp3", "m4a", "aac", "ogg", "wav")
     val VIDEO = setOf("mp4", "webm", "mkv")
+    val MIDI = setOf("mid", "midi", "kar")
 
     /** Upload ng isang kanta (audio o video) + opsyonal na .lrc. Ibinabalik ang code ng kanta. */
     suspend fun uploadSong(ctx: Context, media: PickedFile, lrc: PickedFile?, title: String, artist: String, category: String?, progress: (Float) -> Unit): Int {
-        val kind = when (media.ext) { in AUDIO -> "audio"; in VIDEO -> "video"; else -> throw RuntimeException(tr("Hindi suportadong file. MP3, M4A, MP4 o WEBM lang.", "Unsupported file. Use MP3, M4A, MP4 or WEBM.")) }
+        // MIDI/KAR: kind na "audio" pero nasa sariling folder na midi/ (nakikilala ng TV sa extension)
+        val kind = when (media.ext) { in AUDIO, in MIDI -> "audio"; in VIDEO -> "video"; else -> throw RuntimeException(tr("Hindi suportadong file. MP3, M4A, MP4, WEBM, MID o KAR lang.", "Unsupported file. Use MP3, M4A, MP4, WEBM, MID or KAR.")) }
         if (media.size > MAX_BYTES) throw RuntimeException(tr("Masyadong malaki (max 50 MB).", "Too large (max 50 MB)."))
         val id = UUID.randomUUID().toString()
-        val mediaPath = "media/$id.${media.ext}"
+        val mediaPath = (if (media.ext in MIDI) "midi/" else "media/") + "$id.${media.ext}"
         putObject(ctx, mediaPath, media, MIME[media.ext] ?: media.mime, false, progress)
         var lrcPath: String? = null
         if (lrc != null) {

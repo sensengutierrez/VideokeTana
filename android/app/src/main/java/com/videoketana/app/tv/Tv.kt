@@ -145,7 +145,8 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     val yt = remember { YtController() }
     var rt by remember { mutableStateOf<Realtime?>(null) }
 
-    fun applyVolume() { exo.volume = volume / 100f; yt.volume(volume) }
+    val midi = remember { MidiPlayer() }
+    fun applyVolume() { exo.volume = volume / 100f; yt.volume(volume); midi.volume(volume) }
 
     // ---- tunog ng kanta: bass, treble (Equalizer ng Android), key at tempo (ExoPlayer) ----
     var bass by remember { mutableIntStateOf(Prefs.int("musicBass")) }
@@ -189,7 +190,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
     fun stopMedia() {
         exo.stop(); exo.clearMediaItems()
-        yt.stop()
+        yt.stop(); midi.stop()
         lyrics = emptyList(); view = LyricView("", 0f, "", 0)
     }
 
@@ -236,6 +237,18 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                     val s = next.song
                     when {
                         next.localCode != null && s == null -> { Toast.makeText(ctx, tr("Wala sa device na ito ang kantang ${next.localCode}", "Song ${next.localCode} is not on this device"), Toast.LENGTH_LONG).show(); busy = false; finish("error"); return@sn }
+                        s != null && s.kind == "audio" && isMidiPath(s.mediaPath) -> {
+                            // MIDI/KAR: synth ng Android; lyrics mula sa loob ng file (o sa .lrc kung meron)
+                            mode = "audio"
+                            lyrics = emptyList(); lyricOffset = 0.0; key = 0; tempo = 0
+                            try {
+                                val inner = midi.load(ctx, Supa.mediaUrl(s.mediaPath)!!, volume)
+                                lyrics = if (s.lrcPath != null) parseLrc(try { Supa.text(Supa.mediaUrl(s.lrcPath)!!) } catch (e: Exception) { "" }).also { lyricOffset = it.second }.first else inner
+                            } catch (e: Exception) {
+                                Toast.makeText(ctx, tr("Hindi ma-play ang MIDI: ", "Cannot play the MIDI: ") + e.message, Toast.LENGTH_LONG).show()
+                                busy = false; finish("error"); return@sn
+                            }
+                        }
                         s != null && (s.kind == "audio" || s.kind == "video") -> {
                             mode = s.kind
                             lyrics = emptyList(); lyricOffset = 0.0
@@ -268,10 +281,12 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         when (action) {
             "toggle", "pause", "play" -> {
                 paused = when (action) { "pause" -> true; "play" -> false; else -> !paused }
-                if (mode == "youtube") { if (paused) yt.pause() else yt.play() } else exo.playWhenReady = !paused
+                if (mode == "youtube") { if (paused) yt.pause() else yt.play() }
+                else if (midi.active) { if (paused) midi.pause() else midi.play() }
+                else exo.playWhenReady = !paused
             }
             "skip" -> scope.launch { finish("skip") }
-            "restart" -> { if (mode == "youtube") yt.seek(0) else exo.seekTo(0) }
+            "restart" -> { if (mode == "youtube") yt.seek(0) else if (midi.active) midi.restart() else exo.seekTo(0) }
             "volup" -> { volume = (volume + 10).coerceAtMost(100); applyVolume(); note = "Volume $volume" }
             "voldown" -> { volume = (volume - 10).coerceAtLeast(0); applyVolume(); note = "Volume $volume" }
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
@@ -344,12 +359,14 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             }
         }
         exo.addListener(l)
-        onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); yt.destroy(); try { geq?.release() } catch (e: Throwable) {} }
+        midi.onEnd = { if (current != null) scope.launch { finish("ended") } }
+        midi.onError = { code -> Toast.makeText(ctx, tr("Hindi ma-play ang MIDI ($code)", "Cannot play the MIDI ($code)"), Toast.LENGTH_LONG).show(); scope.launch { delay(1500); finish("error") } }
+        onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); midi.stop(); yt.destroy(); try { geq?.release() } catch (e: Throwable) {} }
     }
 
     // ---- lyrics habang tumutugtog ----
     LaunchedEffect(mode, lyrics) {
-        while (mode == "audio") { view = lyricAt(lyrics, exo.currentPosition / 1000.0 + lyricOffset); delay(40) }
+        while (mode == "audio") { view = lyricAt(lyrics, (if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset); delay(40) }
     }
     LaunchedEffect(note) { if (note.isNotEmpty()) { delay(2200); note = "" } }
     LaunchedEffect(showUi) { if (showUi) { delay(4000); showUi = false } }
