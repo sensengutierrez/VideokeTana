@@ -153,13 +153,13 @@ function connect() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'queue' }, () => loadQueueSoon())
     .subscribe(status => {
       $('conn').classList.toggle('ok', status === 'SUBSCRIBED');
-      if (status === 'SUBSCRIBED') channel.send({ type: 'broadcast', event: 'hello', payload: {} });
+      if (status === 'SUBSCRIBED') channel.send({ type: 'broadcast', event: 'hello', payload: { tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || '') } });
     });
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && ROOM_RE.test(ROOM) && $('mainView').style.display !== 'none') {
     loadQueue();
-    if (channel) channel.send({ type: 'broadcast', event: 'hello', payload: {} });
+    if (channel) channel.send({ type: 'broadcast', event: 'hello', payload: { tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || '') } });
   }
 });
 

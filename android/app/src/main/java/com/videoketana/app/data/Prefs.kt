@@ -94,6 +94,27 @@ object Prefs {
         set(v) = sp.edit().putString("favs", v.joinToString(",")).apply()
     fun int(k: String, def: Int = 0) = sp.getInt(k, def)
     fun putInt(k: String, v: Int) = sp.edit().putInt(k, v).apply()
+    // lyrics sa TV (kapareho ng web: lyricSize s|m|l|xl, hlColor "#rrggbb", outline 0|1|2, countdown num|off)
+    var lyricSize: String
+        get() = sp.getString("lyricSize", "m") ?: "m"
+        set(v) = sp.edit().putString("lyricSize", v).apply()
+    var hlColor: String
+        get() = sp.getString("hlColor", "#ffd54a") ?: "#ffd54a"
+        set(v) = sp.edit().putString("hlColor", v).apply()
+    var lyricOutline: Int
+        get() = sp.getInt("lyricOutline", 1)
+        set(v) = sp.edit().putInt("lyricOutline", v).apply()
+    var countdownOn: Boolean
+        get() = sp.getBoolean("countdownOn", true)
+        set(v) = sp.edit().putBoolean("countdownOn", v).apply()
+    /** Orasan ng TV: "auto" = sundan ang timezone ng phone na nakakonekta, "device" = sa TV mismo. */
+    var clockTz: String
+        get() = sp.getString("clockTz", "auto") ?: "auto"
+        set(v) = sp.edit().putString("clockTz", v).apply()
+    fun tvTimeZone(): java.util.TimeZone {
+        val r = str("remoteTz")
+        return if (clockTz == "auto" && r.isNotEmpty()) java.util.TimeZone.getTimeZone(r) else java.util.TimeZone.getDefault()
+    }
     fun str(k: String) = sp.getString(k, "") ?: ""
     fun putStr(k: String, v: String) = sp.edit().putString(k, v).apply()
     fun long(k: String) = sp.getLong(k, 0L)

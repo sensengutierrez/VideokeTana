@@ -145,7 +145,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
         rt = r; r.connect()
         onDispose { r.close(); com.videoketana.app.data.MicSender.stop() }
     }
-    LaunchedEffect(connected) { if (connected) { rt?.broadcast("hello", JSONObject()); loadQueue() } }
+    LaunchedEffect(connected) { if (connected) { rt?.broadcast("hello", JSONObject().put("tz", java.util.TimeZone.getDefault().id)); loadQueue() } }
     LaunchedEffect(room) { while (true) { loadQueue(); delay(15000) } }
     // StandBy kapag matagal na hindi ginagalaw ang phone
     LaunchedEffect(lastTouch, standby) {

@@ -566,6 +566,13 @@ function handleCmd(action, value) {
     case 'refresh': loadQueue(); break;
     case 'scene': nextScene(); break;
     case 'font': if (['dot', 'seg', 'bold', 'thin'].includes(value)) VK_PREFS.set('numFont', value); break;
+    case 'lyr': if (value && typeof value === 'object') {   // lyrics settings mula sa phone app
+      if (['s', 'm', 'l', 'xl'].includes(value.lyricSize)) VK_PREFS.set('lyricSize', value.lyricSize);
+      if (/^#[0-9a-f]{6}$/i.test(value.hlColor || '')) { VK_PREFS.set('hlColor', value.hlColor); VK_PREFS.set('hlRandom', false); }
+      if ([0, 1, 2].includes(value.outline)) VK_PREFS.set('outline', value.outline);
+      if (['num', 'dots', 'off'].includes(value.countdown)) VK_PREFS.set('countdown', value.countdown);
+      applyPrefs();
+    } break;
     case 'fx': {   // mula sa phone: echo, reverb, lakas ng mic, bass, treble
       const k = value && value.key, r = FX_KEYS[k];
       // interlude at background ng TV (mula sa "Tunog sa TV" ng app)

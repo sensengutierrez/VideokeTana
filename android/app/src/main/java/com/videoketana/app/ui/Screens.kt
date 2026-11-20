@@ -192,6 +192,16 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var bgScene by remember { mutableStateOf(Prefs.bgScene) }
     var after by remember { mutableStateOf(Prefs.standbyAfter) }
     var sbColor by remember { mutableStateOf(Prefs.standbyColor) }
+    var lySize by remember { mutableStateOf(Prefs.lyricSize) }
+    var hlColor by remember { mutableStateOf(Prefs.hlColor) }
+    var lyOutline by remember { mutableStateOf(Prefs.lyricOutline) }
+    var countdown by remember { mutableStateOf(Prefs.countdownOn) }
+    var clockTz by remember { mutableStateOf(Prefs.clockTz) }
+    // ipadala rin sa TV na konektado (web o app) para sabay ang itsura ng lyrics
+    fun pushLyr() {
+        val o = org.json.JSONObject().put("lyricSize", lySize).put("hlColor", hlColor).put("outline", lyOutline).put("countdown", if (countdown) "num" else "off")
+        listOf(Prefs.lastRoom, Prefs.hostRoom).filter { it.isNotEmpty() }.distinct().forEach { r -> com.videoketana.app.data.RoomPing.cmd(r, "lyr", o) }
+    }
     val pickWall = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) scope.launch {
             if (!com.videoketana.app.data.Wallpaper.save(ctx, uri)) Toast.makeText(ctx, tr("Hindi magamit ang larawang ito.", "This picture cannot be used."), Toast.LENGTH_SHORT).show()
@@ -202,7 +212,6 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         TopBar(tr("Settings", "Settings"), tr("Naka-save sa device na ito", "Saved on this device"), onClose = { go(Screen.Home) })
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Group(tr("Pagkonekta", "Connecting")) { ConnectGuide(go) }
             Group(tr("Folder sa device", "Folder on this device")) { FolderSection() }
             Group(tr("MIDI at SoundFont", "MIDI and SoundFont")) { SoundFontSection() }
             Group(tr("Songbook", "Songbook")) { SongbookExport() }
@@ -237,7 +246,43 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                     }
                 }
             }
+            Group(tr("Lyrics sa TV", "Lyrics on the TV")) {
+                Column(Modifier.padding(16.dp)) {
+                    // halimbawa
+                    Box(Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(14.dp)).background(androidx.compose.ui.graphics.Color(0xFF0B0C10)), contentAlignment = Alignment.Center) {
+                        val hl = try { androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(hlColor)) } catch (e: Exception) { c.accent }
+                        val fs = when (lySize) { "s" -> 17; "l" -> 25; "xl" -> 29; else -> 21 }
+                        Text(androidx.compose.ui.text.buildAnnotatedString {
+                            withStyle(androidx.compose.ui.text.SpanStyle(color = hl)) { append(tr("Ikaw ang ", "You are ")) }
+                            withStyle(androidx.compose.ui.text.SpanStyle(color = androidx.compose.ui.graphics.Color.White)) { append(tr("aking mahal", "my love")) }
+                        }, fontSize = fs.sp, fontWeight = FontWeight.ExtraBold,
+                            style = TextStyle(shadow = androidx.compose.ui.graphics.Shadow(androidx.compose.ui.graphics.Color.Black, androidx.compose.ui.geometry.Offset(0f, if (lyOutline == 2) 0f else 2f), when (lyOutline) { 0 -> 4f; 2 -> 14f; else -> 8f })))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text(tr("Kulay ng kinakanta", "Highlight color"), color = c.text, style = VkType.title)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        listOf("#ffd54a", "#62e3d2", "#ff7ab6", "#7cc4ff", "#9be15d", "#ffa552", "#c49bff").forEach { col ->
+                            val on = hlColor.equals(col, true)
+                            Box(Modifier.size(32.dp).clip(RoundedCornerShape(50)).background(androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(col)))
+                                .border(if (on) 3.dp else 1.dp, if (on) c.text else c.line, RoundedCornerShape(50))
+                                .clickable { hlColor = col; Prefs.hlColor = col; pushLyr() })
+                        }
+                    }
+                }
+                SetRow(tr("Laki ng lyrics", "Lyrics size"), "") {
+                    Seg(listOf("s" to "S", "m" to "M", "l" to "L", "xl" to "XL"), lySize) { lySize = it; Prefs.lyricSize = it; pushLyr() }
+                }
+                SetRow(tr("Anino ng letra", "Text outline"), tr("Mas makapal, mas madaling basahin sa maliwanag na BGV.", "Thicker is easier to read on bright backgrounds.")) {
+                    Seg(listOf("0" to tr("Manipis", "Light"), "1" to tr("Katamtaman", "Medium"), "2" to tr("Makapal", "Heavy")), lyOutline.toString()) { lyOutline = it.toInt(); Prefs.lyricOutline = lyOutline; pushLyr() }
+                }
+                Toggle(tr("Bilang 3-2-1 bago kumanta", "3-2-1 countdown before singing"), "", countdown) { countdown = it; Prefs.countdownOn = it; pushLyr() }
+                Text(tr("Sabay na nagbabago ang TV na konektado (web o app).", "The connected TV (web or app) changes too."), color = c.muted, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp))
+            }
             Group(tr("TV screen sa phone o tablet", "TV screen on a phone or tablet")) {
+                SetRow(tr("Oras sa TV", "TV clock"), tr("Sundan: kukunin ang oras ng bansa mula sa phone na nakakonekta (para tama kahit mali ang timezone ng Mi TV).", "Follow phone: uses the time zone of the connected phone (correct even if the TV's time zone is wrong).")) {
+                    Seg(listOf("auto" to tr("Sundan phone", "Follow phone"), "device" to "Device"), clockTz) { clockTz = it; Prefs.clockTz = it }
+                }
                 Toggle(tr("Pahiga (landscape)", "Landscape"), tr("Kusang nakahiga ang screen pagbukas ng Buksan sa TV.", "The screen turns sideways when you open the TV screen."), tvLand) { tvLand = it; Prefs.tvLandscape = it }
                 SetRow(tr("Intro pagbukas ng app", "Intro when the app opens"), tr("Ang umiikot na numero at tunog sa simula.", "The spinning number and sound at the start.")) {
                     Seg(listOf("full" to tr("Buo", "Full"), "short" to tr("Maikli", "Short"), "off" to tr("Wala", "Off")), introMode) { introMode = it; Prefs.putStr("introMode", if (it == "full") "" else it) }

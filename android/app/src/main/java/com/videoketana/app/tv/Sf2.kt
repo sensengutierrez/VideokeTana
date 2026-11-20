@@ -362,7 +362,7 @@ class SynthPlayer {
         val endC = min(lim, max(start + 2, end))
         val att = gv(48, 0) * 0.4
         val vel = n.v / 127.0
-        val amp = 10.0.pow(-att / 200) * vel * vel * 0.9
+        val amp = 10.0.pow(-att / 200) * vel * vel * 1.3
         val pz = (gv(17, 0) + (n.pan - 64) / 64.0 * 500).coerceIn(-500.0, 500.0)
         val pa = (pz + 500) / 1000 * PI / 2
         var fc = gv(8, 13500).toDouble()

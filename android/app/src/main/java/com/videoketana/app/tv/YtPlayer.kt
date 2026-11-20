@@ -49,6 +49,7 @@ class YtController {
     @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
     fun create(c: Context): WebView = WebView(c).apply {
         setBackgroundColor(Color.BLACK)
+        isFocusable = false; isFocusableInTouchMode = false   // ang remote ng TV ay para sa app, hindi sa video
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.mediaPlaybackRequiresUserGesture = false

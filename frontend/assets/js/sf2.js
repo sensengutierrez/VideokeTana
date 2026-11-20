@@ -161,7 +161,7 @@
   const valAt = (arr, t) => { if (!arr) return 0; let lo = 0, hi = arr.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (arr[m][0] <= t) lo = m; else hi = m - 1; } return arr[lo][1]; };
 
   async function render(mp, sf, opts) {
-    opts = Object.assign({ SR: 44100, master: 0.9, maxRelease: 3, reverb: 1, chorus: 1, transpose: 0, onProgress: null }, opts || {});
+    opts = Object.assign({ SR: 44100, master: 1.3, maxRelease: 3, reverb: 1, chorus: 1, transpose: 0, onProgress: null }, opts || {});
     const SR = opts.SR, BLK = 64;
     const dur = Math.min(mp.duration + 2, 20 * 60);
     const total = Math.ceil(dur * SR);

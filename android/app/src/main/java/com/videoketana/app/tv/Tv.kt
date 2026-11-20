@@ -32,6 +32,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.focusable
+import androidx.compose.runtime.key
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -132,6 +143,8 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var note by remember { mutableStateOf("") }
     var showUi by remember { mutableStateOf(false) }
     var solo by remember { mutableStateOf(false) }      // sariling remote sa TV screen (iisang device)
+    var tabSeen by remember { mutableIntStateOf(1) }    // "#" sa gilid: lalabas sandali tapos kusang magtatago
+    val rootFocus = remember { FocusRequester() }
     var standby by remember { mutableStateOf(false) }
     var lyrics by remember { mutableStateOf<List<LyricLine>>(emptyList()) }
     var lyricOffset by remember { mutableStateOf(0.0) }
@@ -421,6 +434,14 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
             "refresh" -> { arm(); scope.launch { loadQueue(); startNext() } }
             "skipintro" -> skipIntro()
+            "lyr" -> {   // lyrics settings mula sa phone (kapareho ng web)
+                val o = value as? JSONObject ?: return
+                o.optString("lyricSize").takeIf { it in listOf("s", "m", "l", "xl") }?.let { Prefs.lyricSize = it }
+                o.optString("hlColor").takeIf { Regex("#[0-9a-fA-F]{6}").matches(it) }?.let { Prefs.hlColor = it }
+                if (o.has("outline")) Prefs.lyricOutline = o.optInt("outline", 1).coerceIn(0, 2)
+                o.optString("countdown").takeIf { it.isNotEmpty() }?.let { Prefs.countdownOn = it != "off" }
+                note = tr("Na-update ang lyrics", "Lyrics updated")
+            }
             "font" -> { val v = value?.toString() ?: return; if (v in listOf("dot", "seg", "bold", "thin")) Prefs.changeDisplayFont(v) }
             "scene" -> {
                 // susunod na eksena (o susunod na BGV kapag video)
@@ -484,7 +505,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             onBroadcast = { ev, p ->
                 when (ev) {
                     "cmd" -> if (!standby) handleCmd(p.optString("action"), p.opt("value"))
-                    "hello" -> broadcastState()
+                    "hello" -> { p.optString("tz").takeIf { it.isNotEmpty() && it != Prefs.str("remoteTz") }?.let { Prefs.putStr("remoteTz", it) }; broadcastState() }
                     "file" -> recv.onPart(p)
                     "host" -> if (p.optString("id") != hostId && !standby) {
                         if (p.optLong("since") > hostSince) { standby = true; stopMedia(); current = null; mode = "idle" }
@@ -553,10 +574,37 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         while (mode == "audio") { view = lyricAt(lyrics, (if (synth.active) synth.positionMs else if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset); delay(40) }
     }
     LaunchedEffect(note) { if (note.isNotEmpty()) { delay(2200); note = "" } }
-    LaunchedEffect(showUi) { if (showUi) { delay(4000); showUi = false } }
+    LaunchedEffect(showUi) { if (showUi) { tabSeen++; delay(4000); showUi = false } }
+    var tabShown by remember { mutableStateOf(true) }
+    LaunchedEffect(tabSeen) { tabShown = true; delay(6000); tabShown = false }
+    // remote ng TV (Mi TV atbp.): kapag sarado ang panel, ibalik ang focus sa screen para gumana ang D-pad
+    LaunchedEffect(solo, standby) { if (!solo) { delay(150); try { rootFocus.requestFocus() } catch (e: Exception) { } } }
 
     // ================= ITSURA =================
-    Box(Modifier.fillMaxSize().background(if (mode == "youtube") Color.Transparent else Color(0xFF0B0C10)).clickable(remember { MutableInteractionSource() }, null) { showUi = true }) {
+    Box(Modifier.fillMaxSize().background(if (mode == "youtube") Color.Transparent else Color(0xFF0B0C10))
+        .onKeyEvent { e ->
+            if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+            tabSeen++
+            when (e.key) {
+                Key.MediaPlayPause -> { handleCmd("toggle", null); true }
+                Key.MediaPlay -> { handleCmd("play", null); true }
+                Key.MediaPause -> { handleCmd("pause", null); true }
+                Key.MediaNext, Key.MediaFastForward -> { handleCmd("skip", null); true }
+                Key.MediaStop -> { handleCmd("stop", null); true }
+                Key.MediaPrevious, Key.MediaRewind -> { handleCmd("restart", null); true }
+                else -> if (solo || standby) false else when (e.key) {
+                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                        if (current == null) { arm(); scope.launch { startNext() } } else handleCmd("toggle", null)
+                        showUi = true; true
+                    }
+                    Key.DirectionRight, Key.Menu, Key.Pound, Key.Search -> { solo = true; true }
+                    Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft -> { showUi = true; true }
+                    else -> false
+                }
+            }
+        }
+        .focusRequester(rootFocus).focusable()
+        .clickable(remember { MutableInteractionSource() }, null) { showUi = true; tabSeen++ }) {
         // background: sariling BGV (mula sa Library) o animation
         val showBg = mode == "idle" || mode == "audio"
         val bgList = when (bgModeS) { "auto", "mix" -> localBgv + bgvs; "device" -> localBgv; "online" -> bgvs; else -> emptyList() }
@@ -658,7 +706,10 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         }
 
         // "#" sa gilid: remote sa mismong screen kapag iisang device lang
-        if (!solo && !standby) SoloTab(dim = mode != "idle", onClick = { solo = true }, modifier = Modifier.align(Alignment.CenterEnd))
+        AnimatedVisibility(!solo && !standby && tabShown, modifier = Modifier.align(Alignment.CenterEnd),
+            enter = fadeIn() + androidx.compose.animation.slideInHorizontally { it }, exit = fadeOut() + androidx.compose.animation.slideOutHorizontally { it }) {
+            SoloTab(dim = mode != "idle", onClick = { solo = true })
+        }
         if (solo) {
             androidx.activity.compose.BackHandler { solo = false }
             SoloPanel(localSongs, queue, current?.id, onClose = { solo = false },
@@ -797,10 +848,11 @@ fun SceneCanvas(scene: String, modifier: Modifier = Modifier.fillMaxSize()) {
 private fun Clock(height: androidx.compose.ui.unit.Dp) {
     var now by remember { mutableStateOf(Date()) }
     LaunchedEffect(Unit) { while (true) { now = Date(); delay(1000) } }
+    val tz = Prefs.tvTimeZone()
     Row(verticalAlignment = Alignment.Bottom) {
-        DotText(SimpleDateFormat("h:mm", Locale.US).format(now), height, TEAL, ghost = false)
+        DotText(SimpleDateFormat("h:mm", Locale.US).apply { timeZone = tz }.format(now), height, TEAL, ghost = false)
         Spacer(Modifier.width(height * 0.2f))
-        Text(SimpleDateFormat("a", Locale.US).format(now), color = DIM, fontWeight = FontWeight.Bold, fontSize = (height.value * 0.3f).sp)
+        Text(SimpleDateFormat("a", Locale.US).apply { timeZone = tz }.format(now), color = DIM, fontWeight = FontWeight.Bold, fontSize = (height.value * 0.3f).sp)
     }
 }
 
@@ -811,7 +863,7 @@ private fun Idle(room: String, qr: ImageBitmap, waiting: Int, onStart: () -> Uni
         val wide = mw > mh
         val qrSize = if (wide) minOf(mh * 0.55f, mw * 0.3f) else minOf(mw * 0.6f, mh * 0.32f)
         val clockH = if (wide) minOf(mh * 0.16f, mw * 0.07f) else mw * 0.12f
-        val date = SimpleDateFormat("EEEE, MMMM d", if (Prefs.lang == "en") Locale.US else Locale("fil", "PH")).format(Date())
+        val date = SimpleDateFormat("EEEE, MMMM d", if (Prefs.lang == "en") Locale.US else Locale("fil", "PH")).apply { timeZone = Prefs.tvTimeZone() }.format(Date())
         val card: @Composable () -> Unit = {
             Column(Modifier.clip(RoundedCornerShape(24.dp)).background(Color.White).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Image(qr, null, Modifier.size(qrSize))
@@ -854,42 +906,45 @@ private fun TopStrip(queue: List<QItem>, current: QItem?, mode: String) {
         .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.Companion.displayCutout).padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         val next = queue.filter { it.status == "waiting" && it.id != current?.id }
+        Row(Modifier.weight(1f).clipToBounds(), verticalAlignment = Alignment.CenterVertically) {
         if (next.isEmpty()) Text(tr("Walang kasunod. Mag-reserve gamit ang phone.", "Nothing next. Reserve with your phone."), color = DIM, fontSize = 15.sp)
         else {
             Text(tr("Susunod", "Next"), color = INK, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            next.take(4).forEach { q ->
+            next.take(4).forEach { q -> key(q.id) {
                 Spacer(Modifier.width(10.dp))
                 Row(Modifier.clip(RoundedCornerShape(50)).background(Color(0x66000000)).border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (q.source != "youtube") { DotText(q.code, 11.dp, TEAL, ghost = false, glow = false); Spacer(Modifier.width(6.dp)) }
-                    Text(q.title, color = INK, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(150.dp))
+                    Text(q.title, color = INK, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 150.dp))
                 }
-            }
-            if (next.size > 4) Text("  +${next.size - 4}", color = DIM, fontSize = 15.sp)
+            } }
+            if (next.size > 4) Text("  +${next.size - 4}", color = DIM, fontSize = 15.sp, maxLines = 1, softWrap = false)
         }
-        Spacer(Modifier.weight(1f))
-        if (mode != "idle") Clock(22.dp)
+        }
+        if (mode != "idle") { Spacer(Modifier.width(16.dp)); Clock(22.dp) }
     }
 }
 
 @Composable
 private fun AudioStage(q: QItem, v: LyricView, noLyrics: Boolean, preparing: Boolean = false) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val big = (maxWidth.value * 0.05f).coerceIn(26f, 72f)
+        val scale = when (Prefs.lyricSize) { "s" -> 0.8f; "l" -> 1.2f; "xl" -> 1.4f; else -> 1f }
+        val big = (maxWidth.value * 0.05f).coerceIn(26f, 72f) * scale
+        val hl = try { Color(android.graphics.Color.parseColor(Prefs.hlColor)) } catch (e: Exception) { GOLD }
         Column(Modifier.padding(start = 48.dp, top = 70.dp)) {
             Text(q.title, color = INK, fontSize = (big * 0.6f).sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(q.artist, color = DIM, fontSize = (big * 0.35f).sp)
             q.singer?.let { Text(tr("Kumakanta: $it", "Singing: $it"), color = TEAL, fontSize = (big * 0.32f).sp, fontWeight = FontWeight.SemiBold) }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 32.dp, end = 32.dp, bottom = maxHeight * 0.12f), horizontalAlignment = Alignment.CenterHorizontally) {
-            val shadow = Shadow(Color(0xCC000000), Offset(0f, 3f), 10f)
+            val shadow = when (Prefs.lyricOutline) { 0 -> Shadow(Color(0x88000000), Offset(0f, 2f), 6f); 2 -> Shadow(Color.Black, Offset(0f, 0f), 18f); else -> Shadow(Color(0xCC000000), Offset(0f, 3f), 10f) }
             when {
                 preparing -> Text(tr("Inihahanda ang kanta…", "Preparing the song…"), color = DIM, fontSize = (big * 0.5f).sp)
                 noLyrics -> Text(tr("Walang lyrics para sa kantang ito", "No lyrics for this song"), color = DIM, fontSize = (big * 0.5f).sp)
-                v.countdown > 0 && v.current.isBlank() -> Text("${v.countdown}", color = GOLD, fontSize = big.sp, fontWeight = FontWeight.ExtraBold)
+                v.countdown > 0 && v.current.isBlank() && Prefs.countdownOn -> Text("${v.countdown}", color = hl, fontSize = big.sp, fontWeight = FontWeight.ExtraBold)
                 else -> {
                     val sungChars = (v.current.length * v.progress).toInt()
                     Text(buildAnnotatedString {
-                        withStyle(SpanStyle(color = GOLD)) { append(v.current.take(sungChars)) }
+                        withStyle(SpanStyle(color = hl)) { append(v.current.take(sungChars)) }
                         withStyle(SpanStyle(color = Color.White)) { append(v.current.drop(sungChars)) }
                     }, fontSize = big.sp, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, style = TextStyle(shadow = shadow), lineHeight = (big * 1.15f).sp)
                 }
