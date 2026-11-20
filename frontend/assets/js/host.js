@@ -565,6 +565,14 @@ function handleCmd(action, value) {
     case 'setvol': volume = Math.max(0, Math.min(100, parseInt(value, 10) || 0)); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
     case 'refresh': loadQueue(); break;
     case 'scene': nextScene(); break;
+    case 'type': if (value && typeof value === 'object') {   // nagta-type ng numero sa phone: tunog at numero sa TV
+      ceCode = String(value.code || '').replace(/\D/g, '').slice(0, 5); ceSong = null;
+      if (value.key) { if (window.VKVoice) VKVoice.key(value.key); }
+      else if (value.none) { if (window.VKVoice) VKVoice.act('notfound'); $('ceTitle').textContent = 'Walang kanta sa numerong ito'; }
+      else if (value.title) { if (window.VKVoice) VKVoice.say(value.title); $('ceTitle').textContent = value.title + (value.artist ? ', ' + value.artist : ''); }
+      if (value.key) $('ceTitle').textContent = '';
+      showCE();
+    } return;
     case 'font': if (['dot', 'seg', 'bold', 'thin'].includes(value)) VK_PREFS.set('numFont', value); break;
     case 'lyr': if (value && typeof value === 'object') {   // lyrics settings mula sa phone app
       if (['s', 'm', 'l', 'xl'].includes(value.lyricSize)) VK_PREFS.set('lyricSize', value.lyricSize);

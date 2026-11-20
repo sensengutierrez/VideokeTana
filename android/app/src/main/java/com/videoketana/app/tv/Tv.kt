@@ -143,6 +143,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var note by remember { mutableStateOf("") }
     var showUi by remember { mutableStateOf(false) }
     var solo by remember { mutableStateOf(false) }      // sariling remote sa TV screen (iisang device)
+    var typed by remember { mutableStateOf("") }        // numerong tina-type sa phone (ipinapakita sa TV)
+    var typedTitle by remember { mutableStateOf("") }
+    var typedAt by remember { mutableStateOf(0L) }
     var tabSeen by remember { mutableIntStateOf(1) }    // "#" sa gilid: lalabas sandali tapos kusang magtatago
     val rootFocus = remember { FocusRequester() }
     var standby by remember { mutableStateOf(false) }
@@ -434,6 +437,14 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
             "refresh" -> { arm(); scope.launch { loadQueue(); startNext() } }
             "skipintro" -> skipIntro()
+            "type" -> {   // nagta-type ng numero sa phone: tunog at numero sa TV
+                val o = value as? JSONObject ?: return
+                typed = o.optString("code").filter { it.isDigit() }.take(5); typedAt = System.currentTimeMillis()
+                val k = o.optString("key")
+                if (k.isNotEmpty()) { typedTitle = ""; if (Prefs.numVoice) com.videoketana.app.ui.Voice.key(k) else if (Prefs.keyBeep) Synth.play("beep", 0.4f) }
+                else if (o.optBoolean("none")) typedTitle = tr("Walang kanta sa numerong ito", "No song with this number")
+                else o.optString("title").takeIf { it.isNotEmpty() }?.let { t -> typedTitle = t + o.optString("artist").takeIf { it.isNotEmpty() }?.let { ", $it" }.orEmpty(); com.videoketana.app.ui.Voice.say(t) }
+            }
             "lyr" -> {   // lyrics settings mula sa phone (kapareho ng web)
                 val o = value as? JSONObject ?: return
                 o.optString("lyricSize").takeIf { it in listOf("s", "m", "l", "xl") }?.let { Prefs.lyricSize = it }
@@ -688,6 +699,14 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
         if (paused) Box(Modifier.align(Alignment.Center).clip(RoundedCornerShape(18.dp)).background(Color(0xCC000000)).padding(horizontal = 28.dp, vertical = 16.dp)) {
             Text(tr("Naka-pause", "Paused"), color = INK, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        }
+        LaunchedEffect(typedAt) { if (typedAt > 0) { delay(8000); typed = ""; typedTitle = "" } }
+        AnimatedVisibility(typed.isNotEmpty(), modifier = Modifier.align(Alignment.BottomCenter), enter = fadeIn(), exit = fadeOut()) {
+            Column(Modifier.padding(bottom = 70.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xE6000000)).border(1.dp, TEAL.copy(alpha = 0.35f), RoundedCornerShape(22.dp))
+                .padding(horizontal = 28.dp, vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                DotText(typed.padEnd(5, ' '), 54.dp, TEAL)
+                if (typedTitle.isNotEmpty()) { Spacer(Modifier.height(6.dp)); Text(typedTitle, color = INK, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
         }
         if (note.isNotEmpty()) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 30.dp).clip(RoundedCornerShape(50)).background(Color(0xCC000000)).padding(horizontal = 20.dp, vertical = 10.dp)) {
             Text(note, color = INK, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)

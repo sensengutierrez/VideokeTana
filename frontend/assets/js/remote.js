@@ -163,6 +163,8 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// tahimik na padala ng tina-type na numero sa TV (walang buzz/toast)
+function typeCmd(value) { if (channel && hostSeen) channel.send({ type: 'broadcast', event: 'cmd', payload: { action: 'type', value } }); }
 function sendCmd(action, value) {
   if (!channel) return;
   buzz();
@@ -404,6 +406,7 @@ $('pad').addEventListener('click', async e => {
   else if (code.length < 5) code += b.textContent;
   codeSong = null;
   renderCode();
+  typeCmd({ code, key: k || b.textContent.trim() });   // marinig at makita rin sa TV
   if (code.length === 5) {
     $('codePrev').innerHTML = '<span class="muted">Hinahanap...</span>';
     const typed = code;
@@ -414,6 +417,7 @@ $('pad').addEventListener('click', async e => {
     } else ({ data } = await sb.from('songs').select('id, code, title, artist').eq('code', parseInt(code, 10)).maybeSingle());
     if (typed !== code) return;
     if (window.VKVoice) data ? VKVoice.say(data.title) : VKVoice.act('notfound');
+    typeCmd({ code, title: data ? data.title : '', artist: data ? (data.artist || '') : '', none: !data });
     if (data) { codeSong = data; if (!data.local) songCache.set(data.id, data); $('codePrev').innerHTML = `<b>${esc(data.title)}</b><span class="muted">${esc(data.artist || '')}</span>`; }
     else $('codePrev').innerHTML = '<span class="err">Walang kanta sa numerong ito</span>';
     renderCode();

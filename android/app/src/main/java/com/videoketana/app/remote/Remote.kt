@@ -213,7 +213,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             // ---------- laman ng tab ----------
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (tab) {
-                    0 -> NumberTab(now?.local ?: emptyList(), phoneLocal) { s, local, mode ->
+                    0 -> NumberTab(now?.local ?: emptyList(), phoneLocal, onType = { o -> rt?.broadcast("cmd", JSONObject().put("action", "type").put("value", o)) }) { s, local, mode ->
                         scope.launch {
                             val pf = if (s.kind == "phone") phoneLocal.firstOrNull { it.code == s.code } else null
                             when {
@@ -533,7 +533,7 @@ private fun Soundboard(send: (String) -> Unit) {
 
 // ---------------- NUMERO ----------------
 @Composable
-private fun NumberTab(local: List<Triple<Int, String, String>>, phoneLocal: List<com.videoketana.app.data.LocalSong>, onReserve: (Song, Boolean, String) -> Unit) {
+private fun NumberTab(local: List<Triple<Int, String, String>>, phoneLocal: List<com.videoketana.app.data.LocalSong>, onType: (JSONObject) -> Unit = {}, onReserve: (Song, Boolean, String) -> Unit) {
     val c = vk
     var code by remember { mutableStateOf("") }
     var found by remember { mutableStateOf<Song?>(null) }
@@ -550,6 +550,7 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, phoneLocal: List
                 if (found == null) phoneLocal.firstOrNull { it.code == n }?.let { found = Song("phone:$n", n, it.title, it.artist, "phone", null, null, null, tr("Sa phone", "On phone"), null); isLocal = true }
             } else found = try { Supa.songByCode(n) } catch (e: Exception) { null }
             searching = false
+            onType(JSONObject().put("code", code).put("title", found?.title ?: "").put("artist", found?.artist ?: "").put("none", found == null))
             found?.let { com.videoketana.app.ui.Haptic.found(); kotlinx.coroutines.delay(500); com.videoketana.app.ui.Voice.say(it.title) }
         }
     }
@@ -558,6 +559,7 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, phoneLocal: List
         com.videoketana.app.ui.Voice.key(k)
         com.videoketana.app.ui.Haptic.tap()
         code = when (k) { "clr" -> ""; "del" -> code.dropLast(1); else -> if (code.length < 5) code + k else code }
+        onType(JSONObject().put("code", code).put("key", k))   // marinig at makita rin sa TV
     }
     // walang scroll: ang mga key ang lumiliit/lumalaki ayon sa natitirang espasyo
     Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
