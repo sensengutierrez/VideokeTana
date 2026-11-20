@@ -131,6 +131,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var score by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var note by remember { mutableStateOf("") }
     var showUi by remember { mutableStateOf(false) }
+    var solo by remember { mutableStateOf(false) }      // sariling remote sa TV screen (iisang device)
     var standby by remember { mutableStateOf(false) }
     var lyrics by remember { mutableStateOf<List<LyricLine>>(emptyList()) }
     var lyricOffset by remember { mutableStateOf(0.0) }
@@ -604,6 +605,27 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                     Toast.makeText(ctx, tr("Bagong room: $room", "New room: $room"), Toast.LENGTH_SHORT).show()
                 })
                 VkIconButton("x", onClose)
+            }
+        }
+
+        // "#" sa gilid: remote sa mismong screen kapag iisang device lang
+        if (!solo && !standby) SoloTab(dim = mode != "idle", onClick = { solo = true }, modifier = Modifier.align(Alignment.CenterEnd))
+        if (solo) {
+            androidx.activity.compose.BackHandler { solo = false }
+            SoloPanel(localSongs, onClose = { solo = false }) { s, l, how ->
+                scope.launch {
+                    try {
+                        val minBefore = queue.filter { it.status == "waiting" }.minOfOrNull { it.sortOrder }
+                        val id = if (l != null) Supa.reserve(room, Prefs.name, localCode = l.code, localTitle = (if (l.artist.isNotBlank()) l.artist + " - " else "") + l.title)
+                        else Supa.reserve(room, Prefs.name, songId = s!!.id)
+                        if (how == "now" && minBefore != null && id.isNotEmpty()) Supa.moveToTop(id, minBefore)
+                        Synth.play("ding", 0.5f)
+                        Toast.makeText(ctx, if (how == "now") tr("Tutugtog na.", "Playing now.") else tr("Naka-reserve.", "Reserved."), Toast.LENGTH_SHORT).show()
+                        arm()
+                        if (how == "now" && current != null) finish("skip") else { loadQueue(); startNext() }
+                        if (how == "now") solo = false
+                    } catch (e: Exception) { Toast.makeText(ctx, tr("Hindi na-reserve: ", "Could not reserve: ") + e.message, Toast.LENGTH_LONG).show() }
+                }
             }
         }
 
