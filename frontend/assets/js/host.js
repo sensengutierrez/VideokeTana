@@ -400,6 +400,23 @@ async function loadMelody(song) {
   } catch (e) { /* walang melody: walang pitch bar */ }
 }
 VKPitch.init($('pitchBar'));
+// pitch bar: maaaring i-off kahit habang kumakanta (Settings o remote)
+let pitchWas = false;
+window.addEventListener('vkprefs', () => {
+  const off = VK_PREFS.get().pitchBar === 'off';
+  if (off && document.body.classList.contains('has-pitch')) { pitchWas = true; document.body.classList.remove('has-pitch'); }
+  else if (!off && pitchWas && VKPitch.has && VKPitch.has()) { document.body.classList.add('has-pitch'); pitchWas = false; }
+});
+// laktawan ang mahabang intro: diretso sa 3 segundo bago ang unang linya ng lyrics
+function skipIntro() {
+  if (mode !== 'audio' || !lyrics.length) return false;
+  const first = lyrics.find(l => l.text);
+  if (!first) return false;
+  const target = Math.max(0, first.t - lyricOffset - 3);
+  if (aud.currentTime < target - 1) { aud.currentTime = target; toast('Nilaktawan ang intro', 'ok', 1500); return true; }
+  return false;
+}
+aud.addEventListener('playing', () => { if (VK_PREFS.get().autoSkipIntro && aud.currentTime < 1) setTimeout(skipIntro, 400); });
 requestAnimationFrame(pitchTick);
 function pitchTick() {
   requestAnimationFrame(pitchTick);
@@ -528,6 +545,7 @@ function handleCmd(action, value) {
     case 'skip': if (current) finishCurrent('skip'); break;
     case 'sfx': playSfx(value); return;
     case 'restart': restart(); break;
+    case 'skipintro': skipIntro(); break;
     case 'volup': volume = Math.min(100, volume + 10); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
     case 'voldown': volume = Math.max(0, volume - 10); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
     case 'setvol': volume = Math.max(0, Math.min(100, parseInt(value, 10) || 0)); applyVolume(); flash($('volBadge'), 'Volume ' + volume); break;
@@ -539,6 +557,8 @@ function handleCmd(action, value) {
       // interlude at background ng TV (mula sa "Tunog sa TV" ng app)
       if (k === 'interlude') { VK_PREFS.set('interlude', +value.value === 1); interludeFor(mode); break; }
       if (k === 'interludeVol') { const v = Math.max(0, Math.min(100, Math.round(+value.value || 0))); VK_PREFS.set('interludeVol', v); if (window.VKInterlude) VKInterlude.setVolume(v); break; }
+      if (k === 'pitchBar') { VK_PREFS.set('pitchBar', +value.value === 1 ? 'on' : 'off'); break; }
+      if (k === 'autoSkipIntro') { VK_PREFS.set('autoSkipIntro', +value.value === 1); break; }
       if (k === 'bgVideo') { VK_PREFS.set('bgMode', +value.value === 1 ? 'videos' : 'animated'); if (started) applyBg(true); break; }
       if (!r) break;
       VK_PREFS.set(k, Math.max(r[0], Math.min(r[1], Math.round(+value.value || 0))));
@@ -584,7 +604,7 @@ function fxState() {
   const p = VK_PREFS.get(), o = {};
   Object.keys(FX_KEYS).forEach(k => { o[k] = +p[k] || 0; });
   o.eq = !!eqAC && (mode === 'audio' || mode === 'video');
-  o.ytTempo = true;
+  o.ytTempo = true; o.pitchBar = p.pitchBar === 'off' ? 0 : 1; o.skipIntro = 1;
   o.interlude = p.interlude === false ? 0 : 1; o.interludeVol = p.interludeVol == null ? 40 : +p.interludeVol; o.bgVideo = p.bgMode === 'videos' ? 1 : 0;
   return o;
 }

@@ -80,6 +80,9 @@ object Prefs {
     var vibrate: Boolean                        // vibrate sa pag-type ng numero at pag-reserve
         get() = sp.getBoolean("vibrate", true)
         set(v) = sp.edit().putBoolean("vibrate", v).apply()
+    var autoSkipIntro: Boolean                  // kusang laktawan ang mahabang intro ng kanta
+        get() = sp.getBoolean("autoSkipIntro", false)
+        set(v) = sp.edit().putBoolean("autoSkipIntro", v).apply()
     var numVoice: Boolean                       // boses na nagbibilang sa pag-type ng numero
         get() = sp.getBoolean("numVoice", true)
         set(v) = sp.edit().putBoolean("numVoice", v).apply()

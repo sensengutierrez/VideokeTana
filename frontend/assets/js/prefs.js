@@ -10,6 +10,8 @@
     tvOrient: 'landscape',
     // pitch bar (para sa kantang may melody)
     pitchBar: 'on',
+    // laktawan nang kusa ang mahabang intro ng kanta (may lyrics)
+    autoSkipIntro: false,
     // interlude habang naghihintay ng kanta
     interlude: true, interludeVol: 40,
     // estilo ng numero at orasan: dot (LCD) | seg (Digital) | bold | thin (kapareho ng app)

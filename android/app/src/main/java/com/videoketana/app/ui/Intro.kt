@@ -61,7 +61,7 @@ fun Intro(onDone: () -> Unit) {
             if (t < 900) number = (10000 + Random.nextInt(89999)).toString()
             else if (!landed) { number = "10001"; landed = true }
             letters = ((t - 900) / 70).toInt().coerceIn(0, 11)
-            if (t > 3000) break
+            if (t > (if (com.videoketana.app.data.Prefs.str("introMode") == "short") 1300 else 3000)) break
             delay(16)
         }
         finish()

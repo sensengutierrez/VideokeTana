@@ -320,6 +320,8 @@ private fun NowCard(now: NowState?, hostSeen: Boolean, room: String, onCmd: (Str
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (!isYt && fx.has("musicKey")) MiniStepper("Key", fx.optInt("musicKey"), -6, 6, Modifier.weight(1f)) { onFx("musicKey", it) }
                     MiniStepper("Tempo", fx.optInt("musicTempo"), -5, 5, Modifier.weight(1f)) { onFx("musicTempo", it) }
+                    // laktaw ng mahabang intro (sariling kanta na may lyrics)
+                    if (!isYt && fx.has("skipIntro") && !now?.title.isNullOrEmpty()) SfxChip("⏭ Intro", Modifier.width(78.dp)) { onCmd("skipintro"); com.videoketana.app.ui.Haptic.tap() }
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -424,6 +426,22 @@ private fun SoundSheet(fx: JSONObject?, source: String, send: (String, Int) -> U
         FxSlider("Echo", "micEcho", 0, 100, fx, send)
         FxSlider("Reverb", "micReverb", 0, 100, fx, send)
         FxSlider(tr("Linaw", "Clarity"), "micClarity", 0, 100, fx, send)
+
+        // ----- TV: pitch bar at intro -----
+        if (fx != null && (fx.has("pitchBar") || fx.has("autoSkipIntro"))) {
+            Spacer(Modifier.height(16.dp))
+            Text(tr("TV: kanta", "TV: song"), color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            if (fx.has("pitchBar")) Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(tr("Pitch bar (guhit ng tono)", "Pitch bar (melody lines)"), color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                androidx.compose.material3.Switch(fx.optInt("pitchBar") == 1, { send("pitchBar", if (it) 1 else 0) },
+                    colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = c.accent, checkedThumbColor = c.accentInk))
+            }
+            if (fx.has("autoSkipIntro")) Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(tr("Kusang laktawan ang mahabang intro", "Auto-skip long intros"), color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                androidx.compose.material3.Switch(fx.optInt("autoSkipIntro") == 1, { send("autoSkipIntro", if (it) 1 else 0) },
+                    colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = c.accent, checkedThumbColor = c.accentInk))
+            }
+        }
 
         // ----- TV: interlude at background (sinusunod ng kahit anong TV: web o app) -----
         if (fx != null && fx.has("interlude")) {

@@ -268,16 +268,19 @@ class SynthPlayer {
     ) { var lp = 0.0; var done = false; var relStart = -1.0; var relDb = 0.0; var curDb = 0.0 }
 
     /** Oras ng kanta (ms) ayon sa narinig na (para sa lyrics). */
-    val positionMs: Long get() = try { ((track?.playbackHeadPosition?.toLong() ?: 0L) and 0xFFFFFFFFL) * 1000 / SR } catch (e: Exception) { 0L }
+    val positionMs: Long get() = offsetMs + try { ((track?.playbackHeadPosition?.toLong() ?: 0L) and 0xFFFFFFFFL) * 1000 / SR } catch (e: Exception) { 0L }
     val active get() = running
 
     private var last: Pair<SoundFont, MidiSong>? = null
     private var lastVol = 100
     fun restart() { last?.let { start(it.first, it.second, lastVol) } }
+    @Volatile private var offsetMs = 0L
+    /** Tumalon sa segundong ito (hal. laktaw ng intro). */
+    fun seekTo(sec: Double) { last?.let { start(it.first, it.second, lastVol, sec) } }
 
-    fun start(sf: SoundFont, song: MidiSong, volume: Int) {
+    fun start(sf: SoundFont, song: MidiSong, volume: Int, from: Double = 0.0) {
         stop()
-        last = sf to song; lastVol = volume
+        last = sf to song; lastVol = volume; offsetMs = (from * 1000).toLong()
         val minBuf = AudioTrack.getMinBufferSize(SR, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
         val t = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
@@ -286,7 +289,7 @@ class SynthPlayer {
         track = t; sessionId = t.audioSessionId
         t.setVolume(volume / 100f); t.play()
         running = true; paused = false
-        thread = Thread({ loop(sf, song, t) }, "vk-synth").apply { priority = Thread.MAX_PRIORITY; start() }
+        thread = Thread({ loop(sf, song, t, from) }, "vk-synth").apply { priority = Thread.MAX_PRIORITY; start() }
     }
 
     private fun tc(v: Int?, d: Int) = 2.0.pow((v ?: d) / 1200.0)
@@ -338,7 +341,7 @@ class SynthPlayer {
         return 10.0.pow(-db / 20)
     }
 
-    private fun loop(sf: SoundFont, song: MidiSong, t: AudioTrack) {
+    private fun loop(sf: SoundFont, song: MidiSong, t: AudioTrack, from: Double = 0.0) {
         val BLK = 512
         val L = DoubleArray(BLK); val R = DoubleArray(BLK); val out = ShortArray(BLK * 2)
         val notes = song.notes; var ni = 0
@@ -347,7 +350,9 @@ class SynthPlayer {
         val ci = IntArray(combs.size)
         val aps = intArrayOf(225, 556, 441).map { DoubleArray(it) }; val ai = IntArray(aps.size)
         val total = ((song.duration + 1.5) * SR).toLong()
-        var frame = 0L
+        var frame = (from * SR).toLong()
+        val startFrame = frame
+        while (ni < notes.size && notes[ni].t < from) ni++
         val data = sf.data
         try {
             while (running && frame < total) {
@@ -403,7 +408,7 @@ class SynthPlayer {
                 frame += BLK
             }
             // hintayin matapos ang tunog na nasa buffer
-            while (running && ((t.playbackHeadPosition.toLong() and 0xFFFFFFFFL) < frame - SR / 20)) Thread.sleep(30)
+            while (running && ((t.playbackHeadPosition.toLong() and 0xFFFFFFFFL) < frame - startFrame - SR / 20)) Thread.sleep(30)
             if (running) { running = false; android.os.Handler(android.os.Looper.getMainLooper()).post { onEnd() } }
         } catch (e: Exception) { running = false }
     }

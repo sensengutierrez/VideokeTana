@@ -192,6 +192,17 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             eq?.let { setBands(it) }
         } catch (ex: Exception) { }
     }
+    /** Laktawan ang intro: diretso sa 3 segundo bago ang unang linya ng lyrics. */
+    fun skipIntro() {
+        if (mode != "audio" || lyrics.isEmpty()) return
+        val first = lyrics.firstOrNull { it.text.isNotBlank() } ?: return
+        val target = (first.t - lyricOffset - 3).coerceAtLeast(0.0)
+        val now = (if (synth.active) synth.positionMs else exo.currentPosition) / 1000.0
+        if (now < target - 1) {
+            if (synth.active) synth.seekTo(target) else exo.seekTo((target * 1000).toLong())
+            note = tr("Nilaktawan ang intro", "Intro skipped")
+        }
+    }
     fun micParams() {
         val m = com.videoketana.app.data.MicReceiver
         m.volume = Prefs.int("micVolume", 100); m.echo = Prefs.int("micEcho", 30); m.reverb = Prefs.int("micReverb", 20); m.clarity = Prefs.int("micClarity", 30)
@@ -199,7 +210,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     fun fxJson() = JSONObject().put("musicBass", bass).put("musicTreble", treble).put("musicKey", key).put("musicTempo", tempo)
         .put("micVolume", Prefs.int("micVolume", 100)).put("micEcho", Prefs.int("micEcho", 30)).put("micReverb", Prefs.int("micReverb", 20)).put("micClarity", Prefs.int("micClarity", 30))
         .put("eq", true).put("ytTempo", true).put("ytEq", geq != null)
-        .put("micIp", micIp ?: "").put("micPort", com.videoketana.app.data.MicLink.PORT)
+        .put("skipIntro", 1).put("autoSkipIntro", if (Prefs.autoSkipIntro) 1 else 0).put("micIp", micIp ?: "").put("micPort", com.videoketana.app.data.MicLink.PORT)
         .put("interlude", if (interludeOn) 1 else 0).put("interludeVol", interludeVol).put("bgVideo", if (bgModeS == "anim") 0 else 1)
 
     fun broadcastState() {
@@ -381,6 +392,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             "voldown" -> { volume = (volume - 10).coerceAtLeast(0); applyVolume(); note = "Volume $volume" }
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
             "refresh" -> { arm(); scope.launch { loadQueue(); startNext() } }
+            "skipintro" -> skipIntro()
             "font" -> { val v = value?.toString() ?: return; if (v in listOf("dot", "seg", "bold", "thin")) Prefs.changeDisplayFont(v) }
             "scene" -> {
                 // susunod na eksena (o susunod na BGV kapag video)
@@ -407,6 +419,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                     "micVolume", "micEcho", "micReverb", "micClarity" -> { Prefs.putInt(k, v); micParams() }
                     "interlude" -> { interludeOn = v == 1; Prefs.interlude = interludeOn; if (!interludeOn) Interlude.stop() else if (mode == "idle") Interlude.start(interludeVol) }
                     "interludeVol" -> { interludeVol = v.coerceIn(0, 100); Prefs.interludeVol = interludeVol; Interlude.setVolume(interludeVol) }
+                    "autoSkipIntro" -> Prefs.autoSkipIntro = v == 1
                     "bgVideo" -> { bgModeS = if (v == 1) "auto" else "anim"; Prefs.bgMode = bgModeS }
                 }
                 applyFx()
@@ -506,6 +519,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     LaunchedEffect(Unit) { while (true) { bgvs = try { Supa.backgrounds().mapNotNull { Supa.mediaUrl(it.third) } } catch (e: Exception) { bgvs }; delay(600_000) } }
 
     // ---- lyrics habang tumutugtog ----
+    LaunchedEffect(lyrics) { if (Prefs.autoSkipIntro && mode == "audio" && lyrics.isNotEmpty()) { delay(800); skipIntro() } }
     LaunchedEffect(mode, lyrics) {
         while (mode == "audio") { view = lyricAt(lyrics, (if (synth.active) synth.positionMs else if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset); delay(40) }
     }

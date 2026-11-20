@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun App(isTv: Boolean, linkRoom: String?, consumeLink: () -> Unit) {
-    var intro by rememberSaveable { mutableStateOf(true) }
+    var intro by rememberSaveable { mutableStateOf(Prefs.str("introMode") != "off") }
     var screen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf<Screen>(if (isTv) Screen.Tv else Screen.Home) }
     androidx.compose.runtime.LaunchedEffect(linkRoom) { if (linkRoom != null) { screen = Screen.Remote(linkRoom); consumeLink() } }
 
