@@ -94,6 +94,7 @@ object MicReceiver {
 
     private class Chan(val track: AudioTrack) {
         var written = 0L; var last = System.currentTimeMillis(); var prev = 0.0
+        var agc = 4.0                                   // awtomatikong lakas (mahina ang mic ng phone)
         val echoBuf = DoubleArray((MicLink.SR * 0.19).toInt()); var ei = 0
         val combs = intArrayOf(1116, 1188, 1277, 1356).map { DoubleArray(it * MicLink.SR / 44100) }; val ci = IntArray(4)
     }
@@ -115,7 +116,12 @@ object MicReceiver {
                     val ch = chans.getOrPut(key) { Chan(newTrack()) }
                     ch.last = System.currentTimeMillis()
                     val d = pkt.data
-                    val vol = volume / 100.0 * 1.4; val e = echo / 100.0; val rv = reverb / 100.0; val cl = clarity / 100.0
+                    // AGC: sukatin ang lakas ng boses sa packet na ito; kapag may boses, unti-unting ipantay (×1 hanggang ×10)
+                    var ss = 0.0
+                    for (i in 0 until min(n, pcm.size)) { val v = ((d[4 + i * 2].toInt() and 0xFF) or (d[5 + i * 2].toInt() shl 8)).toShort() / 32768.0; ss += v * v }
+                    val rms = kotlin.math.sqrt(ss / max(1, min(n, pcm.size)))
+                    if (rms > 0.004) ch.agc = ch.agc * 0.92 + (0.14 / rms).coerceIn(1.0, 10.0) * 0.08
+                    val vol = volume / 100.0 * ch.agc; val e = echo / 100.0; val rv = reverb / 100.0; val cl = clarity / 100.0
                     for (i in 0 until min(n, pcm.size)) {
                         var x = ((d[4 + i * 2].toInt() and 0xFF) or (d[5 + i * 2].toInt() shl 8)).toShort() / 32768.0
                         val y0 = x + cl * 0.7 * (x - ch.prev); ch.prev = x; x = y0

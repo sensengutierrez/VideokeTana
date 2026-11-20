@@ -15,11 +15,17 @@
     ac = new AC({ latencyHint: 'interactive' });
     master = ac.createGain(); master.connect(ac.destination);
     bus = ac.createGain();
-    dry = ac.createGain(); bus.connect(dry).connect(master);
+    // compressor + dagdag na lakas: pantay at malakas ang boses (mahina kasi ang galing sa phone), hindi pumapalo
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -28; comp.knee.value = 10; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2;
+    const makeup = ac.createGain(); makeup.gain.value = 2.2;
+    bus.connect(comp).connect(makeup);
+    const post = makeup;
+    dry = ac.createGain(); post.connect(dry).connect(master);
     echoDelay = ac.createDelay(1); echoFb = ac.createGain(); echoWet = ac.createGain();
-    bus.connect(echoDelay); echoDelay.connect(echoFb).connect(echoDelay); echoDelay.connect(echoWet).connect(master);
+    post.connect(echoDelay); echoDelay.connect(echoFb).connect(echoDelay); echoDelay.connect(echoWet).connect(master);
     conv = ac.createConvolver(); conv.buffer = impulse(2.2); revWet = ac.createGain();
-    bus.connect(conv).connect(revWet).connect(master);
+    post.connect(conv).connect(revWet).connect(master);
     pAn = ac.createAnalyser(); pAn.fftSize = 2048; pBuf = new Float32Array(pAn.fftSize); bus.connect(pAn);   // para sa pitch bar
     apply();
     return ac;
@@ -92,7 +98,7 @@
       src.connect(hp).connect(pres).connect(g).connect(bus);
       src.connect(an);
       Object.assign(peer, { src, presence: pres, gain: g, an, buf: new Float32Array(an.fftSize) });
-      g.gain.value = peer.muted ? 0 : 1;
+      g.gain.value = peer.muted ? 0 : 4;
       apply(); onChange();
     };
     pc.onconnectionstatechange = () => {
@@ -153,7 +159,7 @@
         close(msg.from);
       } else if (msg.type === 'mute' && peer) {
         peer.muted = !!msg.data;
-        if (peer.gain) peer.gain.gain.value = peer.muted ? 0 : 1;
+        if (peer.gain) peer.gain.gain.value = peer.muted ? 0 : (peer.agc || 4);
         onChange();
       } else if (msg.type === 'name' && peer) {
         peer.name = msg.data || peer.name; onChange();
@@ -173,6 +179,11 @@
         rms = Math.sqrt(s / p.buf.length);
       }
       p.level = p.muted ? 0 : rms;
+      // AGC: kapag may boses, unti-unting itaas/ibaba ang lakas para pantay (×1 hanggang ×10)
+      if (p.gain && !p.muted) {
+        if (rms > 0.004) { const want = Math.max(1, Math.min(10, 0.14 / rms)); p.agc = (p.agc || 4) * 0.92 + want * 0.08; }
+        p.gain.gain.setTargetAtTime(p.agc || 4, ac.currentTime, 0.15);
+      }
       if (p.level > 0.45) hot = true;
       out.push({ id: p.id, name: p.name, level: p.level, state: p.pc ? p.pc.connectionState : 'connected', muted: p.muted, live: !!p.an });
     });
@@ -221,7 +232,7 @@
     handle, levels, addLocal,
     removeLocal() { close('local'); },
     hasLocal: () => peers.has('local'),
-    setLocalMuted(m) { const p = peers.get('local'); if (p) { p.muted = !!m; p.gain.gain.value = m ? 0 : 1; onChange(); } },
+    setLocalMuted(m) { const p = peers.get('local'); if (p) { p.muted = !!m; p.gain.gain.value = m ? 0 : (p.agc || 4); onChange(); } },
     count: () => peers.size,
     list: () => [...peers.values()].map(p => ({ id: p.id, name: p.name, muted: p.muted, live: !!p.an, delay: p.delay || 0 })),
     closeAll() { [...peers.keys()].forEach(close); }

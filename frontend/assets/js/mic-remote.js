@@ -27,7 +27,7 @@
     set('asking');
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: opts.clean, noiseSuppression: opts.clean, autoGainControl: true, channelCount: 1, latency: 0 },
+        audio: { echoCancellation: opts.clean, noiseSuppression: false, autoGainControl: true, channelCount: 1, latency: 0 },   // walang noise suppression: pinapahina nito ang pagkanta
         video: false
       });
     } catch (e) {
