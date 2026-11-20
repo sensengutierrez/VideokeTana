@@ -726,6 +726,15 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'b' || e.key === 'B') nextScene();
 });
 
+// LCD sa gate: umiikot na numero na lumalapag sa 10001
+(function () {
+  const el = $('gateNum'); if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let n = 0; const t = setInterval(() => {
+    n++;
+    el.textContent = n < 22 ? String(10000 + Math.floor(Math.random() * 89999)).slice(0, 5) : '10001';
+    if (n >= 22) clearInterval(t);
+  }, 60);
+})();
 $('gate').onclick = () => {
   if (started) { // na-block ang autoplay — ituloy ang kasalukuyang kanta
     $('gate').style.display = 'none';

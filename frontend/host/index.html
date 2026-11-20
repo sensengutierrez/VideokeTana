@@ -9,27 +9,41 @@
 <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="../assets/js/icons.js?v=0.12.2"></script>
-<script src="../assets/js/theme.js?v=0.12.2"></script>
-<script src="../assets/js/prefs.js?v=0.12.2"></script>
-<script src="../assets/js/i18n.js?v=0.12.2"></script>
-<script src="../assets/js/wallpaper.js?v=0.12.2"></script>
+<script src="../assets/js/icons.js?v=0.12.3"></script>
+<script src="../assets/js/theme.js?v=0.12.3"></script>
+<script src="../assets/js/prefs.js?v=0.12.3"></script>
+<script src="../assets/js/i18n.js?v=0.12.3"></script>
+<script src="../assets/js/wallpaper.js?v=0.12.3"></script>
 <title>VideokeTana</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Doto:wght@700..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/style.css?v=0.12.2">
-<link rel="stylesheet" href="../assets/css/host.css?v=0.12.2">
+<link rel="stylesheet" href="../assets/css/style.css?v=0.12.3">
+<link rel="stylesheet" href="../assets/css/host.css?v=0.12.3">
 </head>
 <body>
 <div id="gate">
+  <div class="gate-fx" aria-hidden="true">
+    <span class="beam b1"></span><span class="beam b2"></span><span class="beam b3"></span><span class="beam b4"></span>
+    <span class="floor"></span>
+  </div>
   <div class="gate-top">
     <a class="wordmark" href="../"><i data-i="mic"></i>VideokeTana</a>
     <div class="gate-acts"><button class="theme-toggle"></button><a class="close-x" href="../app/" title="Isara"></a></div>
   </div>
-  <div class="gate-body">
-    <h1>Handa na ang TV</h1>
-    <p class="muted">Pindutin para payagan ng browser na tumunog ang kanta. Pagkatapos, F para fullscreen.</p>
-    <button class="btn primary gate-btn" id="gateBtn"><i data-i="play"></i><span>Simulan</span></button>
+  <div class="gate-main">
+    <div class="gate-body">
+      <h1>Handa na ang TV</h1>
+      <p class="muted">Pindutin para payagan ng browser na tumunog ang kanta. Pagkatapos, F para fullscreen.</p>
+      <button class="btn primary gate-btn" id="gateBtn"><i data-i="play"></i><span>Simulan</span></button>
+    </div>
+    <div class="gate-machine" aria-hidden="true">
+      <div class="gm-lcd">
+        <div class="gm-num" id="gateNum">10001</div>
+        <div class="gm-sub">VIDEOKETANA</div>
+      </div>
+      <div class="gm-eq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="gm-row"><span class="gm-led"></span><span>MIC 1</span><span class="gm-led b"></span><span>MIC 2</span><span class="gm-spacer"></span><span>READY</span></div>
+    </div>
   </div>
 </div>
 
@@ -167,18 +181,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script src="../assets/js/config.js?v=0.12.2"></script>
-<script src="../assets/js/common.js?v=0.12.2"></script>
-<script src="../assets/js/scenes.js?v=0.12.2"></script>
-<script src="../assets/js/sfx.js?v=0.12.2"></script>
-<script src="../assets/js/voice.js?v=0.12.2"></script>
-<script src="../assets/js/pitch.js?v=0.12.2"></script>
-<script src="../assets/js/mic-host.js?v=0.12.2"></script>
-<script src="../assets/js/localsongs.js?v=0.12.2"></script>
-<script src="../assets/js/midi.js?v=0.12.2"></script>
-<script src="../assets/js/sf2.js?v=0.12.2"></script>
-<script src="../assets/js/interlude.js?v=0.12.2"></script>
-<script src="../assets/js/host.js?v=0.12.2"></script>
-<script src="../assets/js/screensaver.js?v=0.12.2"></script>
+<script src="../assets/js/config.js?v=0.12.3"></script>
+<script src="../assets/js/common.js?v=0.12.3"></script>
+<script src="../assets/js/scenes.js?v=0.12.3"></script>
+<script src="../assets/js/sfx.js?v=0.12.3"></script>
+<script src="../assets/js/voice.js?v=0.12.3"></script>
+<script src="../assets/js/pitch.js?v=0.12.3"></script>
+<script src="../assets/js/mic-host.js?v=0.12.3"></script>
+<script src="../assets/js/localsongs.js?v=0.12.3"></script>
+<script src="../assets/js/midi.js?v=0.12.3"></script>
+<script src="../assets/js/sf2.js?v=0.12.3"></script>
+<script src="../assets/js/interlude.js?v=0.12.3"></script>
+<script src="../assets/js/host.js?v=0.12.3"></script>
+<script src="../assets/js/screensaver.js?v=0.12.3"></script>
 </body>
 </html>
