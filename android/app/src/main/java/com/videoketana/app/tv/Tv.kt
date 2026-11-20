@@ -137,6 +137,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var lyricOffset by remember { mutableStateOf(0.0) }
     var view by remember { mutableStateOf(LyricView("", 0f, "", 0)) }
     var busy by remember { mutableStateOf(false) }
+    var preparing by remember { mutableStateOf(false) }   // inihahanda ang kanta (hal. MIDI/SoundFont)
     var micIp by remember { mutableStateOf(com.videoketana.app.data.MicLink.lanIp()) }
     var interludeOn by remember { mutableStateOf(Prefs.interlude) }
     var interludeVol by remember { mutableIntStateOf(Prefs.interludeVol) }
@@ -228,6 +229,10 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
     /** MIDI: SoundFont (GeneralUser GS o sariling .sf2) nang real-time; kung pumalya, ang synth ng Android. */
     suspend fun playMidi(bytes: ByteArray, file: java.io.File): List<LyricLine> {
+        preparing = true
+        try { return playMidiInner(bytes, file) } finally { preparing = false }
+    }
+    suspend fun playMidiInner(bytes: ByteArray, file: java.io.File): List<LyricLine> {
         if (Prefs.str("midiEngine") != "basic") try {
             val sf = SoundFonts.get(ctx) { st -> if (st == "download") scope.launch { Toast.makeText(ctx, tr("Dina-download ang SoundFont (isang beses lang, mga 32 MB)...", "Downloading the SoundFont (one time, about 32 MB)..."), Toast.LENGTH_LONG).show() } }
             val song = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { parseMidiSong(bytes) }
@@ -235,6 +240,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             synth.start(sf, song, volume)
             return song.lyrics
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Toast.makeText(ctx, tr("Hindi magamit ang SoundFont, simpleng tunog muna: ", "SoundFont unavailable, basic sound for now: ") + e.message, Toast.LENGTH_LONG).show()
         }
         return midi.loadFile(file, volume)
@@ -304,6 +310,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                                     }
                                 }
                             } catch (e: Exception) {
+                                if (e is kotlinx.coroutines.CancellationException) throw e   // umalis sa TV screen: huwag burahin ang kanta
                                 Toast.makeText(ctx, tr("Hindi ma-play ang ${ls.file.name}: ", "Cannot play ${ls.file.name}: ") + e.message, Toast.LENGTH_LONG).show()
                                 busy = false; finish("error"); return@sn
                             }
@@ -328,6 +335,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                                     exo.setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(f))); exo.prepare(); applyVolume(); applyFx(); exo.play()
                                 }
                             } catch (e: Exception) {
+                                if (e is kotlinx.coroutines.CancellationException) throw e   // umalis sa TV screen: huwag burahin ang kanta
                                 Toast.makeText(ctx, tr("Hindi ma-play: ", "Cannot play: ") + e.message, Toast.LENGTH_LONG).show()
                                 busy = false; finish("error"); return@sn
                             }
@@ -344,6 +352,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                                 val inner = playMidi(bytes, tmp)
                                 lyrics = if (s.lrcPath != null) parseLrc(try { Supa.text(Supa.mediaUrl(s.lrcPath)!!) } catch (e: Exception) { "" }).also { lyricOffset = it.second }.first else inner
                             } catch (e: Exception) {
+                                if (e is kotlinx.coroutines.CancellationException) throw e   // umalis sa TV screen: huwag burahin ang kanta
                                 Toast.makeText(ctx, tr("Hindi ma-play ang MIDI: ", "Cannot play the MIDI: ") + e.message, Toast.LENGTH_LONG).show()
                                 busy = false; finish("error"); return@sn
                             }
@@ -588,7 +597,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         )
 
         // lyrics ng audio na kanta
-        if (mode == "audio") current?.let { q -> AudioStage(q, view, lyrics.isEmpty()) }
+        if (mode == "audio") current?.let { q -> AudioStage(q, view, lyrics.isEmpty() && !preparing, preparing) }
 
         // walang kanta: orasan, QR, "Pumili ng kanta"
         if (mode == "idle" && splash == null && score == null) {
@@ -832,7 +841,7 @@ private fun TopStrip(queue: List<QItem>, current: QItem?, mode: String) {
 }
 
 @Composable
-private fun AudioStage(q: QItem, v: LyricView, noLyrics: Boolean) {
+private fun AudioStage(q: QItem, v: LyricView, noLyrics: Boolean, preparing: Boolean = false) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val big = (maxWidth.value * 0.05f).coerceIn(26f, 72f)
         Column(Modifier.padding(start = 48.dp, top = 70.dp)) {
@@ -843,6 +852,7 @@ private fun AudioStage(q: QItem, v: LyricView, noLyrics: Boolean) {
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 32.dp, end = 32.dp, bottom = maxHeight * 0.12f), horizontalAlignment = Alignment.CenterHorizontally) {
             val shadow = Shadow(Color(0xCC000000), Offset(0f, 3f), 10f)
             when {
+                preparing -> Text(tr("Inihahanda ang kanta…", "Preparing the song…"), color = DIM, fontSize = (big * 0.5f).sp)
                 noLyrics -> Text(tr("Walang lyrics para sa kantang ito", "No lyrics for this song"), color = DIM, fontSize = (big * 0.5f).sp)
                 v.countdown > 0 && v.current.isBlank() -> Text("${v.countdown}", color = GOLD, fontSize = big.sp, fontWeight = FontWeight.ExtraBold)
                 else -> {
