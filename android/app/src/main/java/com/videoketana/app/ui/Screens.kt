@@ -197,7 +197,6 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var sbColor by remember { mutableStateOf(Prefs.standbyColor) }
     var lySize by remember { mutableStateOf(Prefs.lyricSize) }
     var qrMode by remember { mutableStateOf(Prefs.str("qrMode").ifEmpty { "show" }) }
-    var soloStyle by remember { mutableStateOf(Prefs.str("soloStyle").ifEmpty { "glass" }) }
     var lyLines by remember { mutableStateOf(Prefs.lyricLines) }
     var hlColor by remember { mutableStateOf(Prefs.hlColor) }
     var lyOutline by remember { mutableStateOf(Prefs.lyricOutline) }
@@ -296,9 +295,8 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                 SetRow(tr("QR sa TV", "QR on the TV"), tr("Itago o paliitin kung nakaka-distract. Kapag nakatago, room code lang ang makikita.", "Hide or shrink it if distracting. When hidden, only the room code shows.")) {
                     Seg(listOf("show" to tr("Buo", "Full"), "small" to tr("Maliit", "Small"), "hide" to tr("Itago", "Hide")), qrMode) { qrMode = it; Prefs.putStr("qrMode", if (it == "show") "" else it) }
                 }
-                SetRow(tr("Itsura ng # sa TV", "Look of # on the TV"), tr("Salamin: kita ang likod. Buo: madilim na panel.", "Glass: see-through. Solid: dark panel.")) {
-                    Seg(listOf("glass" to tr("Salamin", "Glass"), "solid" to tr("Buo", "Solid")), soloStyle) { soloStyle = it; Prefs.putStr("soloStyle", if (it == "glass") "" else it) }
-                }
+                SliderRow(tr("Transparency ng # at QR sa TV", "Transparency of # and QR on the TV"), tr("0% = buo, mas mataas = mas kita ang likod. Laging nababasa pa rin ang QR.", "0% = solid, higher = more see-through. The QR stays scannable."),
+                    Prefs.tvGlass, 0, 90, "%") { Prefs.tvGlass = it }
                 SetRow(tr("Oras sa TV", "TV clock"), tr("Sundan: kukunin ang oras ng bansa mula sa phone na nakakonekta (para tama kahit mali ang timezone ng Mi TV).", "Follow phone: uses the time zone of the connected phone (correct even if the TV's time zone is wrong).")) {
                     Seg(listOf("auto" to tr("Sundan phone", "Follow phone"), "device" to "Device", "pick" to tr("Pumili", "Pick")),
                         if (clockTz == "auto" || clockTz == "device") clockTz else "pick") { v -> clockTz = if (v == "pick") "Asia/Riyadh" else v; Prefs.clockTz = clockTz }

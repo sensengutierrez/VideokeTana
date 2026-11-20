@@ -114,6 +114,10 @@ object Prefs {
     var clockTz: String
         get() = sp.getString("clockTz", "auto") ?: "auto"
         set(v) = sp.edit().putString("clockTz", v).apply()
+    /** Transparency ng # panel at QR sa TV, 0 (buo) hanggang 90 (halos kita lahat). */
+    var tvGlass: Int
+        get() = sp.getInt("tvGlass", 45)
+        set(v) = sp.edit().putInt("tvGlass", v).apply()
     fun tvTimeZone(): java.util.TimeZone {
         val r = str("remoteTz")
         return when {

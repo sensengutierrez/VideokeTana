@@ -610,6 +610,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var keyTick by remember { mutableIntStateOf(0) }
     var rootFocused by remember { mutableStateOf(false) }
     val xFocus = remember { FocusRequester() }
+    val chipFocus = remember { FocusRequester() }
     LaunchedEffect(showUi) { if (showUi) tabSeen++ }
     LaunchedEffect(showUi, keyTick) { if (showUi) { delay(if (rootFocused) 4000 else 8000); showUi = false } }
     var tabShown by remember { mutableStateOf(true) }
@@ -651,7 +652,11 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                         scope.launch { delay(120); try { xFocus.requestFocus() } catch (x: Exception) { } }
                         true
                     }
-                    Key.DirectionDown -> { showUi = true; true }
+                    Key.DirectionDown -> {   // nakatagong QR: ilipat ang pointer sa "Room" para mapindot
+                        if (mode == "idle" && Prefs.str("qrMode") == "hide") scope.launch { delay(60); try { chipFocus.requestFocus() } catch (x: Exception) { } }
+                        else showUi = true
+                        true
+                    }
                     else -> false
                 }
             }
@@ -729,7 +734,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         // walang kanta: orasan, QR, "Pumili ng kanta"
         if (mode == "idle" && splash == null && score == null) {
             val waiting = if (armed) 0 else queue.size
-            Idle(room, qr, waiting) { arm(); scope.launch { startNext() } }
+            Idle(room, qr, waiting, chipFocus) { arm(); scope.launch { startNext() } }
         }
 
         // itaas: susunod sa pila + orasan
@@ -923,25 +928,36 @@ private fun Clock(height: androidx.compose.ui.unit.Dp) {
 }
 
 @Composable
-private fun Idle(room: String, qr: ImageBitmap, waiting: Int, onStart: () -> Unit) {
+private fun Idle(room: String, qr: ImageBitmap, waiting: Int, chipFocus: FocusRequester, onStart: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 28.dp), contentAlignment = Alignment.Center) {
         val mw = maxWidth; val mh = maxHeight
         val wide = mw > mh
         val qrMode = Prefs.str("qrMode").ifEmpty { "show" }      // show | small | hide
+        var peek by remember { mutableStateOf(false) }             // nakatagong QR na pinalabas sandali (pindutin ang Room)
+        var toggled by remember { mutableStateOf(false) }
+        LaunchedEffect(peek) {
+            if (toggled) { delay(80); try { chipFocus.requestFocus() } catch (e: Exception) { } }   // hindi mawala ang pointer
+            if (peek) { delay(25000); peek = false }
+        }
+        val qa = maxOf(0.55f, 1f - Prefs.tvGlass / 100f * 0.6f)   // transparency ng QR card (laging nababasa)
         val qrSize = (if (wide) minOf(mh * 0.55f, mw * 0.3f) else minOf(mw * 0.6f, mh * 0.32f)) * (if (qrMode == "small") 0.5f else 1f)
         val clockH = if (wide) minOf(mh * 0.16f, mw * 0.07f) else mw * 0.12f
         val date = SimpleDateFormat("EEEE, MMMM d", if (Prefs.lang == "en") Locale.US else Locale("fil", "PH")).apply { timeZone = Prefs.tvTimeZone() }.format(Date())
         val card: @Composable () -> Unit = {
-            if (qrMode == "hide") {
-                // walang QR: room code lang sa salamin na chip
-                Row(Modifier.clip(RoundedCornerShape(50)).background(Color(0x33FFFFFF)).border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(50))
+            if (qrMode == "hide" && !peek) {
+                // walang QR: room code lang; pindutin (OK ng remote) para lumabas ang QR
+                Row(Modifier.focusRequester(chipFocus).clip(RoundedCornerShape(50)).background(Color(0x33FFFFFF)).border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(50))
+                    .tvFocus().clickable { toggled = true; peek = true }
                     .padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Room ", color = INK, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     DotText(room, 22.dp, TEAL, ghost = false, glow = false)
+                    Spacer(Modifier.width(10.dp)); com.videoketana.app.ui.VkIcon("qr", 18.dp, INK)
                 }
-            } else Column(Modifier.clip(RoundedCornerShape(if (qrMode == "small") 16.dp else 24.dp))
-                // salamin: puting may kaunting transparency (nababasa pa rin ng camera)
-                .background(Brush.verticalGradient(listOf(Color(0xD9FFFFFF), Color(0xC7EEF7F6))))
+            } else Column(Modifier.then(if (qrMode == "hide") Modifier.focusRequester(chipFocus) else Modifier)
+                .clip(RoundedCornerShape(if (qrMode == "small") 16.dp else 24.dp))
+                .then(if (qrMode == "hide") Modifier.tvFocus().clickable { toggled = true; peek = false } else Modifier)
+                // salamin: puting may transparency ayon sa Settings (nababasa pa rin ng camera)
+                .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = qa), Color(0xFFEEF7F6).copy(alpha = qa * 0.92f))))
                 .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(if (qrMode == "small") 16.dp else 24.dp))
                 .padding(if (qrMode == "small") 9.dp else 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Image(qr, null, Modifier.size(qrSize))

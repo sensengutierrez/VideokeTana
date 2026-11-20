@@ -93,15 +93,17 @@ fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, 
     val tabReq = remember { List(5) { FocusRequester() } }
     val xReq = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(200); try { tabReq[0].requestFocus() } catch (e: Exception) { } }
-    val glass = Prefs.str("soloStyle") != "solid"
+    val g = Prefs.tvGlass / 100f                 // 0 = buo, 0.9 = halos kita lahat
+    val pa = (1f - g).coerceIn(0.1f, 1f)
+    val glass = g > 0.15f
     val kb = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val fm = androidx.compose.ui.platform.LocalFocusManager.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    BoxWithConstraints(Modifier.fillMaxSize().background(if (glass) Color(0x40000000) else Color(0x99000000)).focusProperties { canFocus = false }.clickable(onClick = onClose)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f * pa)).focusProperties { canFocus = false }.clickable(onClick = onClose)) {
         val wide = maxWidth > maxHeight
         val panelMod = if (wide) Modifier.align(Alignment.CenterEnd).width(minOf(maxWidth * 0.46f, 460.dp)).fillMaxHeight()
         else Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(maxHeight * 0.82f)
-        Column(panelMod.clip(RoundedCornerShape(26.dp)).background(Brush.verticalGradient(if (glass) listOf(Color(0x8C1A2026), Color(0x990B0F14)) else listOf(Color(0xFA181C24), Color(0xFA0D1015))))
+        Column(panelMod.clip(RoundedCornerShape(26.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1A2026).copy(alpha = pa), Color(0xFF0B0F14).copy(alpha = (pa + 0.08f).coerceAtMost(1f)))))
             .border(1.dp, ACC.copy(alpha = 0.3f), RoundedCornerShape(26.dp)).clickable(enabled = false) {}.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f)) {
@@ -140,6 +142,8 @@ fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, 
 
 @Composable
 private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, upTo: FocusRequester, glass: Boolean, onReserve: (Song?, LocalSong?, String) -> Unit) {
+    val oneReq = remember { FocusRequester() }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     var code by remember { mutableStateOf("") }
     var found by remember { mutableStateOf<Song?>(null) }
     var foundLocal by remember { mutableStateOf<LocalSong?>(null) }
@@ -176,7 +180,7 @@ private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () 
             listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("clr", "0", "del")).forEach { row ->
                 Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { k ->
-                        Box(Modifier.weight(1f).fillMaxHeight().then(if (k in listOf("1", "2", "3")) Modifier.focusProperties { up = upTo } else Modifier).clip(RoundedCornerShape(14.dp))
+                        Box(Modifier.weight(1f).fillMaxHeight().then(if (k == "1") Modifier.focusRequester(oneReq) else Modifier).then(if (k in listOf("1", "2", "3")) Modifier.focusProperties { up = upTo } else Modifier).clip(RoundedCornerShape(14.dp))
                             .background(Brush.verticalGradient(if (glass) listOf(Color(0x24FFFFFF), Color(0x0FFFFFFF)) else listOf(Color(0xFF232832), Color(0xFF161A21))))
                             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
                             .tvFocus().clickable {
@@ -195,12 +199,12 @@ private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () 
         }
         Row(Modifier.fillMaxWidth().height(50.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(if (ok) ACC else Color.White.copy(alpha = 0.06f))
-                .tvFocus().clickable(enabled = ok) { onReserve(found, foundLocal, "reserve"); code = "" }, contentAlignment = Alignment.Center) {
+                .tvFocus().clickable { if (ok) { onReserve(found, foundLocal, "reserve"); code = ""; scope.launch { delay(100); try { oneReq.requestFocus() } catch (e: Exception) { } } } }, contentAlignment = Alignment.Center) {
                 Text("Reserve", color = if (ok) INK2 else Color(0xFF5B6270), fontWeight = FontWeight.ExtraBold, fontSize = 17.sp)
             }
             Box(Modifier.width(96.dp).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.06f))
                 .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
-                .tvFocus().clickable(enabled = ok) { onReserve(found, foundLocal, "now"); code = "" }, contentAlignment = Alignment.Center) {
+                .tvFocus().clickable { if (ok) { onReserve(found, foundLocal, "now"); code = ""; scope.launch { delay(100); try { oneReq.requestFocus() } catch (e: Exception) { } } } }, contentAlignment = Alignment.Center) {
                 Text(tr("Ngayon", "Now"), color = if (ok) Color.White else Color(0xFF5B6270), fontWeight = FontWeight.Bold)
             }
         }
