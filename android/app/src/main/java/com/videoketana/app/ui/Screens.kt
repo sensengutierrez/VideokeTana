@@ -103,17 +103,45 @@ fun SongbookScreen(go: (Screen) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var q by remember { mutableStateOf("") }
+    var src by remember { mutableStateOf("online") }
     var list by remember { mutableStateOf<List<Song>?>(null) }
-    LaunchedEffect(q) {
-        delay(250)
-        list = try { Supa.songs(q) } catch (e: Exception) { emptyList() }
+    var locals by remember { mutableStateOf<List<com.videoketana.app.data.LocalSong>?>(null) }
+    var reload by remember { mutableStateOf(0) }
+    var askDel by remember { mutableStateOf<com.videoketana.app.data.LocalSong?>(null) }
+    val L = com.videoketana.app.data.LocalLib
+    LaunchedEffect(q) { delay(250); list = try { Supa.songs(q) } catch (e: Exception) { emptyList() } }
+    LaunchedEffect(src, reload) {
+        if (src == "device") locals = if (L.hasPermission(ctx)) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { L.ensureFolders(); L.scan() } else emptyList()
     }
     val room = Prefs.lastRoom
+    val ql = q.trim().lowercase()
+    val shownLocal = (locals ?: emptyList()).filter { ql.isEmpty() || it.title.lowercase().contains(ql) || it.artist.lowercase().contains(ql) || it.code.toString() == ql }
     Column(Modifier.fillMaxSize()) {
-        TopBar(tr("Songbook", "Songbook"), list?.let { tr("${it.size} na kanta", "${it.size} songs") } ?: tr("Naglo-load", "Loading"), onClose = { go(Screen.Home) })
+        TopBar(tr("Songbook", "Songbook"),
+            if (src == "online") list?.let { tr("${it.size} na kanta", "${it.size} songs") } ?: tr("Naglo-load", "Loading") else tr("${shownLocal.size} sa device na ito", "${shownLocal.size} on this device"),
+            onClose = { go(Screen.Home) })
+        Row(Modifier.padding(horizontal = 16.dp)) {
+            Seg(listOf("online" to "Online", "device" to tr("Sa device na ito", "On this device")), src) { src = it }
+        }
+        Spacer(Modifier.height(8.dp))
         SearchField(q, { q = it }, tr("Title, artist o numero", "Title, artist or number"), Modifier.fillMaxWidth().padding(horizontal = 16.dp))
         Spacer(Modifier.height(10.dp))
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+        if (src == "device") {
+            if (!L.hasPermission(ctx)) Text(tr("Payagan muna ang access: Settings → Folder sa device.", "Allow access first: Settings → Folder on this device."), color = c.danger, modifier = Modifier.padding(16.dp))
+            else Text(tr("Folder: ${L.shownPath}. Ang basurahan ay nagbubura ng file sa folder.", "Folder: ${L.shownPath}. The trash deletes the file from the folder."), color = c.muted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp))
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+                items(shownLocal, key = { it.code }) { ls ->
+                    SongRow(Song("local:${ls.code}", ls.code, ls.title, ls.artist, "local", null, null, null, if (ls.isMidi) "MIDI" else ls.ext.uppercase(), null)) {
+                        VkIconButton("trash", { askDel = ls }, size = 38.dp, tint = c.danger)
+                    }
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(c.line))
+                }
+                if (locals != null && shownLocal.isEmpty()) item {
+                    Text(tr("Walang nakita sa folder. Ilagay ang .mid/.kar sa ${L.shownPath}/MIDI. Kung nandoon na pero wala dito, pindutin ang \"Buong access\" sa Settings → Folder sa device.",
+                        "Nothing found. Put .mid/.kar in ${L.shownPath}/MIDI. If they are there but not listed, tap \"Full access\" in Settings → Folder on this device."), color = c.muted, modifier = Modifier.padding(24.dp))
+                }
+            }
+        } else LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
             items(list ?: emptyList(), key = { it.id }) { s ->
                 SongRow(s) {
                     if (room.isNotEmpty()) VkButton(tr("Reserve", "Reserve"), height = 38.dp, onClick = {
@@ -125,8 +153,18 @@ fun SongbookScreen(go: (Screen) -> Unit) {
                 }
                 Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(c.line))
             }
-            if (list?.isEmpty() == true) item { Text(tr("Walang nahanap.", "Nothing found."), color = c.muted, modifier = Modifier.padding(24.dp)) }
+            if (list?.isEmpty() == true) item { Text(tr("Walang nahanap. Ang pagbura ng online na kanta ay nasa Library (admin).", "Nothing found. Deleting online songs is in the Library (admin)."), color = c.muted, modifier = Modifier.padding(24.dp)) }
         }
+    }
+    askDel?.let { d ->
+        androidx.compose.material3.AlertDialog(onDismissRequest = { askDel = null },
+            title = { Text(tr("Burahin ang ${d.code}?", "Delete ${d.code}?")) },
+            text = { Text(tr("\"${d.title}\" (${d.file.name}) ay mabubura sa folder. Hindi na maibabalik.", "\"${d.title}\" (${d.file.name}) will be deleted from the folder. This cannot be undone.")) },
+            confirmButton = { androidx.compose.material3.TextButton({
+                val ok = L.delete(d); askDel = null; reload++
+                Toast.makeText(ctx, if (ok) tr("Nabura.", "Deleted.") else tr("Hindi mabura. Kailangan ang \"Buong access\" sa Settings.", "Could not delete. \"Full access\" in Settings is needed."), Toast.LENGTH_LONG).show()
+            }) { Text(tr("Burahin", "Delete"), color = vk.danger) } },
+            dismissButton = { androidx.compose.material3.TextButton({ askDel = null }) { Text(tr("Huwag", "Cancel")) } })
     }
 }
 
@@ -397,6 +435,12 @@ fun FolderSection() {
     }
     val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { refresh() }
     LaunchedEffect(Unit) { refresh() }
+    // pagbalik mula sa setting ng Android: i-check ulit
+    val life = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(life) {
+        val o = androidx.lifecycle.LifecycleEventObserver { _, e -> if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) refresh() }
+        life.lifecycle.addObserver(o); onDispose { life.lifecycle.removeObserver(o) }
+    }
     Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(L.shownPath, color = c.accent, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Text(tr("MIDI → .mid / .kar (pwedeng i-extract dito ang zip)\nKanta → .mp3 / .mp4 (+ .lrc na kapareho ng pangalan)\nBGV → background video (.mp4)",
@@ -405,7 +449,10 @@ fun FolderSection() {
             "Read on the TV device (the one that plays). Files are not uploaded. Make sure you have the rights to them."), color = c.muted, fontSize = 12.sp)
         if (info.isNotEmpty()) Text(info, color = c.text, fontSize = 14.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (!ok) VkButton(tr("Payagan ang access", "Allow access"), primary = true, height = 42.dp, onClick = { ask.launch(L.permissions()) })
+            if (!ok) VkButton(tr("Payagan ang access", "Allow access"), primary = true, height = 42.dp, onClick = {
+                // Android 11+: "Buong access" ang pinaka-sigurado (nakikita ang .mid/.kar at nabubura); kung wala sa device, ang karaniwang permission
+                if (android.os.Build.VERSION.SDK_INT < 30 || !L.openAllFilesSetting(ctx)) ask.launch(L.permissions())
+            })
             else VkButton(tr("I-scan ulit", "Scan again"), icon = "refresh", height = 42.dp, onClick = { refresh() })
             if (android.os.Build.VERSION.SDK_INT >= 30) VkButton(tr("Buong access", "Full access"), height = 42.dp, onClick = {
                 if (!L.openAllFilesSetting(ctx)) Toast.makeText(ctx, tr("Walang ganitong setting sa device na ito.", "This device has no such setting."), Toast.LENGTH_LONG).show()

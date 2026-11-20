@@ -203,7 +203,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (tab) {
                     0 -> NumberTab(now?.local ?: emptyList()) { s, local, mode -> scope.launch { if (local) reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title, mode = mode) else reserve(songId = s.id, mode = mode) } }
-                    1 -> SearchTab(now?.local ?: emptyList()) { s ->
+                    1 -> SearchTab(now?.local ?: emptyList(), onDeleteLocal = { code -> cmd("localdel", code) }) { s ->
                         scope.launch {
                             if (s.kind == "local") reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title)
                             else reserve(songId = s.id)
@@ -498,7 +498,15 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, onReserve: (Song
 
 // ---------------- HANAP ----------------
 @Composable
-private fun SearchTab(local: List<Triple<Int, String, String>>, onReserve: (Song) -> Unit) {
+private fun SearchTab(local: List<Triple<Int, String, String>>, onDeleteLocal: (Int) -> Unit, onReserve: (Song) -> Unit) {
+    var askDel by remember { mutableStateOf<Song?>(null) }
+    askDel?.let { d ->
+        androidx.compose.material3.AlertDialog(onDismissRequest = { askDel = null },
+            title = { Text(tr("Burahin ang ${d.code}?", "Delete ${d.code}?")) },
+            text = { Text(tr("\"${d.title}\" ay mabubura sa listahan at sa folder ng TV. Hindi na maibabalik.", "\"${d.title}\" will be removed from the list and from the TV's folder. This cannot be undone.")) },
+            confirmButton = { androidx.compose.material3.TextButton({ onDeleteLocal(d.code); askDel = null }) { Text(tr("Burahin", "Delete"), color = vk.danger) } },
+            dismissButton = { androidx.compose.material3.TextButton({ askDel = null }) { Text(tr("Huwag", "Cancel")) } })
+    }
     val c = vk
     var q by remember { mutableStateOf("") }
     var list by remember { mutableStateOf<List<Song>>(emptyList()) }
@@ -520,6 +528,7 @@ private fun SearchTab(local: List<Triple<Int, String, String>>, onReserve: (Song
         LazyColumn(contentPadding = PaddingValues(bottom = 20.dp)) {
             items(shown, key = { it.id }) { s ->
                 SongRow(s) {
+                    if (s.kind == "local") { VkIconButton("trash", { askDel = s }, size = 38.dp, tint = c.danger); Spacer(Modifier.width(6.dp)) }
                     VkIconButton("star", { favs = if (s.code in favs) favs - s.code else favs + s.code; Prefs.favorites = favs }, size = 38.dp, tint = if (s.code in favs) c.accent else c.muted)
                     Spacer(Modifier.width(6.dp))
                     VkButton("Reserve", height = 38.dp, onClick = { onReserve(s) })

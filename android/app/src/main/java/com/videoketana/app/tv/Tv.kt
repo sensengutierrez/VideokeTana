@@ -322,6 +322,14 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             "voldown" -> { volume = (volume - 10).coerceAtLeast(0); applyVolume(); note = "Volume $volume" }
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
             "refresh" -> { arm(); scope.launch { loadQueue(); startNext() } }
+            "localdel" -> {
+                // burahin ang kanta sa folder ng device na ito (galing sa remote)
+                val code = value?.toString()?.toIntOrNull() ?: return
+                val ls = localSongs.firstOrNull { it.code == code } ?: return
+                if (current?.localCode == code) scope.launch { finish("skip") }
+                if (com.videoketana.app.data.LocalLib.delete(ls)) { localSongs = localSongs - ls; note = tr("Nabura: ", "Deleted: ") + ls.title; broadcastState() }
+                else Toast.makeText(ctx, tr("Hindi mabura ang ${ls.file.name}. Kailangan ang \"Buong access\" sa Settings.", "Could not delete ${ls.file.name}. \"Full access\" in Settings is needed."), Toast.LENGTH_LONG).show()
+            }
             "fx" -> {
                 val o = value as? JSONObject ?: return
                 val k = o.optString("key"); val v = o.optInt("value")

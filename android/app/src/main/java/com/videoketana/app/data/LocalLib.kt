@@ -88,5 +88,18 @@ object LocalLib {
         return files.map { f -> val (t, a) = nameParts(f); LocalSong(map.optInt(rel(f)), t, a, f) }.sortedBy { it.code }
     }
 
+    /** Burahin ang file sa folder (at ang .lrc nito). Totoo kung nabura. */
+    fun delete(song: LocalSong): Boolean {
+        val ok = try { song.file.delete() } catch (e: Exception) { false }
+        if (ok) {
+            try { song.lrc?.delete() } catch (e: Exception) { }
+            try {
+                val map = JSONObject(Prefs.str("localCodes").ifEmpty { "{}" })
+                map.remove(song.file.absolutePath.removePrefix(root.absolutePath)); Prefs.putStr("localCodes", map.toString())
+            } catch (e: Exception) { }
+        }
+        return ok
+    }
+
     fun bgvFiles(): List<File> = walk(bgvDir, VIDEO).sortedBy { it.name.lowercase() }
 }
