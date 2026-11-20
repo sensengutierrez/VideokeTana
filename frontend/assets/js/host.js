@@ -221,6 +221,7 @@ function showScore(item) {
 }
 
 function showSplash(item) {
+  ceCode = ''; ceSong = null; if (typeof showCE === 'function') { clearTimeout(ceT); $('codeEntry').classList.remove('on'); }   // hindi doble ang numero
   if (window.VKInterlude) { clearTimeout(interT); VKInterlude.stop(); }
   return new Promise(res => {
     const i = itemInfo(item);
@@ -572,6 +573,7 @@ function handleCmd(action, value) {
       else if (value.title) { if (window.VKVoice) VKVoice.say(value.title); $('ceTitle').textContent = value.title + (value.artist ? ', ' + value.artist : ''); }
       if (value.key) $('ceTitle').textContent = '';
       showCE();
+      if (!value.key) { clearTimeout(ceT); ceT = setTimeout(() => { ceCode = ''; ceSong = null; showCE(); clearTimeout(ceT); }, 4000); }
     } return;
     case 'font': if (['dot', 'seg', 'bold', 'thin'].includes(value)) VK_PREFS.set('numFont', value); break;
     case 'lyr': if (value && typeof value === 'object') {   // lyrics settings mula sa phone app

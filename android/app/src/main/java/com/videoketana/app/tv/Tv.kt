@@ -742,7 +742,10 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         if (paused) Box(Modifier.align(Alignment.Center).clip(RoundedCornerShape(18.dp)).background(Color(0xCC000000)).padding(horizontal = 28.dp, vertical = 16.dp)) {
             Text(tr("Naka-pause", "Paused"), color = INK, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         }
-        LaunchedEffect(typedAt) { if (typedAt > 0) { delay(8000); typed = ""; typedTitle = "" } }
+        LaunchedEffect(typedAt) { if (typedAt > 0) { delay(if (typed.length >= 5) 4000 else 6000); typed = ""; typedTitle = "" } }
+        // na-reserve na o magsisimula na ang kanta: alisin agad ang tina-type para hindi doble ang numero sa screen
+        val waitingCount = queue.count { it.status == "waiting" }
+        LaunchedEffect(waitingCount, splash?.id, current?.id) { typed = ""; typedTitle = "" }
         AnimatedVisibility(typed.isNotEmpty(), modifier = Modifier.align(Alignment.BottomCenter), enter = fadeIn(), exit = fadeOut()) {
             Column(Modifier.padding(bottom = 70.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xE6000000)).border(1.dp, TEAL.copy(alpha = 0.35f), RoundedCornerShape(22.dp))
                 .padding(horizontal = 28.dp, vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
