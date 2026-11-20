@@ -136,6 +136,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var lyricOffset by remember { mutableStateOf(0.0) }
     var view by remember { mutableStateOf(LyricView("", 0f, "", 0)) }
     var busy by remember { mutableStateOf(false) }
+    var micIp by remember { mutableStateOf(com.videoketana.app.data.MicLink.lanIp()) }
     var interludeOn by remember { mutableStateOf(Prefs.interlude) }
     var interludeVol by remember { mutableIntStateOf(Prefs.interludeVol) }
     var bgModeS by remember { mutableStateOf(Prefs.bgMode) }
@@ -190,9 +191,14 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             eq?.let { setBands(it) }
         } catch (ex: Exception) { }
     }
+    fun micParams() {
+        val m = com.videoketana.app.data.MicReceiver
+        m.volume = Prefs.int("micVolume", 100); m.echo = Prefs.int("micEcho", 30); m.reverb = Prefs.int("micReverb", 20); m.clarity = Prefs.int("micClarity", 30)
+    }
     fun fxJson() = JSONObject().put("musicBass", bass).put("musicTreble", treble).put("musicKey", key).put("musicTempo", tempo)
         .put("micVolume", Prefs.int("micVolume", 100)).put("micEcho", Prefs.int("micEcho", 30)).put("micReverb", Prefs.int("micReverb", 20)).put("micClarity", Prefs.int("micClarity", 30))
         .put("eq", true).put("ytTempo", true).put("ytEq", geq != null)
+        .put("micIp", micIp ?: "").put("micPort", com.videoketana.app.data.MicLink.PORT)
         .put("interlude", if (interludeOn) 1 else 0).put("interludeVol", interludeVol).put("bgVideo", if (bgModeS == "anim") 0 else 1)
 
     fun broadcastState() {
@@ -396,7 +402,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                     "musicTreble" -> { treble = v.coerceIn(-12, 12); Prefs.putInt(k, treble) }
                     "musicKey" -> if (mode != "youtube") { key = v.coerceIn(-6, 6); note = "Key " + (if (key > 0) "+" else "") + key }
                     "musicTempo" -> { tempo = v.coerceIn(-5, 5); note = "Tempo " + (if (tempo > 0) "+" else "") + tempo + if (mode == "youtube") "  (x" + "%.2f".format(1f + tempo * 0.05f) + ")" else "" }
-                    "micVolume", "micEcho", "micReverb", "micClarity" -> Prefs.putInt(k, v)
+                    "micVolume", "micEcho", "micReverb", "micClarity" -> { Prefs.putInt(k, v); micParams() }
                     "interlude" -> { interludeOn = v == 1; Prefs.interlude = interludeOn; if (!interludeOn) Interlude.stop() else if (mode == "idle") Interlude.start(interludeVol) }
                     "interludeVol" -> { interludeVol = v.coerceIn(0, 100); Prefs.interludeVol = interludeVol; Interlude.setVolume(interludeVol) }
                     "bgVideo" -> { bgModeS = if (v == 1) "auto" else "anim"; Prefs.bgMode = bgModeS }
@@ -465,6 +471,13 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         midi.onError = { code -> Toast.makeText(ctx, tr("Hindi ma-play ang MIDI ($code)", "Cannot play the MIDI ($code)"), Toast.LENGTH_LONG).show(); scope.launch { delay(1500); finish("error") } }
         onDispose { exo.removeListener(l); try { eq?.release() } catch (e: Exception) {}; exo.release(); midi.stop(); synth.clear(); yt.destroy(); try { geq?.release() } catch (e: Throwable) {} }
     }
+
+    // ---- mic ng phone (app → app sa Wi-Fi, walang website) ----
+    DisposableEffect(Unit) {
+        micParams(); com.videoketana.app.data.MicReceiver.start()
+        onDispose { com.videoketana.app.data.MicReceiver.stop() }
+    }
+    LaunchedEffect(Unit) { while (true) { delay(30_000); val ip = com.videoketana.app.data.MicLink.lanIp(); if (ip != micIp) { micIp = ip; broadcastState() } } }
 
     // ---- interlude: musika habang naghihintay ng kanta ----
     LaunchedEffect(mode, splash, score, standby, interludeOn) {

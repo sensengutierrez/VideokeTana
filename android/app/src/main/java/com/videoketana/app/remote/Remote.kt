@@ -143,7 +143,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             onQueueChange = { scope.launch { loadQueue() } },
             onStatus = { ok -> connected = ok })
         rt = r; r.connect()
-        onDispose { r.close() }
+        onDispose { r.close(); com.videoketana.app.data.MicSender.stop() }
     }
     LaunchedEffect(connected) { if (connected) { rt?.broadcast("hello", JSONObject()); loadQueue() } }
     LaunchedEffect(room) { while (true) { loadQueue(); delay(15000) } }
@@ -235,7 +235,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
                     3 -> QueueTab(queue, now?.id,
                         onRemove = { q -> scope.launch { try { Supa.removeFromQueue(q.id); loadQueue() } catch (e: Exception) { Toast.makeText(ctx, e.message, Toast.LENGTH_SHORT).show() } } },
                         onTop = { q -> scope.launch { val min = queue.filter { it.status == "waiting" }.minOfOrNull { it.sortOrder } ?: 0.0; try { Supa.moveToTop(q.id, min); loadQueue() } catch (e: Exception) {} } })
-                    else -> MicTab(room)
+                    else -> MicTab(room, now?.fx) { k, v -> cmd("fx", JSONObject().put("key", k).put("value", v)) }
                 }
             }
 
@@ -746,23 +746,74 @@ private fun QueueTab(queue: List<QItem>, nowId: String?, onRemove: (QItem) -> Un
 
 // ---------------- MIC ----------------
 @Composable
-private fun MicTab(room: String) {
+private fun MicTab(room: String, fx: JSONObject?, send: (String, Int) -> Unit) {
     val c = vk
     val ctx = LocalContext.current
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(120.dp).clip(RoundedCornerShape(50)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(50)), contentAlignment = Alignment.Center) { VkIcon("mic", 48.dp, c.muted) }
-        Spacer(Modifier.height(16.dp))
-        Text(tr("Mic sa phone: malapit na sa app", "Phone mic: coming soon to the app"), color = c.text, fontSize = 19.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(6.dp))
-        Text(tr("Ginagawa pa ang mic sa loob ng app. Habang wala pa, magagamit ang mic sa web remote ng parehong room.", "The in-app mic is still being built. Meanwhile, use the mic in the web remote for the same room."),
-            color = c.muted, fontSize = 14.sp, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(16.dp))
-        VkButton(tr("Buksan ang mic sa web", "Open the mic on the web"), icon = "mic", onClick = {
-            ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE + "remote/?room=$room&tab=mic")).setPackage("com.android.chrome").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).let { i ->
-                if (i.resolveActivity(ctx.packageManager) != null) i else Intent(Intent.ACTION_VIEW, Uri.parse(Config.SITE + "remote/?room=$room&tab=mic")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            })
-        })
+    val ip = fx?.optString("micIp").orEmpty()
+    // ang TV ay ang web (walang micIp): mic ng web sa loob mismo ng app
+    if (fx != null && ip.isEmpty()) { WebMic(room); return }
+    var on by remember { mutableStateOf(com.videoketana.app.data.MicSender.isOn) }
+    var muted by remember { mutableStateOf(com.videoketana.app.data.MicSender.muted) }
+    var level by remember { mutableFloatStateOf(0f) }
+    var err by remember { mutableStateOf("") }
+    LaunchedEffect(on) { while (on) { level = com.videoketana.app.data.MicSender.level; delay(50) }; level = 0f }
+    fun startMic() {
+        err = ""
+        com.videoketana.app.data.MicSender.start(ip, fx?.optInt("micPort", com.videoketana.app.data.MicLink.PORT) ?: com.videoketana.app.data.MicLink.PORT) { e -> err = e; on = false }
+        on = true; com.videoketana.app.ui.Haptic.reserved()
     }
+    val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) startMic() else err = tr("Kailangan ang pahintulot sa mic.", "Microphone permission is needed.")
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        // malaking button ng mic na may singsing ng lakas ng boses
+        val ring = 1f + level * 2.2f
+        Box(Modifier.size(170.dp), contentAlignment = Alignment.Center) {
+            if (on) Box(Modifier.size((120 * ring.coerceAtMost(1.4f)).dp).clip(RoundedCornerShape(50)).background(c.accent.copy(alpha = 0.18f)))
+            Box(Modifier.size(120.dp).clip(RoundedCornerShape(50))
+                .background(if (on) Brush.verticalGradient(listOf(c.accent, Color(0xFF3FC7B6))) else Brush.verticalGradient(listOf(Color(0xFF232832), Color(0xFF161A21))))
+                .border(1.dp, if (on) c.accent else Color.White.copy(alpha = 0.1f), RoundedCornerShape(50))
+                .clickable {
+                    if (on) { com.videoketana.app.data.MicSender.stop(); on = false; com.videoketana.app.ui.Haptic.tap() }
+                    else if (ctx.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) startMic()
+                    else ask.launch(android.Manifest.permission.RECORD_AUDIO)
+                }, contentAlignment = Alignment.Center) { VkIcon("mic", 52.dp, if (on) c.accentInk else Color.White) }
+        }
+        Text(when { fx == null -> tr("Hinahanap ang TV…", "Looking for the TV…"); on && muted -> tr("Naka-mute", "Muted"); on -> tr("Bukas ang mic: kumanta na!", "Mic is on: sing!"); else -> tr("Pindutin para buksan ang mic", "Tap to turn on the mic") },
+            color = c.text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(tr("Diretso sa TV sa iisang Wi-Fi (walang website). Gumamit ng earphone na may mic para iwas ugong.", "Straight to the TV on the same Wi-Fi (no website). Use earphones with a mic to avoid feedback."),
+            color = c.muted, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+        if (err.isNotEmpty()) Text(err, color = c.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+        if (on) VkButton(if (muted) tr("I-unmute", "Unmute") else tr("I-mute", "Mute"), icon = "mic", onClick = { muted = !muted; com.videoketana.app.data.MicSender.muted = muted }, modifier = Modifier.padding(top = 10.dp))
+        Spacer(Modifier.height(14.dp))
+        if (fx != null) {
+            FxSlider(tr("Lakas ng mic", "Mic volume"), "micVolume", 0, 150, fx, send, unit = "%")
+            FxSlider("Echo", "micEcho", 0, 100, fx, send)
+            FxSlider("Reverb", "micReverb", 0, 100, fx, send)
+            FxSlider(tr("Linaw", "Clarity"), "micClarity", 0, 100, fx, send)
+        }
+    }
+}
+
+/** Kapag web ang TV: ang mic page ng web, pero nasa loob ng app (hindi na lilipat sa browser). */
+@Composable
+private fun WebMic(room: String) {
+    val ctx = LocalContext.current
+    var granted by remember { mutableStateOf(ctx.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) }
+    val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted = it }
+    LaunchedEffect(Unit) { if (!granted) ask.launch(android.Manifest.permission.RECORD_AUDIO) }
+    if (!granted) { Text(tr("Kailangan ang pahintulot sa mic.", "Microphone permission is needed."), color = vk.danger, modifier = Modifier.padding(20.dp)); return }
+    androidx.compose.ui.viewinterop.AndroidView(factory = { c ->
+        android.webkit.WebView(c).apply {
+            settings.javaScriptEnabled = true; settings.domStorageEnabled = true; settings.mediaPlaybackRequiresUserGesture = false
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            webViewClient = android.webkit.WebViewClient()
+            webChromeClient = object : android.webkit.WebChromeClient() {
+                override fun onPermissionRequest(request: android.webkit.PermissionRequest) { request.grant(request.resources) }
+            }
+            loadUrl(Config.SITE + "remote/?room=$room&tab=mic&embed=1")
+        }
+    }, modifier = Modifier.fillMaxSize())
 }
 
 @Composable
