@@ -179,6 +179,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var sfx by remember { mutableStateOf(Prefs.sfx) }
     var beep by remember { mutableStateOf(Prefs.keyBeep) }
     var numVoice by remember { mutableStateOf(Prefs.numVoice) }
+    var vibrate by remember { mutableStateOf(Prefs.vibrate) }
     var score by remember { mutableStateOf(Prefs.scoreOn) }
     var checking by remember { mutableStateOf(false) }
     var standby by remember { mutableStateOf(Prefs.standby) }
@@ -298,6 +299,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
             }
             Group(tr("Tunog", "Sound")) {
                 Toggle(tr("Sound effects", "Sound effects"), tr("Intro, palakpak, soundboard at score.", "Intro, applause, soundboard and score."), sfx) { sfx = it; Prefs.sfx = it }
+                Toggle(tr("Vibrate sa pag-type", "Vibrate when typing"), tr("Ramdam ang bawat numero, at mas mahaba kapag na-reserve.", "Feel each number, and a longer buzz when reserved."), vibrate) { vibrate = it; Prefs.vibrate = it; if (it) Haptic.reserved() }
                 Toggle(tr("Boses na nagbibilang", "Counting voice"), tr("Sinasabi ang bawat numerong tina-type, at ang title ng kanta.", "Says each number you type, and the song title."), numVoice) { numVoice = it; Prefs.numVoice = it }
                 Toggle(tr("Beep sa pag-type ng numero", "Beep when typing numbers"), tr("Kapag naka-off ang boses.", "When the voice is off."), beep) { beep = it; Prefs.keyBeep = it }
                 Toggle(tr("Score pagkatapos ng kanta", "Score after each song"), tr("Sa TV screen ng app na ito.", "On this app's TV screen."), score) { score = it; Prefs.scoreOn = it }

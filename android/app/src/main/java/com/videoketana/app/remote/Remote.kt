@@ -167,6 +167,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
         if (file != null && id.isNotEmpty()) { sentFiles[id] = file; scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.videoketana.app.data.FileSend.send(rt, id, file) } }
         if (mode != "reserve" && minBefore != null && id.isNotEmpty()) Supa.moveToTop(id, minBefore)
         Synth.play("ding", 0.5f)
+        com.videoketana.app.ui.Haptic.reserved()
         val playing = !now?.title.isNullOrEmpty()
         if (mode == "now" && playing) cmd("skip")
         val pos = if (mode == "reserve") queue.count { it.status == "waiting" } + 1 else 1
@@ -480,12 +481,13 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, phoneLocal: List
                 if (found == null) phoneLocal.firstOrNull { it.code == n }?.let { found = Song("phone:$n", n, it.title, it.artist, "phone", null, null, null, tr("Sa phone", "On phone"), null); isLocal = true }
             } else found = try { Supa.songByCode(n) } catch (e: Exception) { null }
             searching = false
-            found?.let { kotlinx.coroutines.delay(500); com.videoketana.app.ui.Voice.say(it.title) }
+            found?.let { com.videoketana.app.ui.Haptic.found(); kotlinx.coroutines.delay(500); com.videoketana.app.ui.Voice.say(it.title) }
         }
     }
     fun key(k: String) {
         if (Prefs.keyBeep && !Prefs.numVoice) Synth.play("beep", 0.4f)
         com.videoketana.app.ui.Voice.key(k)
+        com.videoketana.app.ui.Haptic.tap()
         code = when (k) { "clr" -> ""; "del" -> code.dropLast(1); else -> if (code.length < 5) code + k else code }
     }
     // walang scroll: ang mga key ang lumiliit/lumalaki ayon sa natitirang espasyo
