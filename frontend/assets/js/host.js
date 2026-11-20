@@ -534,6 +534,10 @@ function handleCmd(action, value) {
     case 'scene': nextScene(); break;
     case 'fx': {   // mula sa phone: echo, reverb, lakas ng mic, bass, treble
       const k = value && value.key, r = FX_KEYS[k];
+      // interlude at background ng TV (mula sa "Tunog sa TV" ng app)
+      if (k === 'interlude') { VK_PREFS.set('interlude', +value.value === 1); interludeFor(mode); break; }
+      if (k === 'interludeVol') { const v = Math.max(0, Math.min(100, Math.round(+value.value || 0))); VK_PREFS.set('interludeVol', v); if (window.VKInterlude) VKInterlude.setVolume(v); break; }
+      if (k === 'bgVideo') { VK_PREFS.set('bgMode', +value.value === 1 ? 'videos' : 'animated'); if (started) applyBg(true); break; }
       if (!r) break;
       VK_PREFS.set(k, Math.max(r[0], Math.min(r[1], Math.round(+value.value || 0))));
       clearTimeout(handleCmd.fxT); handleCmd.fxT = setTimeout(broadcastState, 300);
@@ -570,6 +574,7 @@ function fxState() {
   const p = VK_PREFS.get(), o = {};
   Object.keys(FX_KEYS).forEach(k => { o[k] = +p[k] || 0; });
   o.eq = !!eqAC && (mode === 'audio' || mode === 'video');
+  o.interlude = p.interlude === false ? 0 : 1; o.interludeVol = p.interludeVol == null ? 40 : +p.interludeVol; o.bgVideo = p.bgMode === 'videos' ? 1 : 0;
   return o;
 }
 

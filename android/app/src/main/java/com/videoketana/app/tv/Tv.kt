@@ -136,9 +136,14 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var lyricOffset by remember { mutableStateOf(0.0) }
     var view by remember { mutableStateOf(LyricView("", 0f, "", 0)) }
     var busy by remember { mutableStateOf(false) }
+    var interludeOn by remember { mutableStateOf(Prefs.interlude) }
+    var interludeVol by remember { mutableIntStateOf(Prefs.interludeVol) }
+    var bgModeS by remember { mutableStateOf(Prefs.bgMode) }
+    var bgSceneS by remember { mutableStateOf(Prefs.bgScene) }
     var armed by remember { mutableStateOf(false) }
     var startIds by remember { mutableStateOf<Set<String>?>(null) }
-    var bgvs by remember { mutableStateOf<List<String>>(emptyList()) }          // BGV online (Library)
+    var bgvs by remember { mutableStateOf<List<String>>(emptyList()) }
+    var bgvSkip by remember { mutableIntStateOf(0) }          // BGV online (Library)
     var localBgv by remember { mutableStateOf<List<String>>(emptyList()) }      // BGV sa folder ng device
     var localSongs by remember { mutableStateOf<List<com.videoketana.app.data.LocalSong>>(emptyList()) }
     var ytPlaying by remember { mutableStateOf(false) }   // true kapag talagang tumutugtog na ang YouTube
@@ -188,6 +193,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     fun fxJson() = JSONObject().put("musicBass", bass).put("musicTreble", treble).put("musicKey", key).put("musicTempo", tempo)
         .put("micVolume", Prefs.int("micVolume", 100)).put("micEcho", Prefs.int("micEcho", 30)).put("micReverb", Prefs.int("micReverb", 20)).put("micClarity", Prefs.int("micClarity", 30))
         .put("eq", true).put("ytTempo", true).put("ytEq", geq != null)
+        .put("interlude", if (interludeOn) 1 else 0).put("interludeVol", interludeVol).put("bgVideo", if (bgModeS == "anim") 0 else 1)
 
     fun broadcastState() {
         if (standby) return
@@ -368,6 +374,12 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             "voldown" -> { volume = (volume - 10).coerceAtLeast(0); applyVolume(); note = "Volume $volume" }
             "setvol" -> { volume = (value?.toString()?.toIntOrNull() ?: volume).coerceIn(0, 100); applyVolume() }
             "refresh" -> { arm(); scope.launch { loadQueue(); startNext() } }
+            "scene" -> {
+                // susunod na eksena (o susunod na BGV kapag video)
+                val cur = if (bgSceneS == "cycle") BG_SCENES[0] else bgSceneS
+                bgSceneS = BG_SCENES[(BG_SCENES.indexOf(cur) + 1) % BG_SCENES.size]; Prefs.bgScene = bgSceneS
+                bgvSkip++
+            }
             "localdel" -> {
                 // burahin ang kanta sa folder ng device na ito (galing sa remote)
                 val code = value?.toString()?.toIntOrNull() ?: return
@@ -385,6 +397,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                     "musicKey" -> if (mode != "youtube") { key = v.coerceIn(-6, 6); note = "Key " + (if (key > 0) "+" else "") + key }
                     "musicTempo" -> { tempo = v.coerceIn(-5, 5); note = "Tempo " + (if (tempo > 0) "+" else "") + tempo + if (mode == "youtube") "  (x" + "%.2f".format(1f + tempo * 0.05f) + ")" else "" }
                     "micVolume", "micEcho", "micReverb", "micClarity" -> Prefs.putInt(k, v)
+                    "interlude" -> { interludeOn = v == 1; Prefs.interlude = interludeOn; if (!interludeOn) Interlude.stop() else if (mode == "idle") Interlude.start(interludeVol) }
+                    "interludeVol" -> { interludeVol = v.coerceIn(0, 100); Prefs.interludeVol = interludeVol; Interlude.setVolume(interludeVol) }
+                    "bgVideo" -> { bgModeS = if (v == 1) "auto" else "anim"; Prefs.bgMode = bgModeS }
                 }
                 applyFx()
             }
@@ -452,8 +467,8 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     }
 
     // ---- interlude: musika habang naghihintay ng kanta ----
-    LaunchedEffect(mode, splash, score, standby) {
-        if (mode == "idle" && splash == null && score == null && !standby && Prefs.interlude) { delay(2500); Interlude.start(Prefs.interludeVol) }
+    LaunchedEffect(mode, splash, score, standby, interludeOn) {
+        if (mode == "idle" && splash == null && score == null && !standby && interludeOn) { delay(2500); Interlude.start(interludeVol) }
         else Interlude.stop()
     }
     DisposableEffect(Unit) { onDispose { Interlude.stop() } }
@@ -486,8 +501,8 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     Box(Modifier.fillMaxSize().background(if (mode == "youtube") Color.Transparent else Color(0xFF0B0C10)).clickable(remember { MutableInteractionSource() }, null) { showUi = true }) {
         // background: sariling BGV (mula sa Library) o animation
         val showBg = mode == "idle" || mode == "audio"
-        val bgList = when (Prefs.bgMode) { "auto" -> localBgv + bgvs; "device" -> localBgv; "online" -> bgvs; else -> emptyList() }
-        if (showBg && bgList.isNotEmpty()) BgvLayer(bgList) else Background(showBg)
+        val bgList = when (bgModeS) { "auto" -> localBgv + bgvs; "device" -> localBgv; "online" -> bgvs; else -> emptyList() }
+        if (showBg && bgList.isNotEmpty()) BgvLayer(bgList, bgvSkip) else Background(showBg, bgSceneS)
 
         // YouTube player (laging nakahanda para mabilis magsimula)
         DisposableEffect(Unit) {
@@ -602,10 +617,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 val BG_SCENES = listOf("lights", "stage", "stars", "sunset", "retro")
 
 @Composable
-private fun Background(show: Boolean) {
+private fun Background(show: Boolean, pick: String) {
     if (!show) return
     // "cycle": palit ng eksena bawat 2 minuto
-    val pick = Prefs.bgScene
     var idx by remember { mutableIntStateOf(Random.nextInt(BG_SCENES.size)) }
     LaunchedEffect(pick) { if (pick == "cycle") while (true) { delay(120_000); idx = (idx + 1) % BG_SCENES.size } }
     val scene = if (pick == "cycle") BG_SCENES[idx] else pick
@@ -839,7 +853,7 @@ fun android.content.Context.findActivity(): android.app.Activity? {
 /** Background video (BGV) na umiikot, walang tunog. Mga video na in-upload sa Library (BGV). */
 @OptIn(UnstableApi::class)
 @Composable
-private fun BgvLayer(urls: List<String>) {
+private fun BgvLayer(urls: List<String>, skip: Int = 0) {
     val ctx = LocalContext.current
     val p = remember {
         ExoPlayer.Builder(ctx).build().apply {
@@ -850,6 +864,7 @@ private fun BgvLayer(urls: List<String>) {
         p.setMediaItems(urls.map { MediaItem.fromUri(it) })
         p.prepare(); p.playWhenReady = true
     }
+    LaunchedEffect(skip) { if (skip > 0 && p.mediaItemCount > 1) p.seekToNextMediaItem() }
     DisposableEffect(Unit) { onDispose { p.release() } }
     AndroidView(factory = { c -> PlayerView(c).apply { useController = false; player = p; resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM } },
         modifier = Modifier.fillMaxSize())

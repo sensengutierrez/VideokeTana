@@ -201,6 +201,7 @@ fun SettingsScreen(go: (Screen) -> Unit) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Group(tr("Pagkonekta", "Connecting")) { ConnectGuide(go) }
             Group(tr("Folder sa device", "Folder on this device")) { FolderSection() }
+            Group(tr("Songbook", "Songbook")) { SongbookExport() }
             Group(tr("Itsura", "Appearance")) {
                 SetRow(tr("Wika", "Language"), tr("Ang wika ng buong app.", "The language of the whole app.")) {
                     Seg(listOf("fil" to "Tagalog", "en" to "English"), Prefs.lang) { Prefs.changeLang(it) }
@@ -463,5 +464,33 @@ fun FolderSection() {
             })
         }
         Text(tr("Kung hindi lumalabas ang .kar o ilang file, gamitin ang \"Buong access\".", "If .kar or some files do not show, use \"Full access\"."), color = c.muted, fontSize = 12.sp)
+    }
+}
+
+
+/** I-download ang buong songbook bilang Excel (online + mga kanta sa device na ito). */
+@Composable
+fun SongbookExport() {
+    val c = vk
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var msg by remember { mutableStateOf("") }
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(tr("Excel file ng lahat ng kanta: numero, title, artist, kategorya, uri at kung saan galing. Pang-print o pang-share habang dumadami ang kanta.",
+            "An Excel file of every song: number, title, artist, category, type and source. To print or share as the list grows."), color = c.muted, fontSize = 13.sp)
+        if (msg.isNotEmpty()) Text(msg, color = c.text, fontSize = 14.sp)
+        VkButton(if (busy) tr("Ginagawa...", "Making...") else tr("I-download ang Songbook (Excel)", "Download the Songbook (Excel)"), icon = "list", primary = true, enabled = !busy,
+            modifier = Modifier.fillMaxWidth(), onClick = {
+                busy = true; msg = ""
+                scope.launch {
+                    try {
+                        val (f, where) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.videoketana.app.data.Xlsx.songbook(ctx) }
+                        msg = if (where.isNotEmpty()) tr("Na-save sa $where", "Saved to $where") else tr("Handa na ang file.", "The file is ready.")
+                        com.videoketana.app.data.Xlsx.share(ctx, f)
+                    } catch (e: Exception) { msg = tr("Hindi nagawa: ", "Could not make it: ") + e.message }
+                    busy = false
+                }
+            })
     }
 }

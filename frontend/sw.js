@@ -1,7 +1,7 @@
 // Service worker ng Videoke app: para mai-install at mabilis bumukas.
 // HTML: network muna (para laging bago), cache kapag offline. CSS/JS/icons: cache, tapos ina-update sa likod.
 // Hindi ginagalaw ang audio/video, Supabase, YouTube at iba pang site.
-const VERSION = 'vk-0.12.3';
+const VERSION = 'vk-0.12.4';
 const SHELL = ['./', './app/', './host/', './remote/', './songbook/', './settings/', './mysongs/', './manifest.webmanifest', './assets/icons/icon-192.png'];
 
 self.addEventListener('install', e => {

@@ -252,7 +252,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
 
     if (sheet == "sound") ModalBottomSheet(onDismissRequest = { sheet = "" }, containerColor = if (Prefs.dark) com.videoketana.app.ui.DarkVk.surface else com.videoketana.app.ui.LightVk.surface) {
         SoundSheet(now?.fx, now?.source ?: "", send = { k, v -> cmd("fx", JSONObject().put("key", k).put("value", v)) },
-            onWallpaper = { pickWall.launch("image/*") }, onStandby = { sheet = ""; standby = true })
+            onWallpaper = { pickWall.launch("image/*") }, onStandby = { sheet = ""; standby = true }, onScene = { cmd("scene") })
     }
     if (sheet == "board") ModalBottomSheet(onDismissRequest = { sheet = "" }, containerColor = if (Prefs.dark) com.videoketana.app.ui.DarkVk.surface else com.videoketana.app.ui.LightVk.surface) {
         Column(Modifier.padding(start = 18.dp, end = 18.dp, bottom = 28.dp)) {
@@ -312,6 +312,16 @@ private fun NowCard(now: NowState?, hostSeen: Boolean, room: String, onCmd: (Str
                 CtlBtn("volup") { onCmd("volup") }
                 CtlBtn("next") { onCmd("skip") }
             }
+            // Key at Tempo: laging nakikita (kapag kaya ng TV)
+            val fx = now?.fx
+            val isYt = now?.source == "youtube"
+            if (fx != null && fx.has("musicTempo") && (!isYt || fx.optBoolean("ytTempo"))) {
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (!isYt && fx.has("musicKey")) MiniStepper("Key", fx.optInt("musicKey"), -6, 6, Modifier.weight(1f)) { onFx("musicKey", it) }
+                    MiniStepper("Tempo", fx.optInt("musicTempo"), -5, 5, Modifier.weight(1f)) { onFx("musicTempo", it) }
+                }
+            }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SfxChip(tr("Palakpak", "Applause"), Modifier.weight(1f)) { onSfx("applause") }
@@ -319,6 +329,22 @@ private fun NowCard(now: NowState?, hostSeen: Boolean, room: String, onCmd: (Str
                 SfxChip("Wow", Modifier.weight(1f)) { onSfx("wow") }
                 SfxChip(tr("Iba pa", "More"), Modifier.weight(1f), on = true) { onBoard() }
             }
+        }
+    }
+}
+
+@Composable
+private fun MiniStepper(label: String, value: Int, min: Int, max: Int, modifier: Modifier, onChange: (Int) -> Unit) {
+    val c = vk
+    Row(modifier.height(34.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.05f)).border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(50)),
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).clickable(enabled = value > min) { onChange(value - 1); com.videoketana.app.ui.Haptic.tap() }, contentAlignment = Alignment.Center) {
+            Text("−", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+        Text(label + " " + (if (value > 0) "+" else "") + value, color = if (value == 0) Color(0xFF8C93A1) else c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f), textAlign = TextAlign.Center, maxLines = 1)
+        Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).clickable(enabled = value < max) { onChange(value + 1); com.videoketana.app.ui.Haptic.tap() }, contentAlignment = Alignment.Center) {
+            Text("+", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -371,7 +397,7 @@ private fun BottomNav(tab: Int, waiting: Int, onTab: (Int) -> Unit) {
 
 /** Mga adjust ng tunog sa TV: boses (mic) at kanta (bass, treble, key). */
 @Composable
-private fun SoundSheet(fx: JSONObject?, source: String, send: (String, Int) -> Unit, onWallpaper: () -> Unit, onStandby: () -> Unit) {
+private fun SoundSheet(fx: JSONObject?, source: String, send: (String, Int) -> Unit, onWallpaper: () -> Unit, onStandby: () -> Unit, onScene: () -> Unit = {}) {
     val c = vk
     Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 30.dp)) {
         Text(tr("Tunog sa TV", "Sound on the TV"), color = c.text, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
@@ -398,6 +424,30 @@ private fun SoundSheet(fx: JSONObject?, source: String, send: (String, Int) -> U
         FxSlider("Echo", "micEcho", 0, 100, fx, send)
         FxSlider("Reverb", "micReverb", 0, 100, fx, send)
         FxSlider(tr("Linaw", "Clarity"), "micClarity", 0, 100, fx, send)
+
+        // ----- TV: interlude at background (sinusunod ng kahit anong TV: web o app) -----
+        if (fx != null && fx.has("interlude")) {
+            Spacer(Modifier.height(16.dp))
+            Text(tr("TV: interlude at background", "TV: interlude and background"), color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(tr("Interlude habang naghihintay", "Interlude while waiting"), color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                androidx.compose.material3.Switch(fx.optInt("interlude") == 1, { send("interlude", if (it) 1 else 0) },
+                    colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = c.accent, checkedThumbColor = c.accentInk))
+            }
+            if (fx.optInt("interlude") == 1) FxSlider(tr("Lakas ng interlude", "Interlude volume"), "interludeVol", 0, 100, fx, send, unit = "%")
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                val vid = fx.optInt("bgVideo") == 1
+                listOf(1 to "BGV", 0 to tr("Animation", "Animation")).forEach { (v, label) ->
+                    val on = (v == 1) == vid
+                    Box(Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(50)).background(if (on) c.accent else c.surface).border(1.dp, if (on) c.accent else c.line, RoundedCornerShape(50))
+                        .clickable { send("bgVideo", v) }, contentAlignment = Alignment.Center) {
+                        Text(label, color = if (on) c.accentInk else c.text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                }
+                VkButton(tr("Palitan", "Next"), icon = "refresh", onClick = onScene, height = 40.dp)
+            }
+            Text(tr("BGV: video sa Library o sa folder ng TV. Kung wala, animation.", "BGV: videos in the Library or the TV's folder. If none, animation."), color = c.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        }
 
         Spacer(Modifier.height(18.dp))
         Text(tr("Itsura ng phone", "Phone look"), color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)

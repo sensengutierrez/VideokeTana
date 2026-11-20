@@ -99,3 +99,19 @@ if (ROOM_RE.test(ROOM)) $('roomInfo').innerHTML = `Nakakonekta sa room <b>${ROOM
 // Auto-refresh kapag may bagong upload
 sb.channel('songbook').on('postgres_changes', { event: '*', schema: 'public', table: 'songs' }, load).subscribe();
 load();
+
+
+// ---- I-download ang songbook bilang Excel (lahat ng kanta + mga kanta sa device na ito) ----
+$('dlXlsx').onclick = async () => {
+  const rows = [['Numero', 'Title', 'Artist', 'Kategorya', 'Uri', 'Pinagmulan']];
+  const kind = k => ({ audio: 'Audio/MIDI', video: 'Video', youtube: 'YouTube' }[k] || k || '');
+  songs.forEach(s => rows.push([s.code, s.title || '', s.artist || '', s.category || '', kind(s.kind), 'Online']));
+  try { if (window.VKLocal) (await VKLocal.list()).forEach(s => rows.push([s.code, s.title || '', s.artist || '', '', s.kind || '', 'Sa device na ito'])); } catch (e) {}
+  const blob = VKXlsx.make(rows, 'Songbook');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'VideokeTana-Songbook-' + new Date().toISOString().slice(0, 10) + '.xlsx';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast(`Na-download: ${rows.length - 1} na kanta`, 'ok');
+};
