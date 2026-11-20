@@ -467,7 +467,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 o.optString("countdown").takeIf { it.isNotEmpty() }?.let { Prefs.countdownOn = it != "off" }
                 note = tr("Na-update ang lyrics", "Lyrics updated")
             }
-            "font" -> { val v = value?.toString() ?: return; if (v in DISPLAY_FONTS) Prefs.changeDisplayFont(v) }
+            "font" -> { val v = value?.toString() ?: return; if (v in com.videoketana.app.ui.DISPLAY_FONTS) Prefs.changeDisplayFont(v) }
             "scene" -> {
                 // susunod na eksena (o susunod na BGV kapag video)
                 val cur = if (bgSceneS == "cycle") BG_SCENES[0] else bgSceneS
