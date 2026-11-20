@@ -151,6 +151,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     var rt by remember { mutableStateOf<Realtime?>(null) }
 
     val midi = remember { MidiPlayer() }
+    val recv = remember { com.videoketana.app.data.FileSend.Receiver(java.io.File(ctx.cacheDir, "fromphone")) }
     fun applyVolume() { exo.volume = volume / 100f; yt.volume(volume); midi.volume(volume) }
 
     // ---- tunog ng kanta: bass, treble (Equalizer ng Android), key at tempo (ExoPlayer) ----
@@ -202,6 +203,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     suspend fun loadQueue() {
         if (standby) return
         queue = try { Supa.queue(room).also { if (startIds == null) startIds = it.map { q -> q.id }.toSet() } } catch (e: Exception) { queue }
+        try { recv.clean(queue.map { it.id }.toSet()) } catch (e: Exception) { }
         val cur = current
         if (cur != null && queue.none { it.id == cur.id }) { stopMedia(); current = null; mode = "idle" }   // inalis mula sa remote
     }
@@ -266,7 +268,30 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                                 busy = false; finish("error"); return@sn
                             }
                         }
-                        next.localCode != null && s == null -> { Toast.makeText(ctx, tr("Wala sa device na ito ang kantang ${next.localCode}", "Song ${next.localCode} is not on this device"), Toast.LENGTH_LONG).show(); busy = false; finish("error"); return@sn }
+                        next.localCode != null && s == null -> {
+                            // galing sa folder ng phone: hintayin ang file (hanggang 15s), humingi ulit kung wala
+                            var f = recv.file(next.id)
+                            var waited = 0
+                            while (f == null && waited < 15000 && current?.id == next.id) {
+                                if (waited % 5000 == 0) rt?.broadcast("need", JSONObject().put("qid", next.id))
+                                delay(500); waited += 500; f = recv.file(next.id)
+                            }
+                            if (f == null) {
+                                Toast.makeText(ctx, tr("Wala sa TV ang kantang ${next.localCode}. Kung nasa phone, buksan ang remote ng phone na nag-reserve.", "Song ${next.localCode} is not on the TV. If it is on a phone, open the remote on that phone."), Toast.LENGTH_LONG).show()
+                                busy = false; finish("error"); return@sn
+                            }
+                            lyrics = emptyList(); lyricOffset = 0.0; key = 0; tempo = 0
+                            try {
+                                if (isMidiPath(f.name)) { mode = "audio"; lyrics = midi.loadFile(f, volume) }
+                                else {
+                                    mode = if (f.extension.lowercase() in com.videoketana.app.data.LocalLib.VIDEO) "video" else "audio"
+                                    exo.setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(f))); exo.prepare(); applyVolume(); applyFx(); exo.play()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(ctx, tr("Hindi ma-play: ", "Cannot play: ") + e.message, Toast.LENGTH_LONG).show()
+                                busy = false; finish("error"); return@sn
+                            }
+                        }
                         s != null && s.kind == "audio" && isMidiPath(s.mediaPath) -> {
                             // MIDI/KAR: synth ng Android; lyrics mula sa loob ng file (o sa .lrc kung meron)
                             mode = "audio"
@@ -375,6 +400,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 when (ev) {
                     "cmd" -> if (!standby) handleCmd(p.optString("action"), p.opt("value"))
                     "hello" -> broadcastState()
+                    "file" -> recv.onPart(p)
                     "host" -> if (p.optString("id") != hostId && !standby) {
                         if (p.optLong("since") > hostSince) { standby = true; stopMedia(); current = null; mode = "idle" }
                         else rt?.broadcast("host", JSONObject().put("id", hostId).put("since", hostSince))

@@ -120,6 +120,12 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
     var standby by remember { mutableStateOf(false) }
 
     suspend fun loadQueue() { queue = try { Supa.queue(room) } catch (e: Exception) { queue } }
+    // mga kanta sa folder ng phone na ito (pinapasa sa TV kapag ni-reserve)
+    val sentFiles = remember { HashMap<String, java.io.File>() }
+    var phoneLocal by remember { mutableStateOf<List<com.videoketana.app.data.LocalSong>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        if (com.videoketana.app.data.LocalLib.hasPermission(ctx)) phoneLocal = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { com.videoketana.app.data.LocalLib.scan() }
+    }
     val pickWall = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) scope.launch { if (com.videoketana.app.data.Wallpaper.save(ctx, uri) && Prefs.glass == 0) Prefs.changeGlass(35) }
     }
@@ -129,6 +135,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             onBroadcast = { ev, p ->
                 when (ev) {
                     "state" -> { now = parseState(p); hostSeen = true }
+                    "need" -> sentFiles[p.optString("qid")]?.let { f -> scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.videoketana.app.data.FileSend.send(rt, p.optString("qid"), f) } }
                     "score" -> Toast.makeText(ctx, tr("Score", "Score") + (p.optString("singer").takeIf { it.isNotBlank() }?.let { tr(" ni $it", " for $it") } ?: "") + ": " + p.optInt("score"), Toast.LENGTH_LONG).show()
                 }
             },
@@ -152,9 +159,11 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
     }
     fun sfx(name: String) = cmd("sfx", JSONObject().put("name", name).put("from", Prefs.name))
     // mode: "reserve" (sa dulo ng pila), "top" (unahin), "now" (patugtugin ngayon)
-    suspend fun reserve(songId: String? = null, ytId: String? = null, ytTitle: String? = null, localCode: Int? = null, localTitle: String? = null, mode: String = "reserve"): Boolean = try {
+    suspend fun reserve(songId: String? = null, ytId: String? = null, ytTitle: String? = null, localCode: Int? = null, localTitle: String? = null, mode: String = "reserve", file: java.io.File? = null): Boolean = try {
+        if (file != null && file.length() > com.videoketana.app.data.FileSend.MAX) throw RuntimeException(tr("Masyadong malaki para ipasa sa TV (max 8 MB).", "Too large to send to the TV (max 8 MB)."))
         val minBefore = queue.filter { it.status == "waiting" }.minOfOrNull { it.sortOrder }
         val id = Supa.reserve(room, Prefs.name, songId, ytId, ytTitle, localCode, localTitle)
+        if (file != null && id.isNotEmpty()) { sentFiles[id] = file; scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.videoketana.app.data.FileSend.send(rt, id, file) } }
         if (mode != "reserve" && minBefore != null && id.isNotEmpty()) Supa.moveToTop(id, minBefore)
         Synth.play("ding", 0.5f)
         val playing = !now?.title.isNullOrEmpty()
@@ -203,9 +212,11 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (tab) {
                     0 -> NumberTab(now?.local ?: emptyList()) { s, local, mode -> scope.launch { if (local) reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title, mode = mode) else reserve(songId = s.id, mode = mode) } }
-                    1 -> SearchTab(now?.local ?: emptyList(), onDeleteLocal = { code -> cmd("localdel", code) }) { s ->
+                    1 -> SearchTab(now?.local ?: emptyList(), phoneLocal, onDeleteLocal = { code -> cmd("localdel", code) }) { s ->
                         scope.launch {
-                            if (s.kind == "local") reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title)
+                            val pf = if (s.kind == "phone") phoneLocal.firstOrNull { it.code == s.code } else null
+                            if (pf != null) reserve(localCode = pf.code, localTitle = (if (pf.artist.isNotBlank()) pf.artist + " - " else "") + pf.title, file = pf.file)
+                            else if (s.kind == "local") reserve(localCode = s.code, localTitle = (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title)
                             else reserve(songId = s.id)
                         }
                     }
@@ -498,7 +509,7 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, onReserve: (Song
 
 // ---------------- HANAP ----------------
 @Composable
-private fun SearchTab(local: List<Triple<Int, String, String>>, onDeleteLocal: (Int) -> Unit, onReserve: (Song) -> Unit) {
+private fun SearchTab(local: List<Triple<Int, String, String>>, phoneLocal: List<com.videoketana.app.data.LocalSong>, onDeleteLocal: (Int) -> Unit, onReserve: (Song) -> Unit) {
     var askDel by remember { mutableStateOf<Song?>(null) }
     askDel?.let { d ->
         androidx.compose.material3.AlertDialog(onDismissRequest = { askDel = null },
@@ -523,7 +534,12 @@ private fun SearchTab(local: List<Triple<Int, String, String>>, onDeleteLocal: (
         val ql = q.trim().lowercase()
         val locals = local.filter { ql.isEmpty() || it.second.lowercase().contains(ql) || it.third.lowercase().contains(ql) || it.first.toString() == ql }
             .map { Song("local:${it.first}", it.first, it.second, it.third, "local", null, null, null, tr("Sa TV", "On TV"), null) }
-        val all = locals + list
+        // mga kanta sa folder ng phone na ito (hindi kasama ang meron na sa TV)
+        val tvTitles = local.map { it.second.lowercase() + "|" + it.third.lowercase() }.toSet()
+        val phones = phoneLocal.filter { (it.title.lowercase() + "|" + it.artist.lowercase()) !in tvTitles }
+            .filter { ql.isEmpty() || it.title.lowercase().contains(ql) || it.artist.lowercase().contains(ql) }
+            .map { Song("phone:${it.code}", it.code, it.title, it.artist, "phone", null, null, null, tr("Sa phone", "On phone") + if (it.isMidi) " (MIDI)" else "", null) }
+        val all = locals + phones + list
         val shown = if (onlyFavs) all.filter { it.code in favs } else all
         LazyColumn(contentPadding = PaddingValues(bottom = 20.dp)) {
             items(shown, key = { it.id }) { s ->
