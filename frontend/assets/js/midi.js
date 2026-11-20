@@ -52,23 +52,33 @@
     // mga nota na may haba; sustain pedal (CC64) ay nagpapahaba
     const prog = new Array(16).fill(0), vol = new Array(16).fill(100), expr = new Array(16).fill(127), sus = new Array(16).fill(false);
     const bank = new Array(16).fill(0), pan = new Array(16).fill(64), bend = new Array(16).fill(0);
+    const rvb = new Array(16).fill(40), cho = new Array(16).fill(0), mod = new Array(16).fill(0), bRange = new Array(16).fill(2), rpn = new Array(16).fill(16383);
+    // mga pagbabago habang tumutunog ang nota (para sa SoundFont engine): bend (semitono), lakas (vol×expr), modulation (0..1)
+    const ctl = { bend: [...Array(16)].map(() => [[0, 0]]), gain: [...Array(16)].map(() => [[0, 100 / 127]]), mod: [...Array(16)].map(() => [[0, 0]]) };
+    const push = (arr, t, v) => { const last = arr[arr.length - 1]; if (last[0] === t) last[1] = v; else if (last[1] !== v) arr.push([t, v]); };
     const open = {}, held = new Array(16).fill(null).map(() => []);
     const notes = [];
     const close = (o, t) => { o.dur = Math.max(0.05, t - o.t); };
     for (const e of ev) {
       const t = sec(e.tick);
       if (e.k === 'prog') prog[e.ch] = e.v;
-      else if (e.k === 'bend') bend[e.ch] = e.v / 8192 * 2;
+      else if (e.k === 'bend') { bend[e.ch] = e.v / 8192 * bRange[e.ch]; push(ctl.bend[e.ch], t, bend[e.ch]); }
       else if (e.k === 'cc') {
         if (e.c === 7) vol[e.ch] = e.v; else if (e.c === 11) expr[e.ch] = e.v;
         else if (e.c === 0) bank[e.ch] = e.v; else if (e.c === 10) pan[e.ch] = e.v;
-        else if (e.c === 121) { vol[e.ch] = 100; expr[e.ch] = 127; bend[e.ch] = 0; }
+        else if (e.c === 91) rvb[e.ch] = e.v; else if (e.c === 93) cho[e.ch] = e.v;
+        else if (e.c === 1) { mod[e.ch] = e.v / 127; push(ctl.mod[e.ch], t, mod[e.ch]); }
+        else if (e.c === 101) rpn[e.ch] = (rpn[e.ch] & 0x7f) | (e.v << 7);
+        else if (e.c === 100) rpn[e.ch] = (rpn[e.ch] & ~0x7f) | e.v;
+        else if (e.c === 6 && rpn[e.ch] === 0) bRange[e.ch] = Math.max(1, Math.min(24, e.v));
+        else if (e.c === 121) { vol[e.ch] = 100; expr[e.ch] = 127; bend[e.ch] = 0; mod[e.ch] = 0; push(ctl.bend[e.ch], t, 0); push(ctl.mod[e.ch], t, 0); }
+        if (e.c === 7 || e.c === 11 || e.c === 121) push(ctl.gain[e.ch], t, (vol[e.ch] / 127) * (expr[e.ch] / 127));
         else if (e.c === 64) { const on = e.v >= 64; if (sus[e.ch] && !on) { held[e.ch].forEach(o => close(o, t)); held[e.ch] = []; } sus[e.ch] = on; }
       } else if (e.k === 'on') {
         const key = e.ch * 128 + e.n;
         if (open[key]) { close(open[key], t); }
         const o = { t, dur: 0.5, midi: e.n, ch: e.ch, vel: e.v / 127 * (vol[e.ch] / 127) * (expr[e.ch] / 127), prog: prog[e.ch],
-          v: e.v, cg: (vol[e.ch] / 127) * (expr[e.ch] / 127), bank: bank[e.ch], pan: pan[e.ch], bend: bend[e.ch] };
+          v: e.v, cg: (vol[e.ch] / 127) * (expr[e.ch] / 127), bank: bank[e.ch], pan: pan[e.ch], bend: bend[e.ch], rvb: rvb[e.ch] / 127, cho: cho[e.ch] / 127 };
         notes.push(o); open[key] = o;
       } else if (e.k === 'off') {
         const key = e.ch * 128 + e.n; const o = open[key];
@@ -116,7 +126,7 @@
       }
     }
     const duration = notes.reduce((m, n) => Math.max(m, n.t + n.dur), 0) + 2;
-    return { notes, lyrics: lines, melody, duration };
+    return { notes, lyrics: lines, melody, duration, ctl };
   }
 
   // ---------------- synth (sariling mixing sa JS: mabilis, walang Web Audio node bawat nota) ----------------

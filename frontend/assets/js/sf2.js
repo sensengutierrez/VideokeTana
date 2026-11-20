@@ -81,90 +81,110 @@
   const gv = (g, k, d) => (g[k] === undefined ? d : g[k]);
 
   // ---------------- voice ----------------
+  // Mga generator ng SF2 na ginagamit: sample/loop offsets, tuning, volume envelope, modulation envelope (→ filter at pitch),
+  // vibrato LFO (→ pitch), modulation LFO (→ pitch, filter, lakas), resonant lowpass filter, pan, reverb/chorus send, exclusive class.
+  const cents = c => Math.pow(2, c / 1200);
   function makeVoice(sf, nt, r, SR, opts) {
     const g = r.g, s = r.s;
     const start = s.start + gv(g, 0, 0) + 32768 * gv(g, 4, 0);
     const end = s.end + gv(g, 1, 0) + 32768 * gv(g, 12, 0);
     const ls = s.ls + gv(g, 2, 0) + 32768 * gv(g, 45, 0);
     const le = s.le + gv(g, 3, 0) + 32768 * gv(g, 50, 0);
+    const lim = sf.samples.length - 3;
     const mode = gv(g, 54, 0) & 3;
     const root = gv(g, 58, -1) >= 0 ? g[58] : s.pitch;
-    const scale = gv(g, 56, 100);
-    const semis = (nt.midi - root) * scale / 100 + gv(g, 51, 0) + gv(g, 52, 0) / 100 + s.corr / 100 + (nt.bend || 0);
-    const step = Math.pow(2, semis / 12) * s.rate / SR;
-    // lakas: attenuation (cB, ×0.4 gaya ng karamihan ng player), velocity at channel (concave)
+    const key = nt.midi + (nt.ch === 9 ? 0 : (opts.transpose || 0));
+    const basePitch = (key - root) * gv(g, 56, 100) / 100 + gv(g, 51, 0) + gv(g, 52, 0) / 100 + s.corr / 100;
+    const rate = s.rate / SR;
+    if (!(rate > 0) || start < 1 || start >= lim) return null;
+    const endC = Math.min(lim, Math.max(start + 2, end));
+    // lakas: attenuation ×0.4 (gaya ng karamihan ng player), velocity (concave), channel
     const att = gv(g, 48, 0) * 0.4;
     const vel = (nt.v || 100) / 127;
-    let amp = Math.pow(10, -att / 200) * vel * vel * Math.max(0.0001, nt.cg === undefined ? 0.8 : nt.cg) * opts.master;
-    // pan: zone + channel
+    const amp = Math.pow(10, -att / 200) * vel * vel * opts.master;
     const pz = Math.max(-500, Math.min(500, gv(g, 17, 0) + ((nt.pan === undefined ? 64 : nt.pan) - 64) / 64 * 500));
     const pa = (pz + 500) / 1000 * Math.PI / 2;
-    const fc = gv(g, 8, 13500);
-    const cut = fc < 13400 ? Math.min(0.99, 1 - Math.exp(-2 * Math.PI * 8.176 * Math.pow(2, fc / 1200) / SR)) : 1;
-    const key = nt.midi;
-    const hold = tc(gv(g, 35, -12000) + gv(g, 39, 0) * (60 - key), -12000);
-    const decay = tc(gv(g, 36, -12000) + gv(g, 40, 0) * (60 - key), -12000);
-    const sus = Math.max(0, Math.min(1440, gv(g, 37, 0)));
-    const lim = sf.samples.length - 2;
-    if (!(step > 0 && step < 64) || start < 0 || start >= lim) return null;
-    const endC = Math.min(lim, Math.max(start + 1, end));
+    // filter: cutoff (absolute cents) + velocity (malambot na tugtog = mas mapurol), resonance (cB)
+    let fc = gv(g, 8, 13500);
+    const filtered = fc < 13400 || gv(g, 11, 0) !== 0 || gv(g, 10, 0) !== 0;
+    if (filtered) fc += -2400 * (1 - vel) * 0.5;
+    const q = Math.max(0, gv(g, 9, 0)) / 10;               // dB
+    const kn = nt.midi;
     return {
-      pos: start, start, end: endC, ls: Math.max(start, ls), le: Math.min(endC, Math.max(ls + 2, le)), loop: (mode === 1 || mode === 3) && le > ls + 2, mode,
-      step, L: amp * Math.cos(pa), R: amp * Math.sin(pa), cut, lp: 0,
-      delay: tc(g[33], -12000), attack: tc(g[34], -12000), hold, decay, susDb: sus / 10, release: Math.min(opts.maxRelease, tc(g[38], -12000)),
-      t0: nt.t, off: nt.t + nt.dur, done: false, relStart: -1, relDb: 0, excl: gv(g, 57, 0), ch: nt.ch
+      pos: start, end: endC, ls: Math.max(start, ls), le: Math.min(endC, Math.max(ls + 2, le)), loop: (mode === 1 || mode === 3) && le > ls + 2, mode,
+      rate, basePitch, L: amp * Math.cos(pa), R: amp * Math.sin(pa),
+      rvb: Math.min(1, (nt.rvb === undefined ? 0.3 : nt.rvb) + gv(g, 16, 0) / 1000), cho: Math.min(1, (nt.cho || 0) + gv(g, 15, 0) / 1000),
+      filtered, fc, q: Math.pow(10, q / 20) * 0.7071, x1: 0, x2: 0, y1: 0, y2: 0,
+      // volume envelope
+      delay: tc(g[33], -12000), attack: tc(g[34], -12000), hold: tc(gv(g, 35, -12000) + gv(g, 39, 0) * (60 - kn), -12000),
+      decay: tc(gv(g, 36, -12000) + gv(g, 40, 0) * (60 - kn), -12000), susDb: Math.max(0, Math.min(1440, gv(g, 37, 0))) / 10,
+      release: Math.min(opts.maxRelease, tc(g[38], -12000)),
+      // modulation envelope
+      mDelay: tc(g[25], -12000), mAttack: tc(g[26], -12000), mHold: tc(gv(g, 27, -12000) + gv(g, 31, 0) * (60 - kn), -12000),
+      mDecay: tc(gv(g, 28, -12000) + gv(g, 32, 0) * (60 - kn), -12000), mSus: 1 - Math.max(0, Math.min(1000, gv(g, 29, 0))) / 1000,
+      mRelease: tc(g[30], -12000), mToFc: gv(g, 11, 0), mToPitch: gv(g, 7, 0), mLevel: 0, mRelLevel: 0,
+      // LFO
+      vDelay: tc(g[23], -12000), vFreq: 8.176 * cents(gv(g, 24, 0)), vToPitch: gv(g, 6, 0),          // vibrato LFO
+      lDelay: tc(g[21], -12000), lFreq: 8.176 * cents(gv(g, 22, 0)), lToPitch: gv(g, 5, 0), lToFc: gv(g, 10, 0), lToVol: gv(g, 13, 0),   // modulation LFO
+      t0: nt.t, off: nt.t + nt.dur, done: false, relStart: -1, relDb: 0, curDb: 0, excl: gv(g, 57, 0), ch: nt.ch
     };
   }
 
-  // antas ng envelope (0..1) sa oras na x mula sa simula ng nota
+  // volume envelope (0..1) sa oras na x mula sa simula ng nota
   function envAt(v, x) {
     if (v.relStart >= 0) {
       const rx = x - v.relStart;
-      if (rx < 0) return Math.pow(10, -Math.max(0, v.curDb || 0) / 20);      // hindi pa oras ng release (exclusive class sa hinaharap)
+      if (rx < 0) return Math.pow(10, -Math.max(0, v.curDb) / 20);
       const db = Math.max(0, v.relDb) + 100 * rx / Math.max(0.001, v.release);
       if (db >= 96) { v.done = true; return 0; }
       return Math.pow(10, -db / 20);
     }
-    let db;
     if (x < v.delay) return 0;
     x -= v.delay;
-    if (x < v.attack) return x / v.attack;
+    if (x < v.attack) { v.curDb = 0; return x / v.attack; }
     x -= v.attack;
-    if (x < v.hold) db = 0;
-    else { x -= v.hold; db = Math.min(v.susDb, 100 * x / Math.max(0.001, v.decay)); }
+    const db = x < v.hold ? 0 : Math.min(v.susDb, 100 * (x - v.hold) / Math.max(0.001, v.decay));
     v.curDb = db;
     return Math.pow(10, -db / 20);
   }
+  // modulation envelope (0..1)
+  function modAt(v, x) {
+    if (v.relStart >= 0) { const rx = Math.max(0, x - v.relStart); return v.mRelLevel * Math.max(0, 1 - rx / Math.max(0.001, v.mRelease)); }
+    if (x < v.mDelay) return 0;
+    x -= v.mDelay;
+    let lv;
+    if (x < v.mAttack) lv = x / v.mAttack;
+    else { x -= v.mAttack; lv = x < v.mHold ? 1 : Math.max(v.mSus, 1 - (1 - v.mSus) * (x - v.mHold) / Math.max(0.001, v.mDecay)); }
+    v.mLevel = lv;
+    return lv;
+  }
+  const valAt = (arr, t) => { if (!arr) return 0; let lo = 0, hi = arr.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (arr[m][0] <= t) lo = m; else hi = m - 1; } return arr[lo][1]; };
 
   async function render(mp, sf, opts) {
-    opts = Object.assign({ SR: 44100, master: 1.0, maxRelease: 2.5, reverb: 0.18, onProgress: null }, opts || {});
-    const SR = opts.SR, BLK = 32;
-    const dur = Math.min(mp.duration + 1.5, 20 * 60);
+    opts = Object.assign({ SR: 44100, master: 0.9, maxRelease: 3, reverb: 1, chorus: 1, transpose: 0, onProgress: null }, opts || {});
+    const SR = opts.SR, BLK = 64;
+    const dur = Math.min(mp.duration + 2, 20 * 60);
     const total = Math.ceil(dur * SR);
     const out = new Int16Array(total * 2);
     const notes = mp.notes.slice().sort((a, b) => a.t - b.t);
+    const ctl = mp.ctl || {};
     const data = sf.samples;
     const active = [];
     let ni = 0;
-    const chunk = SR * 2;                     // 2 segundo bawat ikot
-    const mixL = new Float32Array(chunk), mixR = new Float32Array(chunk);
-    // reverb (Schroeder, stereo na bahagyang magkaiba)
-    const combs = [1557, 1617, 1491, 1422, 1277, 1356].map((d, i) => ({ buf: new Float32Array(Math.floor(d * SR / 44100) + (i % 2) * 23), i: 0, side: i % 2 }));
-    const aps = [225, 556, 441].map(d => ({ buf: new Float32Array(Math.floor(d * SR / 44100)), i: 0 }));
+    const chunk = SR;
+    const mixL = new Float32Array(chunk), mixR = new Float32Array(chunk), rvIn = new Float32Array(chunk), chL = new Float32Array(chunk), chR = new Float32Array(chunk);
+    const fx = makeFx(SR);
     for (let c0 = 0; c0 < total; c0 += chunk) {
       const n = Math.min(chunk, total - c0);
-      mixL.fill(0); mixR.fill(0);
+      mixL.fill(0); mixR.fill(0); rvIn.fill(0); chL.fill(0); chR.fill(0);
       const tEnd = (c0 + n) / SR;
-      // mga bagong nota sa bahaging ito
       while (ni < notes.length && notes[ni].t < tEnd) {
         const nt = notes[ni++];
-        const rs = regions(sf, nt.bank || 0, nt.prog || 0, nt.midi, nt.v || 100, nt.ch === 9);
-        for (const r of rs) {
+        for (const r of regions(sf, nt.bank || 0, nt.prog || 0, nt.midi, nt.v || 100, nt.ch === 9)) {
           if (!r.s) continue;
           const v = makeVoice(sf, nt, r, SR, opts);
           if (!v) continue;
-          // exclusive class (hal. bukas/saradong hi-hat): pinapatay ang luma
-          if (v.excl) for (const a of active) if (a.excl === v.excl && a.ch === v.ch && a.relStart < 0) { a.relStart = Math.max(0, nt.t - a.t0); a.relDb = a.curDb || 0; a.release = Math.min(a.release, 0.05); }
+          if (v.excl) for (const a of active) if (a.excl === v.excl && a.ch === v.ch && a.relStart < 0 && a.t0 < v.t0) { a.relStart = Math.max(0, v.t0 - a.t0); a.relDb = a.curDb; a.mRelLevel = a.mLevel; a.release = Math.min(a.release, 0.04); }
           active.push(v);
         }
       }
@@ -172,42 +192,92 @@
         const v = active[ai];
         let k = Math.max(0, Math.floor(v.t0 * SR) - c0);
         if (k >= n) continue;
-        let pos = v.pos, lp = v.lp;
+        let pos = v.pos;
         while (k < n && !v.done) {
-          const x = (c0 + k) / SR - v.t0;
-          if (v.relStart < 0 && c0 / SR + k / SR >= v.off) { v.relStart = x; v.relDb = v.curDb || 0; }
-          const e = envAt(v, x);
+          const tAbs = (c0 + k) / SR, x = tAbs - v.t0;
+          if (v.relStart < 0 && tAbs >= v.off) { v.relStart = x; v.relDb = v.curDb; v.mRelLevel = v.mLevel; }
+          let e = envAt(v, x);
+          const me = modAt(v, x);
+          // LFO
+          const vib = x > v.vDelay ? Math.sin(2 * Math.PI * v.vFreq * (x - v.vDelay)) : 0;
+          const lfo = x > v.lDelay ? Math.sin(2 * Math.PI * v.lFreq * (x - v.lDelay)) : 0;
+          const modW = valAt(ctl.mod && ctl.mod[v.ch], tAbs);
+          const pitchC = v.basePitch * 100 + valAt(ctl.bend && ctl.bend[v.ch], tAbs) * 100 + me * v.mToPitch + vib * (v.vToPitch + modW * 50) + lfo * v.lToPitch;
+          const step = v.rate * cents(pitchC);
+          if (v.lToVol) e *= Math.pow(10, -(lfo * v.lToVol) / 200);
+          const cg = (ctl.gain && ctl.gain[v.ch]) ? valAt(ctl.gain[v.ch], tAbs) : 0.8;
+          const gl = v.L * e * cg, gr = v.R * e * cg;
+          // biquad lowpass (kinukuwenta bawat block)
+          let b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0, filt = false;
+          if (v.filtered) {
+            const fHz = Math.min(SR * 0.45, 8.176 * cents(v.fc + me * v.mToFc + lfo * v.lToFc));
+            if (fHz < SR * 0.44) {
+              const w = 2 * Math.PI * fHz / SR, al = Math.sin(w) / (2 * v.q), cw = Math.cos(w), a0 = 1 + al;
+              b1 = (1 - cw) / a0; b0 = b1 / 2; b2 = b0; a1 = -2 * cw / a0; a2 = (1 - al) / a0; filt = true;
+            }
+          }
           const kEnd = Math.min(n, k + BLK);
-          const gl = v.L * e, gr = v.R * e;
           for (; k < kEnd; k++) {
             const ip = pos | 0;
-            if (ip + 1 >= v.end) { v.done = true; break; }
+            if (ip + 2 >= v.end) { v.done = true; break; }
+            // 4-point (Hermite) interpolation: mas malinis kaysa linear, lalo na sa mataas na nota
             const fr = pos - ip;
-            let smp = (data[ip] + (data[ip + 1] - data[ip]) * fr) / 32768;
-            if (v.cut < 1) { lp += (smp - lp) * v.cut; smp = lp; }
-            if (smp !== smp) { v.done = true; break; }
-            mixL[k] += smp * gl; mixR[k] += smp * gr;
-            pos += v.step;
+            const xm1 = data[ip - 1], x0 = data[ip], x1 = data[ip + 1], x2 = data[ip + 2];
+            const c1 = 0.5 * (x1 - xm1), c2 = xm1 - 2.5 * x0 + 2 * x1 - 0.5 * x2, c3 = 0.5 * (x2 - xm1) + 1.5 * (x0 - x1);
+            let smp = (((c3 * fr + c2) * fr + c1) * fr + x0) / 32768;
+            if (filt) { const y = b0 * smp + b1 * v.x1 + b2 * v.x2 - a1 * v.y1 - a2 * v.y2; v.x2 = v.x1; v.x1 = smp; v.y2 = v.y1; v.y1 = y; smp = y; }
+            const l = smp * gl, r = smp * gr;
+            mixL[k] += l; mixR[k] += r;
+            rvIn[k] += (l + r) * v.rvb; chL[k] += l * v.cho; chR[k] += r * v.cho;
+            pos += step;
             if (v.loop && !(v.mode === 3 && v.relStart >= 0) && pos >= v.le) pos -= (v.le - v.ls);
           }
-          if (e === 0 && x > v.delay + 0.01 && v.relStart >= 0) v.done = true;
         }
-        v.pos = pos; v.lp = lp;
+        v.pos = pos;
         if (v.done) active.splice(ai, 1);
       }
-      // reverb + limiter
+      fx.process(mixL, mixR, rvIn, chL, chR, n, opts);
       for (let k = 0; k < n; k++) {
-        const inp = (mixL[k] + mixR[k]) * 0.5;
-        let wl = 0, wr = 0;
-        for (const cb of combs) { const y = cb.buf[cb.i]; cb.buf[cb.i] = inp + y * 0.8; if (++cb.i >= cb.buf.length) cb.i = 0; if (cb.side) wr += y; else wl += y; }
-        for (const ap of aps) { const b = ap.buf[ap.i]; const y = -wl + b; ap.buf[ap.i] = wl + b * 0.5; wl = y; if (++ap.i >= ap.buf.length) ap.i = 0; }
-        const l = Math.tanh(mixL[k] + wl * opts.reverb * 0.3), r = Math.tanh(mixR[k] + wr * opts.reverb * 0.3);
-        out[(c0 + k) * 2] = l * 32767; out[(c0 + k) * 2 + 1] = r * 32767;
+        out[(c0 + k) * 2] = softClip(mixL[k]) * 32767; out[(c0 + k) * 2 + 1] = softClip(mixR[k]) * 32767;
       }
       if (opts.onProgress) opts.onProgress(Math.min(1, (c0 + n) / total));
       await new Promise(r => setTimeout(r, 0));
     }
     return wav16(out, SR, 2);
+  }
+  // malambot na limiter: tuwid hanggang 0.7, tapos pakurba (hindi "lata" na pumapalo)
+  const softClip = x => { const a = Math.abs(x); if (a <= 0.7) return x; return Math.sign(x) * (0.7 + 0.3 * Math.tanh((a - 0.7) / 0.3)); };
+
+  // ---------------- effects: Freeverb (stereo) + chorus ----------------
+  function makeFx(SR) {
+    const sc = SR / 44100;
+    const combL = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617].map(d => ({ b: new Float32Array(Math.round(d * sc)), i: 0, f: 0 }));
+    const combR = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617].map(d => ({ b: new Float32Array(Math.round((d + 23) * sc)), i: 0, f: 0 }));
+    const apL = [556, 441, 341, 225].map(d => ({ b: new Float32Array(Math.round(d * sc)), i: 0 }));
+    const apR = [556, 441, 341, 225].map(d => ({ b: new Float32Array(Math.round((d + 23) * sc)), i: 0 }));
+    const room = 0.84, damp = 0.25, wet = 0.32;
+    const cLen = Math.round(0.05 * SR), cbL = new Float32Array(cLen), cbR = new Float32Array(cLen); let ci = 0, ph = 0;
+    function comb(c, x) { const y = c.b[c.i]; c.f = y * (1 - damp) + c.f * damp; c.b[c.i] = x + c.f * room; if (++c.i >= c.b.length) c.i = 0; return y; }
+    function ap(a, x) { const bo = a.b[a.i]; const y = -x + bo; a.b[a.i] = x + bo * 0.5; if (++a.i >= a.b.length) a.i = 0; return y; }
+    return {
+      process(L, R, rv, chL, chR, n, opts) {
+        const rw = wet * opts.reverb, cw = 0.5 * opts.chorus;
+        for (let k = 0; k < n; k++) {
+          const inp = rv[k] * 0.015 * 2;
+          let ol = 0, or = 0;
+          for (let j = 0; j < 8; j++) { ol += comb(combL[j], inp); or += comb(combR[j], inp); }
+          for (let j = 0; j < 4; j++) { ol = ap(apL[j], ol); or = ap(apR[j], or); }
+          // chorus: dalawang delay na dahan-dahang gumagalaw (kabaligtaran ang L at R)
+          cbL[ci] = chL[k]; cbR[ci] = chR[k];
+          const m = Math.sin(ph) * 0.004 * SR, base = 0.018 * SR;
+          const rl = (ci - (base + m) + cLen) % cLen, rr = (ci - (base - m) + cLen) % cLen;
+          const il = rl | 0, ir = rr | 0, fl = rl - il, fr = rr - ir;
+          const cl = cbL[il] * (1 - fl) + cbL[(il + 1) % cLen] * fl, cr = cbR[ir] * (1 - fr) + cbR[(ir + 1) % cLen] * fr;
+          ph += 2 * Math.PI * 0.45 / SR; if (++ci >= cLen) ci = 0;
+          L[k] += ol * rw + cl * cw; R[k] += or * rw + cr * cw;
+        }
+      }
+    };
   }
 
   function wav16(pcm, sr, ch) {
