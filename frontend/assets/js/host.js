@@ -278,7 +278,7 @@ function onPhoneFile(p) {
 async function waitPhoneFile(item) {
   for (let w = 0; w < 15000; w += 500) {
     if (phoneFiles.has(item.id)) return phoneFiles.get(item.id);
-    if (w % 5000 === 0 && channel) channel.send({ type: 'broadcast', event: 'need', payload: { qid: item.id } });
+    if (w % 5000 === 0 && channel) channel.send({ type: 'broadcast', event: 'need', payload: { qid: item.id, code: item.local_code, title: item.local_title || '' } });
     await new Promise(r => setTimeout(r, 500));
     if (!current || current.id !== item.id) return null;
   }
@@ -686,11 +686,14 @@ function connect() {
     .on('broadcast', { event: 'cmd' }, ({ payload }) => { if (!standby) handleCmd(payload.action, payload.value); })
     .on('broadcast', { event: 'hello' }, () => { if (!standby) broadcastState(); })
     .on('broadcast', { event: 'file' }, ({ payload }) => { if (!standby) onPhoneFile(payload); })
+    .on('broadcast', { event: 'plist' }, ({ payload }) => {   // listahan ng kanta sa folder ng phone (app)
+      if (payload && payload.id && Array.isArray(payload.songs)) phoneLists.set(payload.id, payload.songs.slice(0, 1500));
+    })
     .on('broadcast', { event: 'host' }, ({ payload }) => onOtherHost(payload))
     .on('broadcast', { event: 'rtc' }, ({ payload }) => { if (!standby && payload && payload.to === 'host') VKMicHost.handle(payload); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'queue' }, () => loadQueueSoon())
     .subscribe(status => {
-      if (status === 'SUBSCRIBED') { loadQueue(); if (!standby) broadcastState(); announceHost(); }
+      if (status === 'SUBSCRIBED') { loadQueue(); if (!standby) broadcastState(); announceHost(); channel.send({ type: 'broadcast', event: 'who', payload: {} }); }
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') toast('Nawala ang koneksyon, kumokonekta ulit...', 'err');
     });
 }
@@ -1048,10 +1051,22 @@ window.addEventListener('vkprefs', () => {
 
 // ================= ISANG DEVICE LANG (solo mode) =================
 const HOST_NAME = () => localStorage.getItem('vk_name') || null;
+// kanta sa folder ng mga phone na nakakonekta (Android app): code → {code,title,artist}
+const phoneLists = new Map();
+function phoneSongs() {
+  const m = new Map();
+  for (const list of phoneLists.values()) for (const s of list) if (!m.has(s.code)) m.set(s.code, s);
+  return [...m.values()];
+}
 async function hostReserve(songId, yt) {
   let row = yt ? { room: ROOM, yt_id: yt.yt_id, yt_title: yt.yt_title, singer: HOST_NAME() } : { room: ROOM, song_id: songId, singer: HOST_NAME() };
   if (typeof songId === 'string' && songId.startsWith('local:')) {
     const m = await VKLocal.meta(songId.slice(6));
+    row = { room: ROOM, local_code: m.code, local_title: (m.artist ? m.artist + ' - ' : '') + m.title, singer: HOST_NAME() };
+  }
+  if (typeof songId === 'string' && songId.startsWith('phone:')) {   // nasa phone: ipapasa ng phone ang file kapag tutugtog na
+    const m = phoneSongs().find(x => String(x.code) === songId.slice(6));
+    if (!m) { toast('Wala na sa phone ang kantang ito.', 'err'); return false; }
     row = { room: ROOM, local_code: m.code, local_title: (m.artist ? m.artist + ' - ' : '') + m.title, singer: HOST_NAME() };
   }
   const { error } = await sb.from('queue').insert(row);
@@ -1064,7 +1079,9 @@ async function hostReserve(songId, yt) {
 async function findSong(code) {
   if (+code >= 90000) {                       // kanta sa device na ito
     const m = window.VKLocal ? await VKLocal.meta(code).catch(() => null) : null;
-    return m ? { id: 'local:' + m.code, code: m.code, title: m.title, artist: m.artist } : null;
+    if (m) return { id: 'local:' + m.code, code: m.code, title: m.title, artist: m.artist };
+    const p = phoneSongs().find(x => x.code === +code);   // nasa phone na nakakonekta
+    return p ? { id: 'phone:' + p.code, code: p.code, title: p.title, artist: p.artist } : null;
   }
   const { data } = await sb.from('songs').select('id, code, title, artist').eq('code', code).maybeSingle();
   return data;
@@ -1133,6 +1150,10 @@ async function soloSearch() {
   const ql = q.toLowerCase();
   const mine = locals.filter(s => !q || String(s.code).includes(q) || (s.title + ' ' + (s.artist || '')).toLowerCase().includes(ql))
     .map(s => ({ id: 'local:' + s.code, code: s.code, title: s.title, artist: s.artist, category: 'Kanta sa device na ito' }));
+  const taken = new Set(mine.map(s => s.code));
+  const onPhone = phoneSongs().filter(s => !taken.has(s.code) && (!q || String(s.code).includes(q) || (s.title + ' ' + (s.artist || '')).toLowerCase().includes(ql)))
+    .map(s => ({ id: 'phone:' + s.code, code: s.code, title: s.title, artist: s.artist, category: 'Sa phone' }));
+  mine.push(...onPhone);
   $('sList').innerHTML = [...mine, ...(data || [])].map(s => `<div class="s-row"><span class="dot">${s.code}</span><div><b>${esc(s.title)}</b><small>${esc(s.artist || '')}${s.category ? ', ' + esc(s.category) : ''}</small></div><button class="btn small" data-sid="${s.id}">Reserve</button></div>`).join('')
     || '<p class="s-empty">Walang nahanap.</p>';
 }

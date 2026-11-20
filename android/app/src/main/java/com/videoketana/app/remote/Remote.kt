@@ -136,7 +136,14 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             onBroadcast = { ev, p ->
                 when (ev) {
                     "state" -> { now = parseState(p); hostSeen = true }
-                    "need" -> sentFiles[p.optString("qid")]?.let { f -> scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.videoketana.app.data.FileSend.send(rt, p.optString("qid"), f) } }
+                    "need" -> {
+                        val qid = p.optString("qid")
+                        // kanta na ni-reserve ng TV mismo mula sa listahan ng phone na ito: hanapin sa folder
+                        val f = sentFiles[qid] ?: phoneLocal.firstOrNull { s -> s.code == p.optInt("code", -1) && localTitleMatches(s, p.optString("title")) }?.file
+                            ?.takeIf { it.length() <= com.videoketana.app.data.FileSend.MAX }?.also { sentFiles[qid] = it }
+                        if (f != null) scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.videoketana.app.data.FileSend.send(rt, qid, f) }
+                    }
+                    "who" -> if (phoneLocal.isNotEmpty()) sendPlist(rt, phoneLocal)
                     "score" -> Toast.makeText(ctx, tr("Score", "Score") + (p.optString("singer").takeIf { it.isNotBlank() }?.let { tr(" ni $it", " for $it") } ?: "") + ": " + p.optInt("score"), Toast.LENGTH_LONG).show()
                 }
             },
@@ -146,6 +153,8 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
         onDispose { r.close(); com.videoketana.app.data.MicSender.stop() }
     }
     LaunchedEffect(connected) { if (connected) { rt?.broadcast("hello", JSONObject().put("tz", java.util.TimeZone.getDefault().id)); loadQueue() } }
+    // listahan ng kanta sa folder ng phone na ito → TV (para mahanap sa # ng TV at sa web TV)
+    LaunchedEffect(connected, phoneLocal) { if (connected && phoneLocal.isNotEmpty()) sendPlist(rt, phoneLocal) }
     LaunchedEffect(room) { while (true) { loadQueue(); delay(15000) } }
     // StandBy kapag matagal na hindi ginagalaw ang phone
     LaunchedEffect(lastTouch, standby) {
@@ -715,7 +724,7 @@ private fun YouTubeTab(onReserve: (String, String) -> Unit) {
     LaunchedEffect(Unit) { run(latest = true) }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.padding(16.dp, 12.dp, 16.dp, 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            SearchField(q, { q = it }, tr("Kanta o i-paste ang YouTube link", "Song or paste a YouTube link"), Modifier.weight(1f))
+            SearchField(q, { q = it }, tr("Kanta o i-paste ang YouTube link", "Song or paste a YouTube link"), Modifier.weight(1f), onVoice = { q = it; run() })
             Spacer(Modifier.width(8.dp))
             VkButton(tr("Hanap", "Search"), primary = true, onClick = { run() }, height = 50.dp)
         }
@@ -859,3 +868,15 @@ private fun NameDialog(onDone: (String) -> Unit) {
 }
 
 @Suppress("unused") private val keepAspect = Modifier.aspectRatio(1f)
+
+
+/** Ipadala sa TV ang listahan ng kanta sa folder ng phone na ito (numero, title, artist lang; walang file). */
+internal fun sendPlist(rt: com.videoketana.app.data.Realtime?, songs: List<com.videoketana.app.data.LocalSong>) {
+    val id = Prefs.str("devId").ifEmpty { java.util.UUID.randomUUID().toString().take(12).also { Prefs.putStr("devId", it) } }
+    val a = JSONArray()
+    songs.take(1500).forEach { a.put(JSONObject().put("code", it.code).put("title", it.title).put("artist", it.artist)) }
+    rt?.broadcast("plist", JSONObject().put("id", id).put("name", Prefs.name).put("songs", a))
+}
+
+internal fun localTitleMatches(s: com.videoketana.app.data.LocalSong, t: String): Boolean =
+    t.isEmpty() || t == s.title || t == (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title

@@ -70,8 +70,9 @@ fun TopBar(title: String, sub: String = "", onClose: () -> Unit, right: @Composa
 
 /** Search field na may icon. */
 @Composable
-fun SearchField(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier = Modifier) {
+fun SearchField(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier = Modifier, voice: Boolean = true, onVoice: ((String) -> Unit)? = null) {
     val c = vk
+    val vs = if (voice) rememberVoiceSearch { t -> if (onVoice != null) onVoice(t) else onChange(t) } else null
     Row(modifier.height(50.dp).clip(RoundedCornerShape(14.dp)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(14.dp)).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         VkIcon("search", 18.dp, c.muted); Spacer(Modifier.width(10.dp))
@@ -79,6 +80,7 @@ fun SearchField(value: String, onChange: (String) -> Unit, hint: String, modifie
             modifier = Modifier.weight(1f),
             decorationBox = { inner -> Box { if (value.isEmpty()) Text(hint, color = c.muted, fontSize = 16.sp); inner() } })
         if (value.isNotEmpty()) VkIconButton("x", { onChange("") }, size = 32.dp)
+        vs?.let { Spacer(Modifier.width(6.dp)); MicSearchButton(it, 36.dp) }   // hanap gamit ang boses
     }
 }
 

@@ -203,7 +203,7 @@
     'Hindi kusang mabubura': 'Will not be cleared automatically', 'Pwedeng burahin ng browser kapag puno ang device': 'The browser may clear it if the device runs out of space',
     'Sine-save sa device...': 'Saving to this device...', 'Wala pang kanta sa device na ito.': 'No songs on this device yet.', 'Puno na ang storage ng device': 'The device storage is full',
     'Walang kantang naidagdag (MP3, M4A, MP4 o WebM lang)': 'No songs added (MP3, M4A, MP4 or WebM only)', 'Hindi magamit ang storage ng browser na ito.': 'This browser storage cannot be used.',
-    'Title ng kanta': 'Song title', 'I-edit': 'Edit', 'Kanta sa device na ito': 'Song on this device',
+    'Title ng kanta': 'Song title', 'I-edit': 'Edit', 'Kanta sa device na ito': 'Song on this device', 'Sa phone': 'On phone', 'Wala na sa phone ang kantang ito.': 'This song is no longer on the phone.',
     'Kunin ang app': 'Get the app', 'Buksan ang app': 'Open the app', 'Kanta, remote at mic': 'Songs, remote and mic',
     'Videoke sa bahay,': 'Videoke at home,', 'kahit saang screen.': 'on any screen.',
     'Gawing videoke ang TV, laptop o tablet. Phone ang remote at mic ng bawat isa. Sariling kanta, YouTube, lyrics at score, walang bayad.': 'Turn your TV, laptop or tablet into a videoke. Everyone\'s phone is a remote and a mic. Your own songs, YouTube, lyrics and scores, free.',

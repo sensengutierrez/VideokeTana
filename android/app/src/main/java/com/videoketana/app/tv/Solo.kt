@@ -89,8 +89,9 @@ fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, 
               onRemove: (com.videoketana.app.data.QItem) -> Unit, onYt: (String, String) -> Unit, onCmd: (String) -> Unit,
               onReserve: (Song?, LocalSong?, String) -> Unit) {
     var tab by remember { mutableStateOf(0) }
-    val firstFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { delay(200); try { firstFocus.requestFocus() } catch (e: Exception) { } }
+    val tabReq = remember { List(5) { FocusRequester() } }
+    val xReq = remember { FocusRequester() }
+    LaunchedEffect(Unit) { delay(200); try { tabReq[0].requestFocus() } catch (e: Exception) { } }
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(0x99000000)).focusProperties { canFocus = false }.clickable(onClick = onClose)) {
         val wide = maxWidth > maxHeight
         val panelMod = if (wide) Modifier.align(Alignment.CenterEnd).width(minOf(maxWidth * 0.46f, 460.dp)).fillMaxHeight()
@@ -98,10 +99,13 @@ fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, 
         Column(panelMod.clip(RoundedCornerShape(26.dp)).background(Brush.verticalGradient(listOf(Color(0xFA181C24), Color(0xFA0D1015))))
             .border(1.dp, ACC.copy(alpha = 0.3f), RoundedCornerShape(26.dp)).clickable(enabled = false) {}.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f).horizontalScroll(androidx.compose.foundation.rememberScrollState())) {
+                Row(Modifier.weight(1f)) {
                     listOf("hash" to tr("Numero", "Number"), "search" to tr("Hanap", "Search"), "yt" to "YouTube", "list" to tr("Pila", "Queue"), "mic" to "Mic").forEachIndexed { i, (ic, label) ->
                         val on = tab == i
-                        Row(Modifier.padding(end = 6.dp).then(if (i == 0) Modifier.focusRequester(firstFocus) else Modifier).clip(RoundedCornerShape(50)).background(if (on) ACC else Color.White.copy(alpha = 0.06f)).tvFocus().clickable { tab = i }
+                        Row(Modifier.padding(end = 6.dp).focusRequester(tabReq[i])
+                            .focusProperties { if (i == 4) right = xReq }
+                            .onFocusChanged { if (it.isFocused) tab = i }   // remote ng TV: lipat agad ng tab kapag tinutukan
+                            .clip(RoundedCornerShape(50)).background(if (on) ACC else Color.White.copy(alpha = 0.06f)).tvFocus().clickable { tab = i }
                             .padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                             VkIcon(ic, 16.dp, if (on) INK2 else Color.White)
                             if (on) { Spacer(Modifier.width(6.dp)); Text(label, color = INK2, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
@@ -109,13 +113,13 @@ fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, 
                     }
                 }
                 Spacer(Modifier.width(8.dp))
-                Box(Modifier.size(40.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f)).tvFocus().clickable(onClick = onClose), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(40.dp).focusRequester(xReq).focusProperties { left = tabReq[4]; down = tabReq[tab] }.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.08f)).tvFocus().clickable(onClick = onClose), contentAlignment = Alignment.Center) {
                     VkIcon("x", 18.dp, Color.White)
                 }
             }
             Spacer(Modifier.height(10.dp))
             when (tab) {
-                0 -> SoloKeypad(local, hasAccess, onAccess, onReserve)
+                0 -> SoloKeypad(local, hasAccess, onAccess, tabReq[0], onReserve)
                 1 -> SoloSearch(local, onReserve)
                 2 -> SoloYouTube(onYt)
                 3 -> SoloQueue(queue, currentId, onRemove, onCmd)
@@ -126,7 +130,7 @@ fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, 
 }
 
 @Composable
-private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, onReserve: (Song?, LocalSong?, String) -> Unit) {
+private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, upTo: FocusRequester, onReserve: (Song?, LocalSong?, String) -> Unit) {
     var code by remember { mutableStateOf("") }
     var found by remember { mutableStateOf<Song?>(null) }
     var foundLocal by remember { mutableStateOf<LocalSong?>(null) }
@@ -149,8 +153,8 @@ private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () 
                 Text(when {
                     code.length < 5 -> tr("I-type ang numero", "Type the number")
                     ok -> title!!
-                    mine && !hasAccess -> tr("Hindi pa nababasa ang folder ng TV na ito", "This TV's folder can't be read yet")
-                    mine -> tr("Wala sa folder ng TV na ito (${local.size} kanta). Nasa phone? I-reserve sa phone.", "Not in this TV's folder (${local.size} songs). On a phone? Reserve from the phone.")
+                    mine && !hasAccess && local.none { it.file.path.startsWith(PHONE_MARK) } -> tr("Hindi pa nababasa ang folder ng TV na ito", "This TV's folder can't be read yet")
+                    mine -> tr("Wala sa TV o sa phone na nakakonekta. Buksan ang remote sa phone na may kanta.", "Not on the TV or a connected phone. Open the remote on the phone that has the song.")
                     else -> tr("Walang kanta sa numerong ito", "No song with this number") },
                     color = when { ok -> ACC; code.length == 5 -> Color(0xFFFF7A7A); else -> MUTE }, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center)
@@ -163,7 +167,7 @@ private fun SoloKeypad(local: List<LocalSong>, hasAccess: Boolean, onAccess: () 
             listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("clr", "0", "del")).forEach { row ->
                 Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     row.forEach { k ->
-                        Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(14.dp))
+                        Box(Modifier.weight(1f).fillMaxHeight().then(if (k in listOf("1", "2", "3")) Modifier.focusProperties { up = upTo } else Modifier).clip(RoundedCornerShape(14.dp))
                             .background(Brush.verticalGradient(listOf(Color(0xFF232832), Color(0xFF161A21))))
                             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
                             .tvFocus().clickable {
@@ -205,7 +209,7 @@ private fun SoloSearch(local: List<LocalSong>, onReserve: (Song?, LocalSong?, St
         SearchField(q, { q = it }, tr("Title, artist o numero", "Title, artist or number"), Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 12.dp)) {
-            items(locs, key = { "l" + it.code }) { s -> SoloRow(s.code, s.title, s.artist, tr("Sa device", "On device")) { onReserve(null, s, "reserve") } }
+            items(locs, key = { "l" + it.code }) { s -> SoloRow(s.code, s.title, s.artist, if (s.file.path.startsWith(PHONE_MARK)) tr("Sa phone", "On phone") else tr("Sa device", "On device")) { onReserve(null, s, "reserve") } }
             items(list, key = { it.id }) { s -> SoloRow(s.code, s.title, s.artist, if (s.kind == "youtube") "YouTube" else s.category ?: "") { onReserve(s, null, "reserve") } }
         }
     }
@@ -248,7 +252,7 @@ private fun SoloYouTube(onYt: (String, String) -> Unit) {
     }
     Column(Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SearchField(q, { q = it }, tr("Hanapin o i-paste ang link", "Search or paste a link"), Modifier.weight(1f))
+            SearchField(q, { q = it }, tr("Hanapin o i-paste ang link", "Search or paste a link"), Modifier.weight(1f), onVoice = { q = it; run() })
             Spacer(Modifier.width(8.dp))
             Box(Modifier.clip(RoundedCornerShape(14.dp)).background(ACC).tvFocus().clickable { run() }.padding(horizontal = 14.dp, vertical = 14.dp)) { VkIcon("search", 18.dp, INK2) }
         }

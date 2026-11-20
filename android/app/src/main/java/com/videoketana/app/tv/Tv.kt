@@ -108,6 +108,8 @@ import java.util.Date
 import java.util.Locale
 import kotlin.random.Random
 
+/** Pananda ng kanta na nasa phone (hindi totoong file sa TV). */
+const val PHONE_MARK = "/__phone__/"
 private val TEAL = Color(0xFF62E3D2)
 private val INK = Color(0xFFEEF0F3)
 private val DIM = Color(0xFFB9C0CA)
@@ -173,6 +175,8 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             Toast.makeText(ctx, tr("Hindi pumayag ang TV. Ilagay ang kanta sa phone at i-reserve doon.", "The TV did not allow it. Put songs on a phone and reserve from there."), Toast.LENGTH_LONG).show()
         scanTick++
     }
+    // mga kanta sa folder ng mga phone na nakakonekta (galing sa "plist"); ang file ay ipinapasa lang kapag tutugtog na
+    var phoneLists by remember { mutableStateOf<Map<String, List<com.videoketana.app.data.LocalSong>>>(emptyMap()) }
     var localSongs by remember { mutableStateOf<List<com.videoketana.app.data.LocalSong>>(emptyList()) }
     var ytPlaying by remember { mutableStateOf(false) }   // true kapag talagang tumutugtog na ang YouTube
     var ytTry by remember { mutableIntStateOf(0) }        // dagdag bawat bagong YouTube na kanta
@@ -355,7 +359,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                             var f = recv.file(next.id)
                             var waited = 0
                             while (f == null && waited < 15000 && current?.id == next.id) {
-                                if (waited % 5000 == 0) rt?.broadcast("need", JSONObject().put("qid", next.id))
+                                if (waited % 5000 == 0) rt?.broadcast("need", JSONObject().put("qid", next.id).put("code", next.localCode).put("title", next.localTitle ?: ""))
                                 delay(500); waited += 500; f = recv.file(next.id)
                             }
                             if (f == null) {
@@ -528,6 +532,12 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                     "cmd" -> if (!standby) handleCmd(p.optString("action"), p.opt("value"))
                     "hello" -> { p.optString("tz").takeIf { it.isNotEmpty() && it != Prefs.str("remoteTz") }?.let { Prefs.putStr("remoteTz", it) }; broadcastState() }
                     "file" -> recv.onPart(p)
+                    "plist" -> {
+                        val a = p.optJSONArray("songs") ?: JSONArray()
+                        val list = (0 until a.length()).map { val o = a.getJSONObject(it)
+                            com.videoketana.app.data.LocalSong(o.optInt("code"), o.optString("title"), o.optString("artist"), java.io.File(PHONE_MARK + o.optInt("code"))) }
+                        phoneLists = phoneLists + (p.optString("id") to list)
+                    }
                     "host" -> if (p.optString("id") != hostId && !standby) {
                         if (p.optLong("since") > hostSince) { standby = true; stopMedia(); current = null; mode = "idle" }
                         else rt?.broadcast("host", JSONObject().put("id", hostId).put("since", hostSince))
@@ -535,7 +545,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 }
             },
             onQueueChange = { scope.launch { loadQueue(); startNext() } },
-            onStatus = { ok -> if (ok) scope.launch { loadQueue(); startNext(); broadcastState(); rt?.broadcast("host", JSONObject().put("id", hostId).put("since", hostSince)) } })
+            onStatus = { ok -> if (ok) scope.launch { loadQueue(); startNext(); broadcastState(); rt?.broadcast("who", JSONObject()); rt?.broadcast("host", JSONObject().put("id", hostId).put("since", hostSince)) } })
         rt = r; r.connect()
         onDispose { r.close() }
     }
@@ -762,7 +772,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             SoloTab(dim = mode != "idle", onClick = { solo = true })
         }
         if (solo) {
-            SoloPanel(localSongs, folderOk, { askFolder.launch(com.videoketana.app.data.LocalLib.permissions()) }, queue, current?.id, onClose = { solo = false },
+            val tvCodes = localSongs.map { it.code }.toSet()
+            val withPhones = localSongs + phoneLists.values.flatten().filter { it.code !in tvCodes }.distinctBy { it.code }
+            SoloPanel(withPhones, folderOk, { askFolder.launch(com.videoketana.app.data.LocalLib.permissions()) }, queue, current?.id, onClose = { solo = false },
                 onRemove = { q -> scope.launch { if (q.id == current?.id) handleCmd("stop", null) else { try { Supa.removeFromQueue(q.id) } catch (e: Exception) {}; loadQueue() } } },
                 onYt = { id, title -> scope.launch {
                     try { Supa.reserve(room, Prefs.name, ytId = id, ytTitle = title); Synth.play("ding", 0.5f); Toast.makeText(ctx, tr("Naka-reserve.", "Reserved."), Toast.LENGTH_SHORT).show(); arm(); loadQueue(); startNext() }
