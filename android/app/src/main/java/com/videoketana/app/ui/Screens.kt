@@ -253,8 +253,8 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                         val hl = try { androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(hlColor)) } catch (e: Exception) { c.accent }
                         val fs = when (lySize) { "s" -> 17; "l" -> 25; "xl" -> 29; else -> 21 }
                         Text(androidx.compose.ui.text.buildAnnotatedString {
-                            withStyle(androidx.compose.ui.text.SpanStyle(color = hl)) { append(tr("Ikaw ang ", "You are ")) }
-                            withStyle(androidx.compose.ui.text.SpanStyle(color = androidx.compose.ui.graphics.Color.White)) { append(tr("aking mahal", "my love")) }
+                            androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = hl)) { append(tr("Ikaw ang ", "You are ")) }
+                            androidx.compose.ui.text.withStyle(androidx.compose.ui.text.SpanStyle(color = androidx.compose.ui.graphics.Color.White)) { append(tr("aking mahal", "my love")) }
                         }, fontSize = fs.sp, fontWeight = FontWeight.ExtraBold,
                             style = TextStyle(shadow = androidx.compose.ui.graphics.Shadow(androidx.compose.ui.graphics.Color.Black, androidx.compose.ui.geometry.Offset(0f, if (lyOutline == 2) 0f else 2f), when (lyOutline) { 0 -> 4f; 2 -> 14f; else -> 8f })))
                     }
