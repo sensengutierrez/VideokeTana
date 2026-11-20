@@ -272,6 +272,7 @@ async function waitPhoneFile(item) {
   return phoneFiles.get(item.id) || null;
 }
 async function playItem(item) {
+  VK_PREFS.set('musicTempo', 0);
   const i = itemInfo(item);
   $('nowTag').innerHTML = `<span class="dot">${esc(i.code)}</span><span>${esc(i.title)}</span>${item.singer ? `<span class="nt-s">${esc(item.singer)}</span>` : ''}`;
   applyVolume();
@@ -346,7 +347,7 @@ window.onYouTubeIframeAPIReady = () => {
     playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, fs: 0 },
     events: {
       onReady: () => { ytReady = true; applyVolume(); ytReadyWaiters.forEach(f => f()); ytReadyWaiters = []; },
-      onStateChange: e => { if (e.data === YT.PlayerState.ENDED && mode === 'youtube') finishCurrent('ended'); },
+      onStateChange: e => { if (e.data === YT.PlayerState.ENDED && mode === 'youtube') finishCurrent('ended'); if (e.data === YT.PlayerState.PLAYING) applyTempo(); },
       onError: () => {
         if (mode !== 'youtube') return;
         failCurrent('Ayaw ipa-play ng YouTube ang video na ito sa labas ng YouTube. Lilipat sa susunod...', 2500);
@@ -540,6 +541,7 @@ function handleCmd(action, value) {
       if (k === 'bgVideo') { VK_PREFS.set('bgMode', +value.value === 1 ? 'videos' : 'animated'); if (started) applyBg(true); break; }
       if (!r) break;
       VK_PREFS.set(k, Math.max(r[0], Math.min(r[1], Math.round(+value.value || 0))));
+      if (k === 'musicTempo') applyTempo();
       clearTimeout(handleCmd.fxT); handleCmd.fxT = setTimeout(broadcastState, 300);
       break;
     }
@@ -569,11 +571,19 @@ function eqApply() {
   eqTreble.gain.setTargetAtTime(Math.max(-12, Math.min(12, +p.musicTreble || 0)), t, 0.05);
 }
 window.addEventListener('vkprefs', eqApply);
-const FX_KEYS = { micVolume: [0, 150], micEcho: [0, 100], micReverb: [0, 100], micClarity: [0, 100], musicBass: [-12, 12], musicTreble: [-12, 12] };
+const FX_KEYS = { micVolume: [0, 150], micEcho: [0, 100], micReverb: [0, 100], micClarity: [0, 100], musicBass: [-12, 12], musicTreble: [-12, 12], musicTempo: [-5, 5] };
+// tempo ng kanta: 5% bawat hakbang (−25% hanggang +25%), hindi nagbabago ang tono; bumabalik sa 0 bawat kanta
+function applyTempo() {
+  const r = 1 + 0.05 * (+VK_PREFS.get().musicTempo || 0);
+  [aud, vid].forEach(el => { try { el.preservesPitch = true; el.playbackRate = r; } catch (e) {} });
+  try { if (ytPlayer && ytReady) ytPlayer.setPlaybackRate(r); } catch (e) {}
+}
+['playing', 'loadedmetadata'].forEach(ev => { aud.addEventListener(ev, applyTempo); vid.addEventListener(ev, applyTempo); });
 function fxState() {
   const p = VK_PREFS.get(), o = {};
   Object.keys(FX_KEYS).forEach(k => { o[k] = +p[k] || 0; });
   o.eq = !!eqAC && (mode === 'audio' || mode === 'video');
+  o.ytTempo = true;
   o.interlude = p.interlude === false ? 0 : 1; o.interludeVol = p.interludeVol == null ? 40 : +p.interludeVol; o.bgVideo = p.bgMode === 'videos' ? 1 : 0;
   return o;
 }

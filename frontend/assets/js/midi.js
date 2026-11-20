@@ -32,7 +32,7 @@
           if (type === 0x51 && l === 3) tempos.push([tick, (b[a] << 16) | (b[a + 1] << 8) | b[a + 2]]);
           else if (type === 0x01 || type === 0x05) ev.push({ tick, k: type === 5 ? 'lyric' : 'text', text: str(a, l) });
           else if (type === 0x2f) p = end;
-        } else if (s === 0xf0 || s === 0xf7) { p += vlq(); }
+        } else if (s === 0xf0 || s === 0xf7) { const l = vlq(); p += l; }   // (huwag "p += vlq()": nababasa ang lumang p bago gumalaw ang vlq)
         else {
           const hi = s & 0xf0, ch = s & 0x0f;
           const d1 = u8(); const d2 = (hi === 0xc0 || hi === 0xd0) ? 0 : u8();

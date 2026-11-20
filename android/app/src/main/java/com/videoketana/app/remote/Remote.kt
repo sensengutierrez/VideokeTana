@@ -548,7 +548,7 @@ private fun NumberTab(local: List<Triple<Int, String, String>>, phoneLocal: List
             .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.10f), c.accent.copy(alpha = 0.25f))), RoundedCornerShape(18.dp))
             .padding(vertical = 10.dp, horizontal = 14.dp)) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                DotText(code.padEnd(5, ' '), 34.dp)
+                DotText(if (code.isEmpty()) "-----" else code.padEnd(5, ' '), 34.dp)
                 Spacer(Modifier.height(4.dp))
                 Text(when {
                     code.length < 5 -> tr("I-type ang song number", "Type the song number")
@@ -811,7 +811,7 @@ private fun WebMic(room: String) {
             webChromeClient = object : android.webkit.WebChromeClient() {
                 override fun onPermissionRequest(request: android.webkit.PermissionRequest) { request.grant(request.resources) }
             }
-            loadUrl(Config.SITE + "remote/?room=$room&tab=mic&embed=1")
+            loadUrl(Config.SITE + "mic/?room=$room&lang=" + Prefs.lang + "&name=" + java.net.URLEncoder.encode(Prefs.name.ifBlank { "Mic" }, "UTF-8"))
         }
     }, modifier = Modifier.fillMaxSize())
 }
