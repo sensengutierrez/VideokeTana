@@ -129,7 +129,7 @@
     'Lyrics sa TV': 'Lyrics on the TV', 'Ito ang linyang kinakanta': 'This is the line being sung', 'Ito ang susunod na linya': 'This is the next line',
     'Pangatlong linya': 'Third line', 'Pang-apat na linya': 'Fourth line', 'Laki': 'Size', 'Maliit': 'Small', 'Katamtaman': 'Medium', 'Malaki': 'Large', 'Pinakamalaki': 'Extra large',
     'Posisyon': 'Position', 'Gitna': 'Center', 'Kaliwa': 'Left', 'Ilang linya ang kita': 'Lines shown', 'Ang 4 na linya ay mas madaling basahin nang maaga.': 'Four lines make it easier to read ahead.',
-    '2 linya': '2 lines', '4 na linya': '4 lines', 'Kulay ng highlight': 'Highlight color', 'Ang kulay ng bahaging nakanta na.': 'The color of the part already sung.',
+    '2 linya': '2 lines', '3 linya': '3 lines', '4 na linya': '4 lines', 'Kulay ng highlight': 'Highlight color', 'Ang kulay ng bahaging nakanta na.': 'The color of the part already sung.',
     'Ibang kulay bawat kanta': 'Different color per song', 'Pipili ng random na kulay ng highlight sa bawat kanta.': 'Picks a random highlight color for each song.',
     'Outline ng letra': 'Text outline', 'Manipis': 'Thin', 'Makapal': 'Thick', 'Anino ng letra': 'Text shadow', 'Para mabasa kahit maliwanag ang background.': 'Keeps text readable on bright backgrounds.',
     'Countdown bago kumanta': 'Countdown before singing', 'Lalabas din ang "Interlude" kapag mahaba ang tugtog na walang kanta.': '"Interlude" also appears during long instrumental parts.',

@@ -194,13 +194,14 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var after by remember { mutableStateOf(Prefs.standbyAfter) }
     var sbColor by remember { mutableStateOf(Prefs.standbyColor) }
     var lySize by remember { mutableStateOf(Prefs.lyricSize) }
+    var lyLines by remember { mutableStateOf(Prefs.lyricLines) }
     var hlColor by remember { mutableStateOf(Prefs.hlColor) }
     var lyOutline by remember { mutableStateOf(Prefs.lyricOutline) }
     var countdown by remember { mutableStateOf(Prefs.countdownOn) }
     var clockTz by remember { mutableStateOf(Prefs.clockTz) }
     // ipadala rin sa TV na konektado (web o app) para sabay ang itsura ng lyrics
     fun pushLyr() {
-        val o = org.json.JSONObject().put("lyricSize", lySize).put("hlColor", hlColor).put("outline", lyOutline).put("countdown", if (countdown) "num" else "off")
+        val o = org.json.JSONObject().put("lyricSize", lySize).put("lyricLines", lyLines).put("hlColor", hlColor).put("outline", lyOutline).put("countdown", if (countdown) "num" else "off")
         listOf(Prefs.lastRoom, Prefs.hostRoom).filter { it.isNotEmpty() }.distinct().forEach { r -> com.videoketana.app.data.RoomPing.cmd(r, "lyr", o) }
     }
     val pickWall = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
@@ -270,6 +271,9 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                                 .clickable { hlColor = col; Prefs.hlColor = col; pushLyr() })
                         }
                     }
+                }
+                SetRow(tr("Ilang linya ang makikita", "Lines shown"), tr("Ang kinakanta at ang mga susunod na linya.", "The current line and the next ones.")) {
+                    Seg(listOf("2" to "2", "3" to "3", "4" to "4"), lyLines.toString()) { lyLines = it.toInt(); Prefs.lyricLines = lyLines; pushLyr() }
                 }
                 SetRow(tr("Laki ng lyrics", "Lyrics size"), "") {
                     Seg(listOf("s" to "S", "m" to "M", "l" to "L", "xl" to "XL"), lySize) { lySize = it; Prefs.lyricSize = it; pushLyr() }

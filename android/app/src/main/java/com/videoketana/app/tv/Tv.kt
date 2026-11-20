@@ -450,6 +450,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 val o = value as? JSONObject ?: return
                 o.optString("lyricSize").takeIf { it in listOf("s", "m", "l", "xl") }?.let { Prefs.lyricSize = it }
                 o.optString("hlColor").takeIf { Regex("#[0-9a-fA-F]{6}").matches(it) }?.let { Prefs.hlColor = it }
+                o.optInt("lyricLines", 0).takeIf { it in 2..4 }?.let { Prefs.lyricLines = it }
                 if (o.has("outline")) Prefs.lyricOutline = o.optInt("outline", 1).coerceIn(0, 2)
                 o.optString("countdown").takeIf { it.isNotEmpty() }?.let { Prefs.countdownOn = it != "off" }
                 note = tr("Na-update ang lyrics", "Lyrics updated")
@@ -983,7 +984,12 @@ private fun AudioStage(q: QItem, v: LyricView, noLyrics: Boolean, preparing: Boo
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Text(v.next, color = DIM, fontSize = (big * 0.62f).sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = TextStyle(shadow = shadow), maxLines = 2)
+            val extra = (Prefs.lyricLines - 2).coerceIn(0, 2)
+            Text(v.next, color = DIM, fontSize = (big * (if (extra > 0) 0.55f else 0.62f)).sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = TextStyle(shadow = shadow), maxLines = if (extra > 0) 1 else 2, overflow = TextOverflow.Ellipsis)
+            v.more.take(extra).forEach { t ->
+                Spacer(Modifier.height(6.dp))
+                Text(t, color = DIM.copy(alpha = 0.75f), fontSize = (big * 0.5f).sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = TextStyle(shadow = shadow), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }

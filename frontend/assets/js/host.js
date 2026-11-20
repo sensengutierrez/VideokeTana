@@ -516,7 +516,7 @@ function setLine(text, p) {
 // mga susunod na linya (1 o 3, depende sa Settings)
 let lastNextKey = '';
 function setNext(from) {
-  const n = VK_PREFS.get().lyricLines >= 4 ? 3 : 1;
+  const n = Math.max(1, Math.min(3, (VK_PREFS.get().lyricLines || 2) - 1));
   const up = lyrics.slice(from).filter(l => l.text).slice(0, n).map(l => l.text);
   const key = from + '|' + n;
   if (key === lastNextKey) return;
@@ -577,6 +577,7 @@ function handleCmd(action, value) {
     case 'lyr': if (value && typeof value === 'object') {   // lyrics settings mula sa phone app
       if (['s', 'm', 'l', 'xl'].includes(value.lyricSize)) VK_PREFS.set('lyricSize', value.lyricSize);
       if (/^#[0-9a-f]{6}$/i.test(value.hlColor || '')) { VK_PREFS.set('hlColor', value.hlColor); VK_PREFS.set('hlRandom', false); }
+      if ([2, 3, 4].includes(value.lyricLines)) VK_PREFS.set('lyricLines', value.lyricLines);
       if ([0, 1, 2].includes(value.outline)) VK_PREFS.set('outline', value.outline);
       if (['num', 'dots', 'off'].includes(value.countdown)) VK_PREFS.set('countdown', value.countdown);
       applyPrefs();
@@ -840,7 +841,7 @@ function applyPrefs() {
   b.classList.remove('lyr-s', 'lyr-m', 'lyr-l', 'lyr-xl');
   b.classList.add('lyr-' + p.lyricSize);
   b.classList.toggle('lyr-left', p.lyricAlign === 'left');
-  b.classList.toggle('lyr-4', p.lyricLines >= 4);
+  b.classList.toggle('lyr-4', p.lyricLines >= 3);
   const ly = $('lyrics');
   ly.style.setProperty('--hl', songColor || p.hlColor);
   const o = [0, 2, 4][p.outline] || 0;

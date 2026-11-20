@@ -104,6 +104,9 @@ object Prefs {
     var lyricOutline: Int
         get() = sp.getInt("lyricOutline", 1)
         set(v) = sp.edit().putInt("lyricOutline", v).apply()
+    var lyricLines: Int                         // ilang linya ang nakikita: 2, 3 o 4
+        get() = sp.getInt("lyricLines", 2)
+        set(v) = sp.edit().putInt("lyricLines", v).apply()
     var countdownOn: Boolean
         get() = sp.getBoolean("countdownOn", true)
         set(v) = sp.edit().putBoolean("countdownOn", v).apply()
