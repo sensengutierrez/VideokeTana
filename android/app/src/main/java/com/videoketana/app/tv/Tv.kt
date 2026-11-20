@@ -42,6 +42,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.displayCutout
@@ -592,7 +593,20 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     LaunchedEffect(solo, standby) { if (!solo) { delay(150); try { rootFocus.requestFocus() } catch (e: Exception) { } } }
 
     // ================= ITSURA =================
+    var lastBack by remember { mutableStateOf(0L) }
     Box(Modifier.fillMaxSize().background(if (mode == "youtube") Color.Transparent else Color(0xFF0B0C10))
+        .onPreviewKeyEvent { e ->
+            // Back ng remote: isara muna ang # panel; sa main screen, dalawang Back para lumabas
+            if (e.key != Key.Back && e.key != Key.Escape) return@onPreviewKeyEvent false
+            if (e.type != KeyEventType.KeyUp) return@onPreviewKeyEvent true
+            when {
+                solo -> solo = false
+                showUi -> showUi = false
+                System.currentTimeMillis() - lastBack < 2500 -> onClose()
+                else -> { lastBack = System.currentTimeMillis(); Toast.makeText(ctx, tr("Pindutin ulit ang Back para lumabas", "Press Back again to exit"), Toast.LENGTH_SHORT).show() }
+            }
+            true
+        }
         .onKeyEvent { e ->
             if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
             tabSeen++
@@ -730,7 +744,6 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             SoloTab(dim = mode != "idle", onClick = { solo = true })
         }
         if (solo) {
-            androidx.activity.compose.BackHandler { solo = false }
             SoloPanel(localSongs, queue, current?.id, onClose = { solo = false },
                 onRemove = { q -> scope.launch { if (q.id == current?.id) handleCmd("stop", null) else { try { Supa.removeFromQueue(q.id) } catch (e: Exception) {}; loadQueue() } } },
                 onYt = { id, title -> scope.launch {

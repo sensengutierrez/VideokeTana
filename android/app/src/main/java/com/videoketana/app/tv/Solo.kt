@@ -35,6 +35,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -60,7 +61,8 @@ private val MUTE = Color(0xFF8C93A1)
 /** Kitang-kita kung saan nakatutok ang remote ng TV (D-pad). */
 fun Modifier.tvFocus(): Modifier = composed {
     var f by remember { mutableStateOf(false) }
-    this.onFocusChanged { f = it.isFocused }.then(if (f) Modifier.border(3.dp, ACC, RoundedCornerShape(14.dp)) else Modifier)
+    // puting makapal na guhit + liwanag, para kita agad kahit sa malayo
+    this.onFocusChanged { f = it.isFocused }.then(if (f) Modifier.background(Color.White.copy(alpha = 0.22f)).border(4.dp, Color.White, RoundedCornerShape(14.dp)) else Modifier)
 }
 
 /** Maliit na "#" sa gilid ng TV screen: bukas ang sariling remote kapag iisang device lang ang gamit. */
@@ -89,7 +91,7 @@ fun SoloPanel(local: List<LocalSong>, queue: List<com.videoketana.app.data.QItem
     var tab by remember { mutableStateOf(0) }
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { delay(200); try { firstFocus.requestFocus() } catch (e: Exception) { } }
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color(0x99000000)).clickable(onClick = onClose)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color(0x99000000)).focusProperties { canFocus = false }.clickable(onClick = onClose)) {
         val wide = maxWidth > maxHeight
         val panelMod = if (wide) Modifier.align(Alignment.CenterEnd).width(minOf(maxWidth * 0.46f, 460.dp)).fillMaxHeight()
         else Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(maxHeight * 0.82f)
