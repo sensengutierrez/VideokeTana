@@ -610,7 +610,19 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     // ---- lyrics habang tumutugtog ----
     LaunchedEffect(lyrics) { if (Prefs.autoSkipIntro && mode == "audio" && lyrics.isNotEmpty()) { delay(800); skipIntro() } }
     LaunchedEffect(mode, lyrics) {
-        while (mode == "audio") { view = lyricAt(lyrics, (if (synth.active) synth.positionMs else if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset); delay(40) }
+        var lastKey = ""
+        if (mode != "audio") rt?.broadcast("lyr", JSONObject().put("none", true).put("kind", mode))
+        while (mode == "audio") {
+            view = lyricAt(lyrics, (if (synth.active) synth.positionMs else if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset)
+            // ipadala sa phone ang lyrics (kapag nagpalit ang linya o bilang) para makita rin sa remote
+            val k = view.current + "|" + view.next + "|" + view.countdown
+            if (k != lastKey) {
+                lastKey = k
+                rt?.broadcast("lyr", JSONObject().put("cur", view.current).put("next", view.next).put("el", view.el).put("dur", view.dur)
+                    .put("cue", if (view.countdown > 0) view.countdown.toString() else "").put("has", lyrics.isNotEmpty()))
+            }
+            delay(40)
+        }
     }
     LaunchedEffect(note) { if (note.isNotEmpty()) { delay(2200); note = "" } }
     var keyTick by remember { mutableIntStateOf(0) }

@@ -47,6 +47,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -112,6 +113,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
     var connected by remember { mutableStateOf(false) }
     var hostSeen by remember { mutableStateOf(false) }
     var now by remember { mutableStateOf<NowState?>(null) }
+    var lyr by remember { mutableStateOf<LyrState?>(null) }
     var queue by remember { mutableStateOf<List<QItem>>(emptyList()) }
     var tab by remember { mutableIntStateOf(0) }
     var askName by remember { mutableStateOf(Prefs.name.isBlank()) }
@@ -136,6 +138,8 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             onBroadcast = { ev, p ->
                 when (ev) {
                     "state" -> { now = parseState(p); hostSeen = true }
+                    "lyr" -> lyr = LyrState(p.optString("cur"), p.optString("next"), p.optDouble("el", 0.0), p.optDouble("dur", 0.0),
+                        p.optString("cue"), p.optBoolean("none"), p.optString("kind"), p.optBoolean("has", true), System.currentTimeMillis())
                     "need" -> {
                         val qid = p.optString("qid")
                         // kanta na ni-reserve ng TV mismo mula sa listahan ng phone na ito: hanapin sa folder
@@ -213,7 +217,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             }
 
             // ---------- kinakanta ngayon ----------
-            NowCard(now, hostSeen, room,
+            NowCard(now, lyr, hostSeen, room,
                 onCmd = { a -> cmd(a) },
                 onSfx = { sfx(it) },
                 onBoard = { sheet = "board" },
@@ -277,8 +281,9 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
 /** Card ng kinakanta ngayon: numero, title, kumakanta, mga kontrol, mabilis na tunog. */
 /** Kompaktong "mini player": kinakanta, kontrol, at mabilis na sound effects. Key/Tempo ay nasa "Tunog sa TV". */
 @Composable
-private fun NowCard(now: NowState?, hostSeen: Boolean, room: String, onCmd: (String) -> Unit, onSfx: (String) -> Unit, onBoard: () -> Unit, onFx: (String, Int) -> Unit) {
+private fun NowCard(now: NowState?, lyr: LyrState?, hostSeen: Boolean, room: String, onCmd: (String) -> Unit, onSfx: (String) -> Unit, onBoard: () -> Unit, onFx: (String, Int) -> Unit) {
     val c = vk
+    var showLyr by remember { mutableStateOf(Prefs.str("remoteLyr") == "1") }
     val shape = RoundedCornerShape(22.dp)
     Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp).clip(shape)
         .background(Brush.verticalGradient(listOf(Color(0xF2181C24), Color(0xF20E1116))))
@@ -308,7 +313,16 @@ private fun NowCard(now: NowState?, hostSeen: Boolean, room: String, onCmd: (Str
                     }
                 }
                 n?.let { Text("${it.volume}", color = Color(0xFF8C93A1), fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                Spacer(Modifier.width(8.dp))
+                // switch: Lyrics ↔ dating itsura
+                Box(Modifier.clip(RoundedCornerShape(50)).background(if (showLyr) c.accent else Color.White.copy(alpha = 0.07f))
+                    .border(1.dp, if (showLyr) c.accent else Color.White.copy(alpha = 0.10f), RoundedCornerShape(50))
+                    .clickable { showLyr = !showLyr; Prefs.putStr("remoteLyr", if (showLyr) "1" else ""); com.videoketana.app.ui.Haptic.tap() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp)) {
+                    Text(tr("Lyrics", "Lyrics"), color = if (showLyr) c.accentInk else Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
+            if (showLyr) { LyricsPane(lyr, now, onCmd); return@Column }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 CtlBtn("restart") { onCmd("restart") }
@@ -880,3 +894,59 @@ internal fun sendPlist(rt: com.videoketana.app.data.Realtime?, songs: List<com.v
 
 internal fun localTitleMatches(s: com.videoketana.app.data.LocalSong, t: String): Boolean =
     t.isEmpty() || t == s.title || t == (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title
+
+
+/** Lyrics na galing sa TV (event "lyr"): kasalukuyang linya, susunod, at oras para sa highlight. */
+data class LyrState(val cur: String, val next: String, val el: Double, val dur: Double, val cue: String,
+                    val none: Boolean, val kind: String, val has: Boolean, val at: Long)
+
+/** Lyrics sa loob ng mini player, may maliit na kontrol sa ibaba. */
+@Composable
+private fun LyricsPane(lyr: LyrState?, now: NowState?, onCmd: (String) -> Unit) {
+    val c = vk
+    var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(lyr, now?.paused) { while (now?.paused != true) { tick = System.currentTimeMillis(); kotlinx.coroutines.delay(50) } }
+    Spacer(Modifier.height(10.dp))
+    Box(Modifier.fillMaxWidth().height(116.dp).clip(RoundedCornerShape(16.dp))
+        .background(Brush.verticalGradient(listOf(Color(0xFF07090C), Color(0xFF0B1014)))).border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+        .padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+        val msg = when {
+            now == null || now.title.isEmpty() -> tr("Lalabas dito ang lyrics kapag may kanta.", "Lyrics show here when a song plays.")
+            now.source == "youtube" || lyr?.kind == "youtube" -> tr("Nasa video sa TV ang lyrics ng YouTube.", "YouTube lyrics are in the video on the TV.")
+            lyr == null -> tr("Hinihintay ang lyrics mula sa TV…", "Waiting for lyrics from the TV…")
+            !lyr.has -> tr("Walang lyrics ang kantang ito.", "This song has no lyrics.")
+            else -> null
+        }
+        if (msg != null) Text(msg, color = Color(0xFF8C93A1), fontSize = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        else {
+            val l = lyr!!
+            val p = if (l.dur > 0) ((l.el + (tick - l.at) / 1000.0) / l.dur).coerceIn(0.0, 1.0).toFloat() else 0f
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (l.cue.isNotEmpty() && l.cur.isBlank()) Text(l.cue, color = c.accent, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
+                else {
+                    val sung = (l.cur.length * p).toInt().coerceIn(0, l.cur.length)
+                    Text(androidx.compose.ui.text.buildAnnotatedString {
+                        pushStyle(androidx.compose.ui.text.SpanStyle(color = c.accent)); append(l.cur.take(sung)); pop()
+                        pushStyle(androidx.compose.ui.text.SpanStyle(color = Color.White)); append(l.cur.drop(sung)); pop()
+                    }, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                if (l.next.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(l.next, color = Color(0xFF8C93A1), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        CtlBtn("stop") { onCmd("stop"); com.videoketana.app.ui.Haptic.tap() }
+        CtlBtn("voldown") { onCmd("voldown") }
+        Box(Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(50))
+            .background(Brush.horizontalGradient(listOf(c.accent, c.accent.copy(alpha = 0.75f))))
+            .clickable { onCmd("toggle") }, contentAlignment = Alignment.Center) {
+            VkIcon(if (now?.paused == true) "play" else "pause", 22.dp, c.accentInk)
+        }
+        CtlBtn("volup") { onCmd("volup") }
+        CtlBtn("next") { onCmd("skip") }
+    }
+}

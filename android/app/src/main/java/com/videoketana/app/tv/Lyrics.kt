@@ -19,7 +19,8 @@ fun parseLrc(text: String): Pair<List<LyricLine>, Double> {
 }
 
 /** Ano ang ipapakita sa oras na t: kasalukuyang linya, gaano na kalayo (0..1), at ang susunod na linya. */
-data class LyricView(val current: String, val progress: Float, val next: String, val countdown: Int, val more: List<String> = emptyList())
+data class LyricView(val current: String, val progress: Float, val next: String, val countdown: Int, val more: List<String> = emptyList(),
+                     val el: Double = 0.0, val dur: Double = 0.0)
 
 fun lyricAt(lines: List<LyricLine>, t: Double): LyricView {
     if (lines.isEmpty()) return LyricView("", 0f, "", 0)
@@ -40,5 +41,5 @@ fun lyricAt(lines: List<LyricLine>, t: Double): LyricView {
     val next = up.firstOrNull() ?: ""
     // mahabang patlang (interlude): bilang bago ang susunod na linya
     val cd = if (line.text.isBlank() && nextT - t <= 3.5) kotlin.math.ceil(nextT - t).toInt().coerceAtLeast(1) else 0
-    return LyricView(line.text, p, next, cd, up.drop(1))
+    return LyricView(line.text, p, next, cd, up.drop(1), t - line.t, dur)
 }

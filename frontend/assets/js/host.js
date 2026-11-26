@@ -447,9 +447,16 @@ setInterval(() => {
   VKPitch.sample(songTime(), VKMicHost.pitch());
 }, 50);
 
+// lyrics para sa phone (app remote): ipinapadala lang kapag nagbago ang linya/bilang
+let lyrKey = '';
+function sendLyr(key, payload) {
+  if (key === lyrKey || !channel || standby) return;
+  lyrKey = key; channel.send({ type: 'broadcast', event: 'lyr', payload });
+}
 function lyricTick() {
   requestAnimationFrame(lyricTick);
-  if (mode !== 'audio' || !lyrics.length) return;
+  if (mode !== 'audio') { sendLyr('m:' + mode, { none: true, kind: mode }); return; }
+  if (!lyrics.length) { sendLyr('nolyr', { has: false }); return; }
   const t = aud.currentTime + lyricOffset + (VK_PREFS.get().lyricDelay || 0) / 1000;
   let idx = -1;
   for (let k = 0; k < lyrics.length; k++) { if (lyrics[k].t <= t) idx = k; else break; }
@@ -470,6 +477,7 @@ function lyricTick() {
     const c = cd === 'off' ? '' : left <= 3.2 ? cueText(left) : (left > 6 ? `Intro, ${Math.ceil(left)}` : '');
     if (cue.textContent !== c) cue.textContent = c;
     setNext(0);
+    sendLyr('pre|' + c, { cur: '', next: first.text, el: 0, dur: 0, cue: left <= 3.2 && cd !== 'off' ? String(Math.max(1, Math.ceil(left))) : '', has: true });
     return;
   }
   const line = lyrics[idx];
@@ -481,9 +489,12 @@ function lyricTick() {
   let c = '';
   if (cd !== 'off' && idx + 1 < lyrics.length && sung && nextT - line.t - dur > 5) c = gap <= 3.2 ? cueText(gap) : `Interlude, ${Math.ceil(gap)}`;
   if (cue.textContent !== c) cue.textContent = c;
-  if (!line.text && idx + 1 < lyrics.length && gap > 3.2) { cur.textContent = ''; lineText = null; setNext(idx + 1); return; }
+  if (!line.text && idx + 1 < lyrics.length && gap > 3.2) { cur.textContent = ''; lineText = null; setNext(idx + 1);
+    sendLyr('gap' + idx + '|' + c, { cur: '', next: lyrics[idx + 1].text, el: 0, dur: 0, cue: /^\d$/.test(c) ? c : '', has: true }); return; }
   setLine(line.text || '♪', p);
   setNext(idx + 1);
+  const nx = lyrics.slice(idx + 1).find(l => l.text);
+  sendLyr(idx + '|' + c, { cur: line.text || '♪', next: nx ? nx.text : '', el: t - line.t, dur, cue: '', has: true });
 }
 // Paliitin ang font para kasya sa iisang linya (parang videoke); kapag sobrang haba, saka lang hahatiin
 function fitLine(el) {
