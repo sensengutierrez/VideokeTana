@@ -453,6 +453,14 @@ function sendLyr(key, payload) {
   if (key === lyrKey || !channel || standby) return;
   lyrKey = key; channel.send({ type: 'broadcast', event: 'lyr', payload });
 }
+// YouTube: video at oras para sa maliit na video sa phone (bawat 3s)
+setInterval(() => {
+  if (mode !== 'youtube' || !channel || standby || !ytPlayer || !ytReady || !current) return;
+  try {
+    const id = current.yt_id || (current.song && current.song.yt_id);
+    if (id) channel.send({ type: 'broadcast', event: 'lyr', payload: { none: true, kind: 'youtube', yt: id, t: ytPlayer.getCurrentTime() || 0, paused } });
+  } catch (e) {}
+}, 3000);
 function lyricTick() {
   requestAnimationFrame(lyricTick);
   if (mode !== 'audio') { sendLyr('m:' + mode, { none: true, kind: mode }); return; }

@@ -139,7 +139,8 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
                 when (ev) {
                     "state" -> { now = parseState(p); hostSeen = true }
                     "lyr" -> lyr = LyrState(p.optString("cur"), p.optString("next"), p.optDouble("el", 0.0), p.optDouble("dur", 0.0),
-                        p.optString("cue"), p.optBoolean("none"), p.optString("kind"), p.optBoolean("has", true), System.currentTimeMillis())
+                        p.optString("cue"), p.optBoolean("none"), p.optString("kind"), p.optBoolean("has", true), System.currentTimeMillis(),
+                        p.optString("yt"), p.optDouble("t", 0.0), p.optBoolean("paused"))
                     "need" -> {
                         val qid = p.optString("qid")
                         // kanta na ni-reserve ng TV mismo mula sa listahan ng phone na ito: hanapin sa folder
@@ -898,7 +899,8 @@ internal fun localTitleMatches(s: com.videoketana.app.data.LocalSong, t: String)
 
 /** Lyrics na galing sa TV (event "lyr"): kasalukuyang linya, susunod, at oras para sa highlight. */
 data class LyrState(val cur: String, val next: String, val el: Double, val dur: Double, val cue: String,
-                    val none: Boolean, val kind: String, val has: Boolean, val at: Long)
+                    val none: Boolean, val kind: String, val has: Boolean, val at: Long,
+                    val yt: String = "", val t: Double = 0.0, val paused: Boolean = false)
 
 /** Lyrics sa loob ng mini player, may maliit na kontrol sa ibaba. */
 @Composable
@@ -907,6 +909,13 @@ private fun LyricsPane(lyr: LyrState?, now: NowState?, onCmd: (String) -> Unit) 
     var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(lyr, now?.paused) { while (now?.paused != true) { tick = System.currentTimeMillis(); kotlinx.coroutines.delay(50) } }
     Spacer(Modifier.height(10.dp))
+    // YouTube: maliit na video (walang tunog) na sabay sa TV
+    if (lyr != null && lyr.kind == "youtube" && lyr.yt.isNotEmpty() && now?.source == "youtube") {
+        MiniYt(lyr)
+        Spacer(Modifier.height(10.dp))
+        LyrControls(now, onCmd)
+        return
+    }
     Box(Modifier.fillMaxWidth().height(116.dp).clip(RoundedCornerShape(16.dp))
         .background(Brush.verticalGradient(listOf(Color(0xFF07090C), Color(0xFF0B1014)))).border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
         .padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
@@ -938,6 +947,12 @@ private fun LyricsPane(lyr: LyrState?, now: NowState?, onCmd: (String) -> Unit) 
         }
     }
     Spacer(Modifier.height(10.dp))
+    LyrControls(now, onCmd)
+}
+
+@Composable
+private fun LyrControls(now: NowState?, onCmd: (String) -> Unit) {
+    val c = vk
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         CtlBtn("stop") { onCmd("stop"); com.videoketana.app.ui.Haptic.tap() }
         CtlBtn("voldown") { onCmd("voldown") }
@@ -948,5 +963,36 @@ private fun LyricsPane(lyr: LyrState?, now: NowState?, onCmd: (String) -> Unit) 
         }
         CtlBtn("volup") { onCmd("volup") }
         CtlBtn("next") { onCmd("skip") }
+    }
+}
+
+
+/** Maliit na YouTube video sa phone (walang tunog), sinasabayan ang oras ng TV. Gumagamit ng data ng phone. */
+@Composable
+private fun MiniYt(l: LyrState) {
+    val ctl = remember { com.videoketana.app.tv.YtController() }
+    var loaded by remember { mutableStateOf("") }
+    var myPos by remember { mutableStateOf(0.0) }
+    var myAt by remember { mutableLongStateOf(0L) }
+    var ready by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) { onDispose { ctl.destroy() } }
+    ctl.onReady = { ready = true }
+    ctl.onTime = { t -> myPos = t; myAt = System.currentTimeMillis() }
+    ctl.onState = { st -> if (st == 1) ctl.mute() }
+    LaunchedEffect(ready, l.yt) { if (ready && loaded != l.yt) { loaded = l.yt; ctl.load(l.yt, 0); ctl.mute() } }
+    // sabayan: kapag lampas 2s ang layo sa TV, tumalon
+    LaunchedEffect(l, ready) {
+        if (!ready || loaded != l.yt) return@LaunchedEffect
+        if (l.paused) { ctl.pause(); return@LaunchedEffect }
+        kotlinx.coroutines.delay(400)
+        val tv = l.t + (System.currentTimeMillis() - l.at) / 1000.0
+        val mine = myPos + (if (myAt > 0) (System.currentTimeMillis() - myAt) / 1000.0 else 0.0)
+        if (myAt == 0L || kotlin.math.abs(tv - mine) > 2.0) ctl.seek(tv.toInt())
+        ctl.play()
+    }
+    Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)).background(Color.Black)) {
+        androidx.compose.ui.viewinterop.AndroidView(factory = { ctx -> ctl.create(ctx) }, modifier = Modifier.fillMaxSize())
+        Text(tr("Sabay sa TV · walang tunog", "Synced with the TV · muted"), color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).clip(RoundedCornerShape(50)).background(Color(0x99000000)).padding(horizontal = 8.dp, vertical = 3.dp))
     }
 }

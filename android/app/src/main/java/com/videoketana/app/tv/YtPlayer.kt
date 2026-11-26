@@ -22,6 +22,7 @@ class YtController {
     var onReady: () -> Unit = {}
     var onState: (Int) -> Unit = {}          // 0 = tapos, 1 = tumutugtog, 2 = naka-pause
     var onError: (String) -> Unit = {}       // YouTube code (hal. 150) o "noapi" / "page"
+    var onTime: (Double) -> Unit = {}        // oras ng video (segundo), bawat 2s habang tumutugtog
     private val main = Handler(Looper.getMainLooper())
 
     private fun js(s: String) { main.post { web?.evaluateJavascript(s, null) } }
@@ -31,6 +32,7 @@ class YtController {
     fun seek(sec: Int) = js("cmd('seek', $sec)")
     fun volume(v: Int) = js("cmd('vol', $v)")
     fun stop() = js("cmd('stop')")
+    fun mute() = js("cmd('mute')")
     fun rate(r: Float) = js("cmd('rate', ${"%.2f".format(java.util.Locale.US, r)})")
 
     inner class Bridge {
@@ -41,6 +43,7 @@ class YtController {
                     "ready" -> onReady()
                     "state" -> onState(data.toIntOrNull() ?: -1)
                     "error" -> onError(data)
+                    "time" -> data.toDoubleOrNull()?.let { onTime(it) }
                 }
             }
         }
@@ -60,12 +63,12 @@ class YtController {
         }
         webChromeClient = WebChromeClient()
         addJavascriptInterface(Bridge(), "AndroidYT")
-        loadUrl(Config.SITE + "yt.html?v=4")
+        loadUrl(Config.SITE + "yt.html?v=5")
         web = this
     }
 
     /** Bagong load ng player page (kapag pumalya ang una). */
-    fun reload() { main.post { web?.loadUrl(Config.SITE + "yt.html?v=4&t=" + System.currentTimeMillis()) } }
+    fun reload() { main.post { web?.loadUrl(Config.SITE + "yt.html?v=5&t=" + System.currentTimeMillis()) } }
 
     fun destroy() { web?.destroy(); web = null }
 }

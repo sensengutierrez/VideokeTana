@@ -188,6 +188,9 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
     val exo = remember { ExoPlayer.Builder(ctx).build() }
     val yt = remember { YtController() }
+    var ytPos by remember { mutableStateOf(0.0) }
+    var ytPosAt by remember { mutableStateOf(0L) }
+    var ytNowId by remember { mutableStateOf("") }
     var rt by remember { mutableStateOf<Realtime?>(null) }
 
     val midi = remember { MidiPlayer() }
@@ -416,7 +419,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                             if (id == null) { busy = false; finish("error"); return@sn }
                             ytPlaying = false; ytTry++
                             key = 0; tempo = 0
-                            yt.load(id, volume)
+                            yt.load(id, volume); ytNowId = id; ytPos = 0.0; ytPosAt = System.currentTimeMillis()
                             applyFx()
                         }
                     }
@@ -612,6 +615,12 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
     LaunchedEffect(mode, lyrics) {
         var lastKey = ""
         if (mode != "audio") rt?.broadcast("lyr", JSONObject().put("none", true).put("kind", mode))
+        // YouTube: ipadala ang video at oras bawat 3s para sa maliit na video sa phone
+        while (mode == "youtube") {
+            val t = ytPos + (if (paused) 0.0 else (System.currentTimeMillis() - ytPosAt) / 1000.0)
+            if (ytNowId.isNotEmpty()) rt?.broadcast("lyr", JSONObject().put("none", true).put("kind", "youtube").put("yt", ytNowId).put("t", t).put("paused", paused))
+            delay(3000)
+        }
         while (mode == "audio") {
             view = lyricAt(lyrics, (if (synth.active) synth.positionMs else if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset)
             // ipadala sa phone ang lyrics (kapag nagpalit ang linya o bilang) para makita rin sa remote
@@ -694,6 +703,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
 
         // YouTube player (laging nakahanda para mabilis magsimula)
         DisposableEffect(Unit) {
+            yt.onTime = { t -> ytPos = t; ytPosAt = System.currentTimeMillis() }
             yt.onState = { st ->
                 if (st == 1) ytPlaying = true
                 if (st == 0 && mode == "youtube") scope.launch { finish("ended") }
