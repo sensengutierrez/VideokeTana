@@ -455,6 +455,7 @@ private fun BottomNav(tab: Int, waiting: Int, onTab: (Int) -> Unit) {
 
 /** Mga adjust ng tunog sa TV: boses (mic) at kanta (bass, treble, key). */
 @Composable
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 private fun SoundSheet(fx: JSONObject?, source: String, send: (String, Int) -> Unit, onWallpaper: () -> Unit, onStandby: () -> Unit, onScene: () -> Unit = {}) {
     val c = vk
     Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 30.dp)) {
