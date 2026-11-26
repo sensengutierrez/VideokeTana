@@ -536,6 +536,8 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             onBroadcast = { ev, p ->
                 when (ev) {
                     "cmd" -> if (!standby) handleCmd(p.optString("action"), p.opt("value"))
+                    // orasan: ibalik agad ang oras ng TV para malaman ng phone ang agwat ng orasan nila
+                    "clk" -> if (!p.has("b")) rt?.broadcast("clk", JSONObject().put("id", p.optString("id")).put("a", p.optLong("a")).put("b", System.currentTimeMillis()))
                     "hello" -> { p.optString("tz").takeIf { it.isNotEmpty() && it != Prefs.str("remoteTz") }?.let { Prefs.putStr("remoteTz", it) }; broadcastState() }
                     "file" -> recv.onPart(p)
                     "plist" -> {
@@ -616,10 +618,14 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         var lastKey = ""
         if (mode != "audio") rt?.broadcast("lyr", JSONObject().put("none", true).put("kind", mode))
         // YouTube: ipadala ang video at oras bawat 3s para sa maliit na video sa phone
+        // "at" = oras ng TV nang kunin ang posisyon (para maibawas ng phone ang delay ng internet); "r" = bilis (tempo)
         while (mode == "youtube") {
-            val t = ytPos + (if (paused) 0.0 else (System.currentTimeMillis() - ytPosAt) / 1000.0)
-            if (ytNowId.isNotEmpty()) rt?.broadcast("lyr", JSONObject().put("none", true).put("kind", "youtube").put("yt", ytNowId).put("t", t).put("paused", paused))
-            delay(3000)
+            val r = 1.0 + tempo * 0.05
+            val nowMs = System.currentTimeMillis()
+            val t = ytPos + (if (paused) 0.0 else (nowMs - ytPosAt) / 1000.0 * r)
+            if (ytNowId.isNotEmpty()) rt?.broadcast("lyr", JSONObject().put("none", true).put("kind", "youtube").put("yt", ytNowId).put("t", t)
+                .put("paused", paused).put("at", nowMs).put("r", r))
+            delay(2000)
         }
         while (mode == "audio") {
             view = lyricAt(lyrics, (if (synth.active) synth.positionMs else if (midi.active) midi.position else exo.currentPosition) / 1000.0 + lyricOffset)
@@ -628,7 +634,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
             if (k != lastKey) {
                 lastKey = k
                 rt?.broadcast("lyr", JSONObject().put("cur", view.current).put("next", view.next).put("el", view.el).put("dur", view.dur)
-                    .put("cue", if (view.countdown > 0) view.countdown.toString() else "").put("has", lyrics.isNotEmpty()))
+                    .put("cue", if (view.countdown > 0) view.countdown.toString() else "").put("has", lyrics.isNotEmpty()).put("at", System.currentTimeMillis()))
             }
             delay(40)
         }

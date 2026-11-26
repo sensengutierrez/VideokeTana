@@ -451,16 +451,16 @@ setInterval(() => {
 let lyrKey = '';
 function sendLyr(key, payload) {
   if (key === lyrKey || !channel || standby) return;
-  lyrKey = key; channel.send({ type: 'broadcast', event: 'lyr', payload });
+  lyrKey = key; payload.at = Date.now(); channel.send({ type: 'broadcast', event: 'lyr', payload });
 }
-// YouTube: video at oras para sa maliit na video sa phone (bawat 3s)
+// YouTube: video at oras para sa maliit na video sa phone (bawat 2s). "at" = oras ng TV, "r" = bilis
 setInterval(() => {
   if (mode !== 'youtube' || !channel || standby || !ytPlayer || !ytReady || !current) return;
   try {
     const id = current.yt_id || (current.song && current.song.yt_id);
-    if (id) channel.send({ type: 'broadcast', event: 'lyr', payload: { none: true, kind: 'youtube', yt: id, t: ytPlayer.getCurrentTime() || 0, paused } });
+    if (id) channel.send({ type: 'broadcast', event: 'lyr', payload: { none: true, kind: 'youtube', yt: id, t: ytPlayer.getCurrentTime() || 0, paused, at: Date.now(), r: ytPlayer.getPlaybackRate() || 1 } });
   } catch (e) {}
-}, 3000);
+}, 2000);
 function lyricTick() {
   requestAnimationFrame(lyricTick);
   if (mode !== 'audio') { sendLyr('m:' + mode, { none: true, kind: mode }); return; }
@@ -712,6 +712,8 @@ function connect() {
   channel = sb.channel('room-' + ROOM, { config: { broadcast: { self: false } } })
     .on('broadcast', { event: 'cmd' }, ({ payload }) => { if (!standby) handleCmd(payload.action, payload.value); })
     .on('broadcast', { event: 'hello' }, () => { if (!standby) broadcastState(); })
+    // orasan: ibalik agad ang oras ng TV para malaman ng phone ang agwat ng orasan nila
+    .on('broadcast', { event: 'clk' }, ({ payload }) => { if (payload && payload.b == null) channel.send({ type: 'broadcast', event: 'clk', payload: { id: payload.id, a: payload.a, b: Date.now() } }); })
     .on('broadcast', { event: 'file' }, ({ payload }) => { if (!standby) onPhoneFile(payload); })
     .on('broadcast', { event: 'plist' }, ({ payload }) => {   // listahan ng kanta sa folder ng phone (app)
       if (payload && payload.id && Array.isArray(payload.songs)) phoneLists.set(payload.id, payload.songs.slice(0, 1500));

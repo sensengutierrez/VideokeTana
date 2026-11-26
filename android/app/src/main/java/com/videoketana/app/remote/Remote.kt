@@ -142,14 +142,20 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
         if (uri != null) scope.launch { if (com.videoketana.app.data.Wallpaper.save(ctx, uri) && Prefs.glass == 0) Prefs.changeGlass(35) }
     }
 
+    // sukatin ang agwat ng orasan ng TV: 5 beses sa simula (bawat 1s), tapos bawat 30s
+    LaunchedEffect(room, connected) {
+        TvClock.reset()
+        while (connected) { TvClock.ping(rt); kotlinx.coroutines.delay(if (TvClock.count < 5) 1000 else 30_000) }
+    }
     DisposableEffect(room) {
         val r = Realtime(room,
             onBroadcast = { ev, p ->
                 when (ev) {
                     "state" -> { now = parseState(p); hostSeen = true }
                     "lyr" -> lyr = LyrState(p.optString("cur"), p.optString("next"), p.optDouble("el", 0.0), p.optDouble("dur", 0.0),
-                        p.optString("cue"), p.optBoolean("none"), p.optString("kind"), p.optBoolean("has", true), System.currentTimeMillis(),
-                        p.optString("yt"), p.optDouble("t", 0.0), p.optBoolean("paused"))
+                        p.optString("cue"), p.optBoolean("none"), p.optString("kind"), p.optBoolean("has", true), TvClock.local(p.optLong("at", 0L)),
+                        p.optString("yt"), p.optDouble("t", 0.0), p.optBoolean("paused"), p.optDouble("r", 1.0).takeIf { it in 0.25..2.0 } ?: 1.0)
+                    "clk" -> TvClock.onReply(p)
                     "need" -> {
                         val qid = p.optString("qid")
                         // kanta na ni-reserve ng TV mismo mula sa listahan ng phone na ito: hanapin sa folder
@@ -944,10 +950,45 @@ internal fun localTitleMatches(s: com.videoketana.app.data.LocalSong, t: String)
     t.isEmpty() || t == s.title || t == (if (s.artist.isNotBlank()) s.artist + " - " else "") + s.title
 
 
-/** Lyrics na galing sa TV (event "lyr"): kasalukuyang linya, susunod, at oras para sa highlight. */
+/** Lyrics na galing sa TV (event "lyr"): kasalukuyang linya, susunod, at oras para sa highlight.
+ *  `at` = oras SA PHONE na katumbas ng sandaling kinuha ng TV ang posisyon (bawas na ang delay ng internet). */
 data class LyrState(val cur: String, val next: String, val el: Double, val dur: Double, val cue: String,
                     val none: Boolean, val kind: String, val has: Boolean, val at: Long,
-                    val yt: String = "", val t: Double = 0.0, val paused: Boolean = false)
+                    val yt: String = "", val t: Double = 0.0, val paused: Boolean = false, val r: Double = 1.0)
+
+/**
+ * Agwat ng orasan ng TV at ng phone. Nagpapadala ang phone ng "clk" (a = oras ng phone), sumasagot ang TV
+ * ng b = oras ng TV. offset = b − (a + rtt/2). Kinukuha ang sample na may pinakamaikling rtt (pinakatumpak).
+ * Dahil dito, alam ng phone kung kailan TALAGA kinuha ng TV ang posisyon, kaya hindi na nahuhuli dahil sa internet.
+ */
+object TvClock {
+    val id = java.util.UUID.randomUUID().toString().take(8)
+    private val samples = ArrayDeque<Pair<Long, Long>>()   // (rtt, offset)
+    @Volatile var offset = 0L
+        private set
+    @Volatile var ready = false
+        private set
+    val count get() = samples.size
+    fun ping(rt: com.videoketana.app.data.Realtime?) {
+        rt?.broadcast("clk", org.json.JSONObject().put("id", id).put("a", System.currentTimeMillis()))
+    }
+    fun onReply(p: org.json.JSONObject) {
+        if (p.optString("id") != id || !p.has("b")) return
+        val now = System.currentTimeMillis(); val a = p.optLong("a"); val b = p.optLong("b")
+        val rtt = now - a
+        if (rtt < 0 || rtt > 5000) return
+        samples.addLast(rtt to (b - (a + rtt / 2)))
+        while (samples.size > 8) samples.removeFirst()
+        offset = samples.minBy { it.first }.second; ready = true
+    }
+    fun reset() { samples.clear(); ready = false; offset = 0L }
+    /** Oras ng TV → oras ng phone. Kung wala pang sync o walang "at" (lumang TV app), ang oras ng pagtanggap. */
+    fun local(tvAt: Long): Long {
+        val now = System.currentTimeMillis()
+        if (tvAt <= 0L || !ready) return now
+        return (tvAt - offset).coerceIn(now - 5000, now)
+    }
+}
 
 /** Lyrics sa loob ng mini player, may maliit na kontrol sa ibaba. */
 @Composable
@@ -1055,16 +1096,37 @@ private fun MiniYt(l: LyrState, rect: androidx.compose.ui.geometry.Rect, visible
     ctl.onTime = { t -> myPos = t; myAt = System.currentTimeMillis() }
     ctl.onState = { st -> if (st == 1) ctl.mute() }
     LaunchedEffect(ready, l.yt) { if (ready && loaded != l.yt) { loaded = l.yt; myAt = 0L; ctl.load(l.yt, 0); ctl.mute() } }
-    // sabayan ang TV: tumalon lang kapag tumutugtog na sa phone at lampas 2s ang layo (iwas kurap)
-    var synced by remember(l.yt) { mutableStateOf(false) }
-    LaunchedEffect(l, ready) {
-        if (!ready || loaded != l.yt) return@LaunchedEffect
-        if (l.paused) { ctl.pause(); return@LaunchedEffect }
-        val tv = l.t + (System.currentTimeMillis() - l.at) / 1000.0
-        if (myAt == 0L) { if (!synced) { synced = true; ctl.seek(tv.toInt()) }; ctl.play(); return@LaunchedEffect }
-        val mine = myPos + (System.currentTimeMillis() - myAt) / 1000.0
-        if (kotlin.math.abs(tv - mine) > 2.5) ctl.seek(tv.toInt())
-        ctl.play()
+    LaunchedEffect(ready, l.r) { if (ready) ctl.rate(l.r.toFloat()) }
+    // Sabayan ang TV. Sinusuri bawat 0.3s gamit ang pinakabagong oras ng TV (bawas na ang delay ng internet).
+    // Tumatalon kapag lampas 0.3s ang layo; ang "lead" ay dagdag na segundo para sa tagal ng pag-buffer
+    // pagkatapos tumalon — kusang inaayos batay sa naging resulta ng nakaraang talon.
+    val cur by androidx.compose.runtime.rememberUpdatedState(l)
+    LaunchedEffect(ready, l.yt) {
+        if (!ready) return@LaunchedEffect
+        var lead = 0.6
+        var lastSeek = 0L
+        var judged = true            // nasukat na ba ang resulta ng huling talon
+        var wasPaused = false
+        while (true) {
+            kotlinx.coroutines.delay(300)
+            val x = cur
+            if (loaded != x.yt) continue
+            if (x.paused) { if (!wasPaused) { ctl.pause(); wasPaused = true }; continue }
+            if (wasPaused) { wasPaused = false; ctl.play() }
+            val nowMs = System.currentTimeMillis()
+            val tv = x.t + (nowMs - x.at) / 1000.0 * x.r
+            if (myAt == 0L) {                       // hindi pa tumutugtog sa phone
+                if (nowMs - lastSeek > 4000) { ctl.seekTo(tv + lead); ctl.play(); lastSeek = nowMs; judged = false }
+                continue
+            }
+            if (myAt < lastSeek + 400) continue     // hintayin ang bagong oras mula sa player pagkatapos tumalon
+            val mine = myPos + (nowMs - myAt) / 1000.0 * x.r
+            val drift = tv - mine                   // + = nahuhuli ang phone
+            if (!judged) { lead = (lead + drift).coerceIn(0.0, 3.0); judged = true }
+            if (kotlin.math.abs(drift) > 0.3 && nowMs - lastSeek > 2500) {
+                ctl.seekTo(tv + lead); lastSeek = nowMs; judged = false
+            }
+        }
     }
 }
 

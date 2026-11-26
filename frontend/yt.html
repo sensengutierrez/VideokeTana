@@ -51,7 +51,7 @@ function load(id, v) {
   }, 2000);
 }
 // oras ng video bawat 2s (para masabayan ng maliit na video sa phone)
-setInterval(function () { try { if (ready && player.getPlayerState() === 1) send('time', player.getCurrentTime().toFixed(2)); } catch (x) {} }, 2000);
+setInterval(function () { try { if (ready && player.getPlayerState() === 1) send('time', player.getCurrentTime().toFixed(2)); } catch (x) {} }, 1000);
 function cmd(c, a) {
   if (c === 'rate') rate = a || 1;
   if (!ready) return;
