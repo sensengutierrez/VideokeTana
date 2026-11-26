@@ -768,7 +768,7 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
         // walang kanta: orasan, QR, "Pumili ng kanta"
         if (mode == "idle" && splash == null && score == null) {
             val waiting = if (armed) 0 else queue.size
-            Idle(room, qr, waiting, chipFocus) { arm(); scope.launch { startNext() } }
+            Idle(room, qr, waiting, chipFocus, hideCard = solo) { arm(); scope.launch { startNext() } }
         }
 
         // itaas: susunod sa pila + orasan
@@ -962,7 +962,7 @@ private fun Clock(height: androidx.compose.ui.unit.Dp) {
 }
 
 @Composable
-private fun Idle(room: String, qr: ImageBitmap, waiting: Int, chipFocus: FocusRequester, onStart: () -> Unit) {
+private fun Idle(room: String, qr: ImageBitmap, waiting: Int, chipFocus: FocusRequester, hideCard: Boolean = false, onStart: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 28.dp), contentAlignment = Alignment.Center) {
         val mw = maxWidth; val mh = maxHeight
         val wide = mw > mh
@@ -1021,7 +1021,10 @@ private fun Idle(room: String, qr: ImageBitmap, waiting: Int, chipFocus: FocusRe
                 }
             }
         }
-        if (wide) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+        // bukas ang # panel: itago ang QR para hindi magpatong sa panel (at sa sinusulat)
+        if (hideCard) Box(Modifier.fillMaxSize(), contentAlignment = if (wide) Alignment.CenterStart else Alignment.TopCenter) {
+            info(if (wide) Alignment.Start else Alignment.CenterHorizontally)
+        } else if (wide) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
             info(Alignment.Start); Spacer(Modifier.width(48.dp)); card()
         } else Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             info(Alignment.CenterHorizontally); Spacer(Modifier.height(24.dp)); card()

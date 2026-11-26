@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -105,7 +106,7 @@ fun SoloPanel(local: List<LocalSong>, hasAccess: Boolean, onAccess: () -> Unit, 
         val panelMod = if (wide) Modifier.align(Alignment.CenterEnd).width(minOf(maxWidth * 0.46f, 460.dp)).fillMaxHeight()
         else Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(maxHeight * 0.82f)
         Column(panelMod.clip(RoundedCornerShape(26.dp)).background(Brush.verticalGradient(listOf(Color(0xFF1A2026).copy(alpha = pa), Color(0xFF0B0F14).copy(alpha = (pa + 0.08f).coerceAtMost(1f)))))
-            .border(1.dp, ACC.copy(alpha = 0.3f), RoundedCornerShape(26.dp)).clickable(enabled = false) {}.padding(14.dp)) {
+            .border(1.dp, ACC.copy(alpha = 0.3f), RoundedCornerShape(26.dp)).clickable(enabled = false) {}.imePadding().padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f)) {
                     listOf("hash" to tr("Numero", "Number"), "search" to tr("Hanap", "Search"), "yt" to "YouTube", "list" to tr("Pila", "Queue"), "mic" to "Mic").forEachIndexed { i, (ic, label) ->

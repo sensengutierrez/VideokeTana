@@ -43,6 +43,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.graphics.toArgb
@@ -86,14 +88,20 @@ fun SearchField(value: String, onChange: (String) -> Unit, hint: String, modifie
     val fm = androidx.compose.ui.platform.LocalFocusManager.current
     val kb = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val vs = if (voice) rememberVoiceSearch { t -> if (onVoice != null) onVoice(t) else onChange(t) } else null
-    Row(modifier.height(50.dp).clip(RoundedCornerShape(14.dp)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(14.dp)).padding(horizontal = 14.dp),
+    val fr = remember { androidx.compose.ui.focus.FocusRequester() }
+    // buong kahon ang napipindot (dati ang manipis na linya lang ng text); hindi ito dagdag na hinto ng D-pad
+    Row(modifier.height(50.dp).clip(RoundedCornerShape(14.dp)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(14.dp))
+        .pointerInput(Unit) { detectTapGestures { try { fr.requestFocus() } catch (e: Exception) { }; kb?.show() } }
+        .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         VkIcon("search", 18.dp, c.muted); Spacer(Modifier.width(10.dp))
         BasicTextField(value, onChange, singleLine = true, textStyle = TextStyle(color = c.text, fontSize = 16.sp), cursorBrush = SolidColor(c.accent),
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { kb?.hide(); onSearch?.invoke() }),
             // remote ng TV: ang taas/baba ay lumilipat sa ibang button o listahan (hindi naiipit sa text box)
-            modifier = Modifier.weight(1f).onPreviewKeyEvent { e ->
+            modifier = Modifier.weight(1f).focusRequester(fr)
+                .onFocusChanged { if (it.isFocused) kb?.show() }   // laging lumabas ang keyboard kapag napili
+                .onPreviewKeyEvent { e ->
                 if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (e.key) {
                     androidx.compose.ui.input.key.Key.DirectionDown -> { kb?.hide(); fm.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }
