@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -249,7 +250,10 @@ private fun SoloYouTube(onYt: (String, String) -> Unit) {
     var q by remember { mutableStateOf("") }
     var res by remember { mutableStateOf<List<Triple<String, String, String>>>(emptyList()) }
     var msg by remember { mutableStateOf("") }
+    val kb = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val firstRes = remember { FocusRequester() }
     fun run() {
+        kb?.hide()
         val id = com.videoketana.app.data.parseYouTubeId(q)
         if (q.contains("youtu") && id != null) { onYt(id, "YouTube video"); q = ""; return }
         if (q.isBlank()) return
@@ -260,25 +264,30 @@ private fun SoloYouTube(onYt: (String, String) -> Unit) {
                 val a = j.optJSONArray("items") ?: org.json.JSONArray()
                 res = (0 until a.length()).map { val o = a.getJSONObject(it); Triple(o.optString("id"), o.optString("title"), o.optString("channel")) }
                 msg = if (j.optString("error").isNotEmpty()) tr("Hindi gumana ang search. Pwedeng mag-paste ng link.", "Search failed. You can paste a link.") else if (res.isEmpty()) tr("Walang nahanap.", "Nothing found.") else ""
+                // remote ng TV: ilipat agad ang pointer sa unang resulta
+                if (res.isNotEmpty()) { delay(150); try { firstRes.requestFocus() } catch (e: Exception) { } }
             } catch (e: Exception) { msg = tr("Walang internet?", "No internet?") }
         }
     }
     Column(Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SearchField(q, { q = it }, tr("Hanapin o i-paste ang link", "Search or paste a link"), Modifier.weight(1f), onVoice = { q = it; run() })
+            SearchField(q, { q = it }, tr("Hanapin o i-paste ang link", "Search or paste a link"), Modifier.weight(1f), onVoice = { q = it; run() }, onSearch = { run() })
             Spacer(Modifier.width(8.dp))
             Box(Modifier.clip(RoundedCornerShape(14.dp)).background(ACC).tvFocus().clickable { run() }.padding(horizontal = 14.dp, vertical = 14.dp)) { VkIcon("search", 18.dp, INK2) }
         }
         if (msg.isNotEmpty()) Text(msg, color = MUTE, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp)) {
-            items(res, key = { it.first }) { r ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            itemsIndexed(res, key = { _, r -> r.first }) { i, r ->
+                // buong hanay ang napipindot (mas madali sa D-pad), OK = reserve
+                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp).then(if (i == 0) Modifier.focusRequester(firstRes) else Modifier)
+                    .clip(RoundedCornerShape(14.dp)).tvFocus().clickable { Haptic.reserved(); onYt(r.first, r.second) }
+                    .padding(horizontal = 8.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                     VkIcon("yt", 20.dp, Color(0xFFFF6B6B)); Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(r.second, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(r.third, color = MUTE, fontSize = 12.sp, maxLines = 1)
                     }
-                    Box(Modifier.clip(RoundedCornerShape(50)).background(ACC).tvFocus().clickable { Haptic.reserved(); onYt(r.first, r.second) }.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                    Box(Modifier.clip(RoundedCornerShape(50)).background(ACC).padding(horizontal = 14.dp, vertical = 8.dp)) {
                         Text("Reserve", color = INK2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }

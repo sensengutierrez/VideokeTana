@@ -38,6 +38,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,14 +73,27 @@ fun TopBar(title: String, sub: String = "", onClose: () -> Unit, right: @Composa
 
 /** Search field na may icon. */
 @Composable
-fun SearchField(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier = Modifier, voice: Boolean = true, onVoice: ((String) -> Unit)? = null) {
+fun SearchField(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier = Modifier, voice: Boolean = true, onVoice: ((String) -> Unit)? = null,
+                onSearch: (() -> Unit)? = null) {
     val c = vk
+    val fm = androidx.compose.ui.platform.LocalFocusManager.current
+    val kb = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val vs = if (voice) rememberVoiceSearch { t -> if (onVoice != null) onVoice(t) else onChange(t) } else null
     Row(modifier.height(50.dp).clip(RoundedCornerShape(14.dp)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(14.dp)).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         VkIcon("search", 18.dp, c.muted); Spacer(Modifier.width(10.dp))
         BasicTextField(value, onChange, singleLine = true, textStyle = TextStyle(color = c.text, fontSize = 16.sp), cursorBrush = SolidColor(c.accent),
-            modifier = Modifier.weight(1f),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { kb?.hide(); onSearch?.invoke() }),
+            // remote ng TV: ang taas/baba ay lumilipat sa ibang button o listahan (hindi naiipit sa text box)
+            modifier = Modifier.weight(1f).onPreviewKeyEvent { e ->
+                if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (e.key) {
+                    androidx.compose.ui.input.key.Key.DirectionDown -> { kb?.hide(); fm.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }
+                    androidx.compose.ui.input.key.Key.DirectionUp -> { kb?.hide(); fm.moveFocus(androidx.compose.ui.focus.FocusDirection.Up) }
+                    else -> false
+                }
+            },
             decorationBox = { inner -> Box { if (value.isEmpty()) Text(hint, color = c.muted, fontSize = 16.sp); inner() } })
         if (value.isNotEmpty()) VkIconButton("x", { onChange("") }, size = 32.dp)
         vs?.let { Spacer(Modifier.width(6.dp)); MicSearchButton(it, 36.dp) }   // hanap gamit ang boses

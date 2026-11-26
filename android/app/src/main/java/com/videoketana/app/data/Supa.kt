@@ -168,6 +168,8 @@ object Supa {
         return try { JSONArray(res).getJSONObject(0).optString("id") } catch (e: Exception) { "" }
     }
 
+    /** Burahin ang buong pila ng room (pagbukas ng TV: walang lumang kanta na tutugtog). */
+    suspend fun clearQueue(room: String) { call(req("queue", mapOf("room" to "eq.$room")).delete().build()) }
     suspend fun removeFromQueue(id: String) { call(req("queue", mapOf("id" to "eq.$id")).delete().build()) }
 
     suspend fun setStatus(id: String, status: String) {

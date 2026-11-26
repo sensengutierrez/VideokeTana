@@ -108,6 +108,9 @@ import java.util.Date
 import java.util.Locale
 import kotlin.random.Random
 
+/** Buhay habang bukas ang app; nawawala kapag isinara (kaya nire-reset ang pila sa susunod na bukas). */
+object TvSession { var resetDone = false }
+
 /** Pananda ng kanta na nasa phone (hindi totoong file sa TV). */
 const val PHONE_MARK = "/__phone__/"
 private val TEAL = Color(0xFF62E3D2)
@@ -546,7 +549,10 @@ fun TvScreen(onClose: () -> Unit, isTv: Boolean) {
                 }
             },
             onQueueChange = { scope.launch { loadQueue(); startNext() } },
-            onStatus = { ok -> if (ok) scope.launch { loadQueue(); startNext(); broadcastState(); rt?.broadcast("who", JSONObject()); rt?.broadcast("host", JSONObject().put("id", hostId).put("since", hostSince)) } })
+            onStatus = { ok -> if (ok) scope.launch {
+                // bagong bukas ang app: malinis na simula, binubura ang naiwang pila (isang beses lang bawat bukas ng app)
+                if (!TvSession.resetDone) { TvSession.resetDone = true; try { Supa.clearQueue(room) } catch (e: Exception) { } }
+                loadQueue(); startNext(); broadcastState(); rt?.broadcast("who", JSONObject()); rt?.broadcast("host", JSONObject().put("id", hostId).put("since", hostSince)) } })
         rt = r; r.connect()
         onDispose { r.close() }
     }

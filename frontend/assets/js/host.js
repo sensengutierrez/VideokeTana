@@ -88,6 +88,12 @@ function flash(el, text, ms = 1400) {
 }
 
 // ================= QUEUE =================
+// bagong bukas ang TV page: binubura ang naiwang pila para walang lumang kanta na tutugtog
+let resetDoneOnce = false;
+async function resetOnce() {
+  if (resetDoneOnce) return; resetDoneOnce = true;
+  try { await sb.from('queue').delete().eq('room', ROOM); } catch (e) {}
+}
 async function loadQueue() {
   if (standby) return;
   const { data, error } = await queueSelect(ROOM);
@@ -695,7 +701,7 @@ function connect() {
     .on('broadcast', { event: 'rtc' }, ({ payload }) => { if (!standby && payload && payload.to === 'host') VKMicHost.handle(payload); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'queue' }, () => loadQueueSoon())
     .subscribe(status => {
-      if (status === 'SUBSCRIBED') { loadQueue(); if (!standby) broadcastState(); announceHost(); channel.send({ type: 'broadcast', event: 'who', payload: {} }); }
+      if (status === 'SUBSCRIBED') { resetOnce().then(loadQueue); if (!standby) broadcastState(); announceHost(); channel.send({ type: 'broadcast', event: 'who', payload: {} }); }
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') toast('Nawala ang koneksyon, kumokonekta ulit...', 'err');
     });
 }
