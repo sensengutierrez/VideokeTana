@@ -1173,10 +1173,38 @@ async function soloSearch() {
   const onPhone = phoneSongs().filter(s => !taken.has(s.code) && (!q || String(s.code).includes(q) || (s.title + ' ' + (s.artist || '')).toLowerCase().includes(ql)))
     .map(s => ({ id: 'phone:' + s.code, code: s.code, title: s.title, artist: s.artist, category: 'Sa phone' }));
   mine.push(...onPhone);
-  $('sList').innerHTML = [...mine, ...(data || [])].map(s => `<div class="s-row"><span class="dot">${s.code}</span><div><b>${esc(s.title)}</b><small>${esc(s.artist || '')}${s.category ? ', ' + esc(s.category) : ''}</small></div><button class="btn small" data-sid="${s.id}">Reserve</button></div>`).join('')
-    || '<p class="s-empty">Walang nahanap.</p>';
+  const all = [...mine, ...(data || [])];
+  const ytBtn = q && !/^\d{1,5}$/.test(q) ? `<button class="s-ytgo" data-ytq="${esc(q)}">${ICON('yt')}<span>Hanapin sa YouTube: <b data-notr>${esc(q)}</b></span></button>` : '';
+  $('sList').innerHTML = all.map(s => `<div class="s-row"><span class="dot">${s.code}</span><div><b>${esc(s.title)}</b><small>${esc(s.artist || '')}${s.category ? ', ' + esc(s.category) : ''}</small></div><button class="btn small" data-sid="${s.id}">Reserve</button></div>`).join('')
+    + (all.length ? ytBtn : '') || '';
+  clearTimeout(sytT);
+  // walang nahanap sa sariling kanta: kusang hanapin sa YouTube (may hinto para hindi sayang ang quota habang nagta-type)
+  if (!all.length) {
+    if (q.length >= 3 && !/^\d{1,5}$/.test(q)) { $('sList').innerHTML = '<p class="s-empty">Hinahanap sa YouTube…</p>'; sytT = setTimeout(() => soloYt(q), 900); }
+    else $('sList').innerHTML = '<p class="s-empty">Walang nahanap.</p>';
+  }
 }
+let sytT = null;
+// YouTube search sa # ng web TV (parehong Edge Function ng remote)
+async function soloYt(q) {
+  if (!q || $('sQ').value.trim().replace(/[,%()*\\]/g, ' ').trim() !== q) return;
+  const box = $('sList');
+  const old = box.querySelector('.s-ytgo'); if (old) old.outerHTML = '<p class="s-empty">Hinahanap sa YouTube…</p>';
+  else if (!box.querySelector('.s-empty')) box.insertAdjacentHTML('beforeend', '<p class="s-empty">Hinahanap sa YouTube…</p>');
+  let html;
+  try {
+    const j = await ytSearchApi(q, 'search');
+    if (j.error) html = `<p class="s-empty">${j.error === 'no_key' ? 'Walang YouTube API key. Pwedeng mag-paste ng link.' : 'Hindi gumana ang YouTube search. Pwedeng mag-paste ng link.'}</p>`;
+    else html = (j.items || []).map(it => `<div class="s-row"><span class="dot yt">YT</span><div><b data-notr>${esc(it.title)}</b><small data-notr>${esc(it.channel || 'YouTube')}</small></div><button class="btn small" data-yt="${esc(it.id)}" data-title="${esc(it.title)}">Reserve</button></div>`).join('')
+      || '<p class="s-empty">Walang nahanap sa YouTube.</p>';
+  } catch (e) { html = '<p class="s-empty">Walang internet?</p>'; }
+  if ($('sQ').value.trim().replace(/[,%()*\\]/g, ' ').trim() !== q) return;
+  box.querySelectorAll('.s-empty').forEach(el => el.remove());
+  box.insertAdjacentHTML('beforeend', '<div class="s-sep">YouTube</div>' + html);
+}
+$('sQ').addEventListener('keydown', e => { if (e.key === 'Enter') { const q = $('sQ').value.trim().replace(/[,%()*\\]/g, ' ').trim(); if (q && !/youtu/i.test(q)) { clearTimeout(sytT); soloYt(q); } } });
 $('sList').addEventListener('click', async e => {
+  const g = e.target.closest('[data-ytq]'); if (g) { soloYt(g.dataset.ytq); return; }
   const b = e.target.closest('[data-sid]'); if (b) { hostReserve(b.dataset.sid); return; }
   const y = e.target.closest('[data-yt]');
   if (y && await hostReserve(null, { yt_id: y.dataset.yt, yt_title: y.dataset.title.slice(0, 200) })) $('sQ').value = '';

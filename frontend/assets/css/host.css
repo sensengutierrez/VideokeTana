@@ -379,3 +379,11 @@ body.tb-compact .tb > span:not(.dot) { display: none; }
 body.tb-compact .tb:not(#btnQr) { width: 38px; padding: 0; justify-content: center; }
 #topBar { transition: transform .2s ease; }
 body.ui.tb-push #topBar { transform: translateY(calc(38px + 1vw)); }
+/* YouTube sa # ng web TV */
+.s-ytgo { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,107,107,.35);
+  background: rgba(255,107,107,.10); color: #fff; font: inherit; text-align: left; cursor: pointer; }
+.s-ytgo svg { width: 20px; height: 20px; color: #ff6b6b; flex: none; }
+.s-ytgo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-ytgo:hover, .s-ytgo:focus-visible { background: rgba(255,107,107,.18); outline: none; }
+.s-sep { margin: 14px 2px 2px; font-size: 12px; font-weight: 700; color: #ff8a8a; }
+.s-row > .dot.yt { color: #ff6b6b; font-size: 15px; }
