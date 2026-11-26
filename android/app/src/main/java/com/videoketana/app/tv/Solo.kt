@@ -61,6 +61,16 @@ private val ACC = Color(0xFF62E3D2)
 private val INK2 = Color(0xFF062320)
 private val MUTE = Color(0xFF8C93A1)
 
+/** Phone/tablet (hindi Android TV): native na text box para siguradong lumabas ang keyboard. */
+@Composable
+internal fun touchInput(): Boolean {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    return remember {
+        val ui = ctx.getSystemService(android.content.Context.UI_MODE_SERVICE) as android.app.UiModeManager
+        ui.currentModeType != android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+    }
+}
+
 /** Kitang-kita kung saan nakatutok ang remote ng TV (D-pad). */
 fun Modifier.tvFocus(): Modifier = composed {
     var f by remember { mutableStateOf(false) }
@@ -221,7 +231,7 @@ private fun SoloSearch(local: List<LocalSong>, onReserve: (Song?, LocalSong?, St
     val ql = q.trim().lowercase()
     val locs = local.filter { ql.isEmpty() || it.title.lowercase().contains(ql) || it.artist.lowercase().contains(ql) || it.code.toString() == ql }
     Column(Modifier.fillMaxSize()) {
-        SearchField(q, { q = it }, tr("Title, artist o numero", "Title, artist or number"), Modifier.fillMaxWidth())
+        SearchField(q, { q = it }, tr("Title, artist o numero", "Title, artist or number"), Modifier.fillMaxWidth(), native = touchInput())
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 12.dp)) {
             items(locs, key = { "l" + it.code }) { s -> SoloRow(s.code, s.title, s.artist, if (s.file.path.startsWith(PHONE_MARK)) tr("Sa phone", "On phone") else tr("Sa device", "On device")) { onReserve(null, s, "reserve") } }
@@ -272,7 +282,7 @@ private fun SoloYouTube(onYt: (String, String) -> Unit) {
     }
     Column(Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SearchField(q, { q = it }, tr("Hanapin o i-paste ang link", "Search or paste a link"), Modifier.weight(1f), onVoice = { q = it; run() }, onSearch = { run() })
+            SearchField(q, { q = it }, tr("Hanapin o i-paste ang link", "Search or paste a link"), Modifier.weight(1f), onVoice = { q = it; run() }, onSearch = { run() }, native = touchInput())
             Spacer(Modifier.width(8.dp))
             Box(Modifier.clip(RoundedCornerShape(14.dp)).background(ACC).tvFocus().clickable { run() }.padding(horizontal = 14.dp, vertical = 14.dp)) { VkIcon("search", 18.dp, INK2) }
         }

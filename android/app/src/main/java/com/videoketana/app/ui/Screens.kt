@@ -80,22 +80,77 @@ fun TopBar(title: String, sub: String = "", onClose: () -> Unit, right: @Composa
     }
 }
 
+/** Ilabas ang keyboard para sa EditText (focus + IMM, inuulit pagkatapos ng isang frame para sa mabagal na device). */
+private fun showIme(v: android.widget.EditText) {
+    v.isFocusableInTouchMode = true
+    v.requestFocus()
+    val imm = v.context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+    imm.showSoftInput(v, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+    v.postDelayed({ if (v.hasFocus()) imm.showSoftInput(v, 0) }, 120)
+}
+
+/**
+ * Native na EditText (sa halip na Compose text field). Ginagamit sa # panel ng TV screen sa phone/tablet:
+ * doon (pahiga, buong screen) hindi lumalabas ang keyboard para sa Compose field. Walang fullscreen na keyboard
+ * (NO_EXTRACT_UI) para kita pa rin ang panel habang nagta-type.
+ */
+@Composable
+private fun NativeInput(value: String, onChange: (String) -> Unit, hint: String, onSearch: (() -> Unit)?, modifier: Modifier, onView: (android.widget.EditText) -> Unit) {
+    val c = vk
+    val change by androidx.compose.runtime.rememberUpdatedState(onChange)
+    val search by androidx.compose.runtime.rememberUpdatedState(onSearch)
+    androidx.compose.ui.viewinterop.AndroidView(factory = { ctx ->
+        android.widget.EditText(ctx).apply {
+            background = null
+            setPadding(0, 0, 0, 0)
+            isSingleLine = true
+            textSize = 16f
+            setTextColor(c.text.toArgb()); setHintTextColor(c.muted.toArgb())
+            this.hint = hint
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH or android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI or
+                android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN
+            isFocusable = true; isFocusableInTouchMode = true
+            setText(value)
+            addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, d: Int) {}
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, d: Int) {}
+                override fun afterTextChanged(s: android.text.Editable?) { change(s?.toString() ?: "") }
+            })
+            setOnEditorActionListener { v, id, ev ->
+                val enter = ev != null && ev.keyCode == android.view.KeyEvent.KEYCODE_ENTER && ev.action == android.view.KeyEvent.ACTION_DOWN
+                if (id == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH || id == android.view.inputmethod.EditorInfo.IME_ACTION_DONE || enter) {
+                    (v.context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).hideSoftInputFromWindow(v.windowToken, 0)
+                    search?.invoke(); true
+                } else false
+            }
+            setOnClickListener { showIme(this) }
+            onView(this)
+        }
+    }, update = { e ->
+        if (e.text.toString() != value) { e.setText(value); e.setSelection(value.length) }
+        e.hint = hint
+    }, modifier = modifier)
+}
+
 /** Search field na may icon. */
 @Composable
 fun SearchField(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier = Modifier, voice: Boolean = true, onVoice: ((String) -> Unit)? = null,
-                onSearch: (() -> Unit)? = null) {
+                onSearch: (() -> Unit)? = null, native: Boolean = false) {
     val c = vk
     val fm = androidx.compose.ui.platform.LocalFocusManager.current
     val kb = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val vs = if (voice) rememberVoiceSearch { t -> if (onVoice != null) onVoice(t) else onChange(t) } else null
     val fr = remember { androidx.compose.ui.focus.FocusRequester() }
+    val et = remember { arrayOfNulls<android.widget.EditText>(1) }
     // buong kahon ang napipindot (dati ang manipis na linya lang ng text); hindi ito dagdag na hinto ng D-pad
     Row(modifier.height(50.dp).clip(RoundedCornerShape(14.dp)).background(c.surface).border(1.dp, c.line, RoundedCornerShape(14.dp))
-        .pointerInput(Unit) { detectTapGestures { try { fr.requestFocus() } catch (e: Exception) { }; kb?.show() } }
+        .pointerInput(native) { detectTapGestures { if (native) et[0]?.let { showIme(it) } else { try { fr.requestFocus() } catch (e: Exception) { }; kb?.show() } } }
         .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         VkIcon("search", 18.dp, c.muted); Spacer(Modifier.width(10.dp))
-        BasicTextField(value, onChange, singleLine = true, textStyle = TextStyle(color = c.text, fontSize = 16.sp), cursorBrush = SolidColor(c.accent),
+        if (native) NativeInput(value, onChange, hint, onSearch, Modifier.weight(1f)) { et[0] = it }
+        else BasicTextField(value, onChange, singleLine = true, textStyle = TextStyle(color = c.text, fontSize = 16.sp), cursorBrush = SolidColor(c.accent),
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { kb?.hide(); onSearch?.invoke() }),
             // remote ng TV: ang taas/baba ay lumilipat sa ibang button o listahan (hindi naiipit sa text box)
