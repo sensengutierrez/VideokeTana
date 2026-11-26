@@ -5,6 +5,8 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -225,7 +227,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             }
 
             // ---------- kinakanta ngayon ----------
-            NowCard(now, lyr, scoreShow, { r -> ytRect = r?.translate(-rootPos.x, -rootPos.y) }, hostSeen, room,
+            NowCard(now, lyr, scoreShow, { r -> ytRect = r }, hostSeen, room,
                 onCmd = { a -> cmd(a) },
                 onSfx = { sfx(it) },
                 onBoard = { sheet = "board" },
@@ -267,10 +269,8 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
         // maliit na YouTube video sa ibabaw ng puwesto nito sa card
         val yr = ytRect
         val ly = lyr
-        if (yr != null && ly != null && ly.kind == "youtube" && ly.yt.isNotEmpty() && !standby) {
-            val d = androidx.compose.ui.platform.LocalDensity.current
-            MiniYt(ly, Modifier.offset { androidx.compose.ui.unit.IntOffset(yr.left.toInt(), yr.top.toInt()) }
-                .size(with(d) { yr.width.toDp() }, with(d) { yr.height.toDp() }))
+        if (yr != null && ly != null && ly.kind == "youtube" && ly.yt.isNotEmpty()) {
+            MiniYt(ly, yr, visible = !standby && sheet.isEmpty() && scoreShow == null)
         }
         if (standby) {
             val next = queue.firstOrNull { it.status == "waiting" }
@@ -303,7 +303,7 @@ private fun NowCard(now: NowState?, lyr: LyrState?, score: ScoreShow?, onYtRect:
     val shape = RoundedCornerShape(22.dp)
     Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp).clip(shape)
         .background(Brush.verticalGradient(listOf(Color(0xF2181C24), Color(0xF20E1116))))
-        .border(1.dp, Brush.linearGradient(listOf(c.accent.copy(alpha = 0.55f), Color.White.copy(alpha = 0.06f), c.accent.copy(alpha = 0.15f))), shape)) {
+        .animatedEdge(CardEdge.style, c.accent, 22.dp)) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
             val n = now
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -461,6 +461,21 @@ private fun SoundSheet(fx: JSONObject?, source: String, send: (String, Int) -> U
         Text(tr("Tunog sa TV", "Sound on the TV"), color = c.text, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
         Text(tr("Nagbabago agad habang kumakanta.", "Changes right away while singing."), color = c.muted, fontSize = 14.sp)
         if (fx == null) Text(tr("Hinihintay ang TV...", "Waiting for the TV..."), color = c.muted, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
+        Spacer(Modifier.height(16.dp))
+        // ilaw sa gilid ng kahon ng kinakanta (sa phone na ito)
+        Text(tr("Ilaw sa gilid ng kahon", "Box edge lights"), color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        var edge by remember { mutableStateOf(Prefs.str("cardEdge").ifEmpty { "rainbow" }) }
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("rainbow" to tr("Bahaghari", "Rainbow"), "xmas" to "Christmas", "neon" to "Neon", "aurora" to "Aurora", "off" to tr("Wala", "Off")).forEach { (v, label) ->
+                val on = edge == v
+                Box(Modifier.clip(RoundedCornerShape(50)).background(if (on) c.accent else Color.White.copy(alpha = 0.06f))
+                    .border(1.dp, if (on) c.accent else Color.White.copy(alpha = 0.1f), RoundedCornerShape(50))
+                    .clickable { edge = v; Prefs.putStr("cardEdge", v); CardEdge.style = v }.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                    Text(label, color = if (on) c.accentInk else c.text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
         Spacer(Modifier.height(16.dp))
         Text(tr("Kanta", "Song"), color = c.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         val yt = source == "youtube"
@@ -1002,31 +1017,113 @@ private fun LyrControls(now: NowState?, onCmd: (String) -> Unit) {
 }
 
 
-/** Maliit na YouTube video sa phone (walang tunog), sinasabayan ang oras ng TV. Gumagamit ng data ng phone. */
+/**
+ * Maliit na YouTube video sa phone (walang tunog), sinasabayan ang oras ng TV. Gumagamit ng data ng phone.
+ * Ang WebView ay idinadagdag DIREKTA sa screen ng Activity (hindi sa loob ng Compose) dahil itim ang video
+ * kapag nasa loob ng Compose layer. Ang puwesto ay galing sa placeholder sa card (window coords).
+ */
 @Composable
-private fun MiniYt(l: LyrState, modifier: Modifier) {
+private fun MiniYt(l: LyrState, rect: androidx.compose.ui.geometry.Rect, visible: Boolean) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val ctl = remember { com.videoketana.app.tv.YtController() }
     var loaded by remember { mutableStateOf("") }
     var myPos by remember { mutableStateOf(0.0) }
     var myAt by remember { mutableLongStateOf(0L) }
     var ready by remember { mutableStateOf(false) }
-    DisposableEffect(Unit) { onDispose { ctl.destroy() } }
+    val web = remember {
+        ctl.create(ctx).apply {
+            isClickable = false; isFocusable = false
+            setOnTouchListener { _, _ -> true }       // hindi napipindot ang YouTube player
+        }
+    }
+    val content = remember { (ctx as? android.app.Activity)?.findViewById<android.view.ViewGroup>(android.R.id.content) }
+    DisposableEffect(Unit) {
+        content?.addView(web, android.widget.FrameLayout.LayoutParams(1, 1))
+        onDispose { content?.removeView(web); ctl.destroy() }
+    }
+    // puwesto at laki (sumusunod sa placeholder)
+    androidx.compose.runtime.SideEffect {
+        val loc = IntArray(2); content?.getLocationInWindow(loc)
+        val lp = (web.layoutParams as? android.widget.FrameLayout.LayoutParams) ?: android.widget.FrameLayout.LayoutParams(1, 1)
+        val w = rect.width.toInt().coerceAtLeast(1); val h = rect.height.toInt().coerceAtLeast(1)
+        if (lp.width != w || lp.height != h) { lp.width = w; lp.height = h; web.layoutParams = lp }
+        web.translationX = rect.left - loc[0]; web.translationY = rect.top - loc[1]
+        web.visibility = if (visible) android.view.View.VISIBLE else android.view.View.INVISIBLE
+    }
     ctl.onReady = { ready = true }
     ctl.onTime = { t -> myPos = t; myAt = System.currentTimeMillis() }
     ctl.onState = { st -> if (st == 1) ctl.mute() }
-    LaunchedEffect(ready, l.yt) { if (ready && loaded != l.yt) { loaded = l.yt; ctl.load(l.yt, 0); ctl.mute() } }
-    // sabayan: kapag lampas 2s ang layo sa TV, tumalon
+    LaunchedEffect(ready, l.yt) { if (ready && loaded != l.yt) { loaded = l.yt; myAt = 0L; ctl.load(l.yt, 0); ctl.mute() } }
+    // sabayan ang TV: tumalon lang kapag tumutugtog na sa phone at lampas 2s ang layo (iwas kurap)
+    var synced by remember(l.yt) { mutableStateOf(false) }
     LaunchedEffect(l, ready) {
         if (!ready || loaded != l.yt) return@LaunchedEffect
         if (l.paused) { ctl.pause(); return@LaunchedEffect }
-        kotlinx.coroutines.delay(400)
         val tv = l.t + (System.currentTimeMillis() - l.at) / 1000.0
-        val mine = myPos + (if (myAt > 0) (System.currentTimeMillis() - myAt) / 1000.0 else 0.0)
-        if (myAt == 0L || kotlin.math.abs(tv - mine) > 2.0) ctl.seek(tv.toInt())
+        if (myAt == 0L) { if (!synced) { synced = true; ctl.seek(tv.toInt()) }; ctl.play(); return@LaunchedEffect }
+        val mine = myPos + (System.currentTimeMillis() - myAt) / 1000.0
+        if (kotlin.math.abs(tv - mine) > 2.5) ctl.seek(tv.toInt())
         ctl.play()
     }
-    // walang clip/alpha dito: kapag may layer, itim ang video ng WebView
-    androidx.compose.ui.viewinterop.AndroidView(factory = { ctx -> ctl.create(ctx) }, modifier = modifier)
+}
+
+/** Ilaw na gumagalaw sa gilid ng kahon (Settings: Tunog sa TV → Ilaw sa gilid). */
+object CardEdge { var style by mutableStateOf(Prefs.str("cardEdge").ifEmpty { "rainbow" }) }
+
+@Composable
+private fun Modifier.animatedEdge(style: String, accent: Color, radius: androidx.compose.ui.unit.Dp): Modifier {
+    if (style == "off") return this.border(1.dp, Brush.linearGradient(listOf(accent.copy(alpha = 0.55f), Color.White.copy(alpha = 0.06f), accent.copy(alpha = 0.15f))), RoundedCornerShape(radius))
+    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "edge")
+    val t by inf.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(
+        androidx.compose.animation.core.tween(if (style == "xmas") 1400 else 4000, easing = androidx.compose.animation.core.LinearEasing)), label = "t")
+    return this.drawWithContent {
+        drawContent()
+        val sw = 2.dp.toPx()
+        val r = androidx.compose.ui.geometry.CornerRadius(radius.toPx())
+        val inset = sw / 2
+        val sz = androidx.compose.ui.geometry.Size(size.width - sw, size.height - sw)
+        val tl = androidx.compose.ui.geometry.Offset(inset, inset)
+        val ctr = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
+        when (style) {
+            "rainbow" -> {
+                val cols = (0..6).map { Color.hsv((it * 60f + t * 360f) % 360f, 0.8f, 1f) }
+                drawRoundRect(Brush.sweepGradient(cols, ctr), tl, sz, r, style = androidx.compose.ui.graphics.drawscope.Stroke(sw))
+            }
+            "aurora" -> {
+                val cols = listOf(Color(0xFF62E3D2), Color(0xFF7CC4FF), Color(0xFFC49BFF), Color(0xFF62E3D2))
+                drawRoundRect(Brush.linearGradient(cols, androidx.compose.ui.geometry.Offset(size.width * (t * 2 - 1), 0f), androidx.compose.ui.geometry.Offset(size.width * (t * 2), size.height)),
+                    tl, sz, r, style = androidx.compose.ui.graphics.drawscope.Stroke(sw))
+            }
+            "neon" -> {
+                val a = 0.45f + 0.55f * kotlin.math.abs(kotlin.math.sin(t * Math.PI.toFloat()))
+                drawRoundRect(accent.copy(alpha = a * 0.35f), tl, sz, r, style = androidx.compose.ui.graphics.drawscope.Stroke(sw * 3))
+                drawRoundRect(accent.copy(alpha = a), tl, sz, r, style = androidx.compose.ui.graphics.drawscope.Stroke(sw))
+            }
+            "xmas" -> {
+                // maliliit na ilaw sa paligid na salitan ang kulay at kislap
+                drawRoundRect(Color.White.copy(alpha = 0.08f), tl, sz, r, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+                val per = 2 * (size.width + size.height)
+                val gap = 16.dp.toPx(); val n = (per / gap).toInt()
+                val bulbs = listOf(Color(0xFFFF4D4D), Color(0xFF4DFF88), Color(0xFFFFD54A), Color(0xFF4DA6FF))
+                val phase = (t * 4).toInt()
+                for (k in 0 until n) {
+                    var d = k * gap
+                    val p = when {
+                        d < size.width -> androidx.compose.ui.geometry.Offset(d, inset)
+                        d < size.width + size.height -> { d -= size.width; androidx.compose.ui.geometry.Offset(size.width - inset, d) }
+                        d < 2 * size.width + size.height -> { d -= size.width + size.height; androidx.compose.ui.geometry.Offset(size.width - d, size.height - inset) }
+                        else -> { d -= 2 * size.width + size.height; androidx.compose.ui.geometry.Offset(inset, size.height - d) }
+                    }
+                    // iwasan ang mga kanto (bilugan)
+                    if ((p.x < radius.toPx() * 0.6f || p.x > size.width - radius.toPx() * 0.6f) && (p.y < radius.toPx() * 0.6f || p.y > size.height - radius.toPx() * 0.6f)) continue
+                    val col = bulbs[(k + phase) % bulbs.size]
+                    val on = (k + phase) % 2 == 0
+                    drawCircle(col.copy(alpha = if (on) 0.35f else 0.12f), 4.dp.toPx(), p)
+                    drawCircle(col.copy(alpha = if (on) 1f else 0.45f), 1.8.dp.toPx(), p)
+                }
+            }
+        }
+    }
 }
 
 

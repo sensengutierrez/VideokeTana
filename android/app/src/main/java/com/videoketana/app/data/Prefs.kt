@@ -57,10 +57,10 @@ object Prefs {
         get() = sp.getLong("standbyGlow", 0L)
         set(v) = sp.edit().putLong("standbyGlow", v).apply()
     var standbyGlowAmt: Int
-        get() = sp.getInt("standbyGlowAmt", 100)
+        get() = sp.getInt("standbyGlowAmt", 50)
         set(v) = sp.edit().putInt("standbyGlowAmt", v).apply()
     var standbyDim: Int
-        get() = sp.getInt("standbyDim", 8)
+        get() = sp.getInt("standbyDim", 18)
         set(v) = sp.edit().putInt("standbyDim", v).apply()
     var standbyColor: Long
         get() = sp.getLong("standbyColor", 0xFF62E3D2)

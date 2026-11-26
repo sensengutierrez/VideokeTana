@@ -110,11 +110,11 @@ fun StandBy(nowTitle: String, nowSinger: String, nextTitle: String, room: String
             }
         }
         if (wide) Row(Modifier.offset(x = dx.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            DotText(time, clockH, color.copy(alpha = 0.9f), ghost = true)
+            DotText(time, clockH, color, ghost = false)
             Spacer(Modifier.width(36.dp))
             Box(Modifier.width(mw * 0.3f)) { info() }
         } else Column(Modifier.offset(x = dx.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            DotText(time, clockH, color.copy(alpha = 0.9f), ghost = true)
+            DotText(time, clockH, color, ghost = false)
             Spacer(Modifier.height(30.dp))
             info()
         }
