@@ -5,6 +5,8 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
@@ -114,6 +116,11 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
     var hostSeen by remember { mutableStateOf(false) }
     var now by remember { mutableStateOf<NowState?>(null) }
     var lyr by remember { mutableStateOf<LyrState?>(null) }
+    var scoreShow by remember { mutableStateOf<ScoreShow?>(null) }
+    LaunchedEffect(scoreShow) { if (scoreShow != null) { kotlinx.coroutines.delay(8000); scoreShow = null } }
+    // lugar ng maliit na YouTube video (nasa labas ng naka-clip na card para hindi maitim ang video)
+    var ytRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    var rootPos by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var queue by remember { mutableStateOf<List<QItem>>(emptyList()) }
     var tab by remember { mutableIntStateOf(0) }
     var askName by remember { mutableStateOf(Prefs.name.isBlank()) }
@@ -149,7 +156,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
                         if (f != null) scope.launch(kotlinx.coroutines.Dispatchers.IO) { com.videoketana.app.data.FileSend.send(rt, qid, f) }
                     }
                     "who" -> { rt?.broadcast("hello", JSONObject().put("tz", java.util.TimeZone.getDefault().id)); if (phoneLocal.isNotEmpty()) sendPlist(rt, phoneLocal) }
-                    "score" -> Toast.makeText(ctx, tr("Score", "Score") + (p.optString("singer").takeIf { it.isNotBlank() }?.let { tr(" ni $it", " for $it") } ?: "") + ": " + p.optInt("score"), Toast.LENGTH_LONG).show()
+                    "score" -> scoreShow = ScoreShow(p.optInt("score"), p.optString("singer"), System.currentTimeMillis())
                 }
             },
             onQueueChange = { scope.launch { loadQueue() } },
@@ -193,7 +200,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
         loadQueue(); true
     } catch (e: Exception) { Toast.makeText(ctx, tr("Hindi na-reserve: ", "Could not reserve: ") + e.message, Toast.LENGTH_LONG).show(); false }
 
-    Box(Modifier.fillMaxSize().pointerInput(Unit) {
+    Box(Modifier.fillMaxSize().onGloballyPositioned { rootPos = it.positionInWindow() }.pointerInput(Unit) {
         awaitPointerEventScope { while (true) { awaitPointerEvent(PointerEventPass.Initial); lastTouch = System.currentTimeMillis() } }
     }) {
         Column(Modifier.fillMaxSize()) {
@@ -218,7 +225,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             }
 
             // ---------- kinakanta ngayon ----------
-            NowCard(now, lyr, hostSeen, room,
+            NowCard(now, lyr, scoreShow, { r -> ytRect = r?.translate(-rootPos.x, -rootPos.y) }, hostSeen, room,
                 onCmd = { a -> cmd(a) },
                 onSfx = { sfx(it) },
                 onBoard = { sheet = "board" },
@@ -257,6 +264,14 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
             BottomNav(tab, queue.count { it.status == "waiting" }) { tab = it }
         }
 
+        // maliit na YouTube video sa ibabaw ng puwesto nito sa card
+        val yr = ytRect
+        val ly = lyr
+        if (yr != null && ly != null && ly.kind == "youtube" && ly.yt.isNotEmpty() && !standby) {
+            val d = androidx.compose.ui.platform.LocalDensity.current
+            MiniYt(ly, Modifier.offset { androidx.compose.ui.unit.IntOffset(yr.left.toInt(), yr.top.toInt()) }
+                .size(with(d) { yr.width.toDp() }, with(d) { yr.height.toDp() }))
+        }
         if (standby) {
             val next = queue.firstOrNull { it.status == "waiting" }
             StandBy(nowTitle = now?.title ?: "", nowSinger = now?.singer ?: "", nextTitle = next?.title ?: "", room = room,
@@ -282,7 +297,7 @@ fun RemoteScreen(room: String, go: (Screen) -> Unit) {
 /** Card ng kinakanta ngayon: numero, title, kumakanta, mga kontrol, mabilis na tunog. */
 /** Kompaktong "mini player": kinakanta, kontrol, at mabilis na sound effects. Key/Tempo ay nasa "Tunog sa TV". */
 @Composable
-private fun NowCard(now: NowState?, lyr: LyrState?, hostSeen: Boolean, room: String, onCmd: (String) -> Unit, onSfx: (String) -> Unit, onBoard: () -> Unit, onFx: (String, Int) -> Unit) {
+private fun NowCard(now: NowState?, lyr: LyrState?, score: ScoreShow?, onYtRect: (androidx.compose.ui.geometry.Rect?) -> Unit, hostSeen: Boolean, room: String, onCmd: (String) -> Unit, onSfx: (String) -> Unit, onBoard: () -> Unit, onFx: (String, Int) -> Unit) {
     val c = vk
     var showLyr by remember { mutableStateOf(Prefs.str("remoteLyr") == "1") }
     val shape = RoundedCornerShape(22.dp)
@@ -323,7 +338,8 @@ private fun NowCard(now: NowState?, lyr: LyrState?, hostSeen: Boolean, room: Str
                     Text(tr("Lyrics", "Lyrics"), color = if (showLyr) c.accentInk else Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
-            if (showLyr) { LyricsPane(lyr, now, onCmd); return@Column }
+            if (showLyr) { LyricsPane(lyr, now, onYtRect, onCmd); return@Column }
+            LaunchedEffect(Unit) { onYtRect(null) }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 CtlBtn("restart") { onCmd("restart") }
@@ -355,6 +371,21 @@ private fun NowCard(now: NowState?, lyr: LyrState?, hostSeen: Boolean, room: Str
                 SfxChip("Cheers", Modifier.weight(1f)) { onSfx("cheers") }
                 SfxChip("Wow", Modifier.weight(1f)) { onSfx("wow") }
                 SfxChip(tr("Iba pa", "More"), Modifier.weight(1f), on = true) { onBoard() }
+            }
+        }
+        // score pagkatapos ng kanta: nasa gitna ng card
+        androidx.compose.animation.AnimatedVisibility(score != null, modifier = Modifier.matchParentSize(),
+            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.8f), exit = androidx.compose.animation.fadeOut()) {
+            val sc = score
+            if (sc != null) Box(Modifier.fillMaxSize().background(Color(0xE6070A0E)), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(tr("Score", "Score") + (sc.singer.takeIf { it.isNotBlank() }?.let { tr(" ni $it", " for $it") } ?: ""), color = Color(0xFF8C93A1), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    DotText(sc.score.toString(), 64.dp, if (sc.score >= 90) Color(0xFFFFD54A) else c.accent, ghost = false)
+                    Spacer(Modifier.height(8.dp))
+                    Text(when { sc.score >= 95 -> tr("Ang galing! 🎉", "Amazing! 🎉"); sc.score >= 85 -> tr("Magaling!", "Great!"); sc.score >= 75 -> tr("Ayos!", "Nice!"); else -> tr("Kaya mo pa!", "Keep going!") },
+                        color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                }
             }
         }
     }
@@ -904,18 +935,22 @@ data class LyrState(val cur: String, val next: String, val el: Double, val dur: 
 
 /** Lyrics sa loob ng mini player, may maliit na kontrol sa ibaba. */
 @Composable
-private fun LyricsPane(lyr: LyrState?, now: NowState?, onCmd: (String) -> Unit) {
+private fun LyricsPane(lyr: LyrState?, now: NowState?, onYtRect: (androidx.compose.ui.geometry.Rect?) -> Unit, onCmd: (String) -> Unit) {
     val c = vk
     var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(lyr, now?.paused) { while (now?.paused != true) { tick = System.currentTimeMillis(); kotlinx.coroutines.delay(50) } }
     Spacer(Modifier.height(10.dp))
     // YouTube: maliit na video (walang tunog) na sabay sa TV
     if (lyr != null && lyr.kind == "youtube" && lyr.yt.isNotEmpty() && now?.source == "youtube") {
-        MiniYt(lyr)
+        // puwesto lang dito; ang video ay iginuguhit sa labas ng card (tingnan ang ytRect)
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black)
+            .onGloballyPositioned { val p = it.positionInWindow(); onYtRect(androidx.compose.ui.geometry.Rect(p.x, p.y, p.x + it.size.width, p.y + it.size.height)) })
+        DisposableEffect(Unit) { onDispose { onYtRect(null) } }
         Spacer(Modifier.height(10.dp))
         LyrControls(now, onCmd)
         return
     }
+    LaunchedEffect(Unit) { onYtRect(null) }
     Box(Modifier.fillMaxWidth().height(116.dp).clip(RoundedCornerShape(16.dp))
         .background(Brush.verticalGradient(listOf(Color(0xFF07090C), Color(0xFF0B1014)))).border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
         .padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
@@ -969,7 +1004,7 @@ private fun LyrControls(now: NowState?, onCmd: (String) -> Unit) {
 
 /** Maliit na YouTube video sa phone (walang tunog), sinasabayan ang oras ng TV. Gumagamit ng data ng phone. */
 @Composable
-private fun MiniYt(l: LyrState) {
+private fun MiniYt(l: LyrState, modifier: Modifier) {
     val ctl = remember { com.videoketana.app.tv.YtController() }
     var loaded by remember { mutableStateOf("") }
     var myPos by remember { mutableStateOf(0.0) }
@@ -990,9 +1025,9 @@ private fun MiniYt(l: LyrState) {
         if (myAt == 0L || kotlin.math.abs(tv - mine) > 2.0) ctl.seek(tv.toInt())
         ctl.play()
     }
-    Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)).background(Color.Black)) {
-        androidx.compose.ui.viewinterop.AndroidView(factory = { ctx -> ctl.create(ctx) }, modifier = Modifier.fillMaxSize())
-        Text(tr("Sabay sa TV · walang tunog", "Synced with the TV · muted"), color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.align(Alignment.BottomStart).padding(8.dp).clip(RoundedCornerShape(50)).background(Color(0x99000000)).padding(horizontal = 8.dp, vertical = 3.dp))
-    }
+    // walang clip/alpha dito: kapag may layer, itim ang video ng WebView
+    androidx.compose.ui.viewinterop.AndroidView(factory = { ctx -> ctl.create(ctx) }, modifier = modifier)
 }
+
+
+data class ScoreShow(val score: Int, val singer: String, val at: Long)

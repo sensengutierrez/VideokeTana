@@ -39,6 +39,13 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.withStyle
@@ -211,6 +218,8 @@ fun SettingsScreen(go: (Screen) -> Unit) {
     var bgScene by remember { mutableStateOf(Prefs.bgScene) }
     var after by remember { mutableStateOf(Prefs.standbyAfter) }
     var sbColor by remember { mutableStateOf(Prefs.standbyColor) }
+    var sbGlow by remember { mutableStateOf(Prefs.standbyGlow) }
+    var sbGlowAmt by remember { mutableStateOf(Prefs.standbyGlowAmt) }
     var lySize by remember { mutableStateOf(Prefs.lyricSize) }
     var qrMode by remember { mutableStateOf(Prefs.str("qrMode").ifEmpty { "show" }) }
     var lyLines by remember { mutableStateOf(Prefs.lyricLines) }
@@ -379,7 +388,14 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                     Seg(listOf("15" to "15s", "30" to "30s", "60" to "1m", "120" to "2m"), after.toString()) { after = it.toInt(); Prefs.standbyAfter = after }
                 }
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    Text(tr("Kulay", "Color"), color = c.text, style = VkType.title)
+                    // halimbawa
+                    Box(Modifier.fillMaxWidth().height(90.dp).clip(RoundedCornerShape(14.dp)).background(androidx.compose.ui.graphics.Color.Black), contentAlignment = Alignment.Center) {
+                        androidx.compose.runtime.CompositionLocalProvider(LocalGlow provides Glow(sbGlow.takeIf { it != 0L }?.let { androidx.compose.ui.graphics.Color(it) }, sbGlowAmt / 100f)) {
+                            DotText("8:30", 48.dp, androidx.compose.ui.graphics.Color(sbColor).copy(alpha = 0.9f))
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Text(tr("Kulay ng letra", "Text color"), color = c.text, style = VkType.title)
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         STANDBY_COLORS.forEach { (col, _) ->
@@ -389,11 +405,28 @@ fun SettingsScreen(go: (Screen) -> Unit) {
                                 .clickable { sbColor = col; Prefs.standbyColor = col })
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
-                    Box(Modifier.fillMaxWidth().height(70.dp).clip(RoundedCornerShape(14.dp)).background(androidx.compose.ui.graphics.Color.Black), contentAlignment = Alignment.Center) {
-                        DotText("8:30", 40.dp, androidx.compose.ui.graphics.Color(sbColor).copy(alpha = 0.9f))
+                    Spacer(Modifier.height(10.dp))
+                    HueBar(sbColor) { sbColor = it; Prefs.standbyColor = it }
+                    Spacer(Modifier.height(16.dp))
+                    Text(tr("Kulay ng liwanag (glow)", "Glow color"), color = c.text, style = VkType.title)
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        val same = sbGlow == 0L
+                        Box(Modifier.clip(RoundedCornerShape(50)).background(if (same) c.accent else c.surface2).clickable { sbGlow = 0L; Prefs.standbyGlow = 0L }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)) { Text(tr("Kapareho", "Same"), color = if (same) c.accentInk else c.text, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                        STANDBY_COLORS.take(5).forEach { (col, _) ->
+                            val on = sbGlow == col
+                            Box(Modifier.size(30.dp).clip(RoundedCornerShape(50)).background(androidx.compose.ui.graphics.Color(col))
+                                .border(if (on) 3.dp else 1.dp, if (on) c.text else c.line, RoundedCornerShape(50))
+                                .clickable { sbGlow = col; Prefs.standbyGlow = col })
+                        }
                     }
+                    Spacer(Modifier.height(10.dp))
+                    HueBar(if (sbGlow == 0L) sbColor else sbGlow) { sbGlow = it; Prefs.standbyGlow = it }
                 }
+                SliderRow(tr("Lakas ng liwanag", "Glow strength"), tr("0% = walang glow.", "0% = no glow."), sbGlowAmt, 0, 200, "%") { sbGlowAmt = it; Prefs.standbyGlowAmt = it }
+                SliderRow(tr("Liwanag ng screen", "Screen brightness"), tr("Hindi namamatay ang screen habang naka-StandBy; ito ang dilim nito.", "The screen stays on during StandBy; this is how dim it is."),
+                    Prefs.standbyDim, 2, 40, "%") { Prefs.standbyDim = it }
             }
             Group(tr("Ikaw", "You")) {
                 Column(Modifier.padding(16.dp)) {
@@ -673,5 +706,28 @@ fun SoundFontSection() {
             })
             VkButton(tr("I-scan", "Scan"), icon = "refresh", height = 42.dp, onClick = { refresh(); msg = "" })
         }
+    }
+}
+
+
+/** Bahaghari na pipindutin o hihilahin para pumili ng sariling kulay. */
+@Composable
+fun HueBar(current: Long, onPick: (Long) -> Unit) {
+    val hues = (0..12).map { androidx.compose.ui.graphics.Color.hsv(it * 30f % 360f, 0.85f, 1f) }
+    var w by remember { mutableStateOf(1f) }
+    val hsv = FloatArray(3).also { android.graphics.Color.colorToHSV((current and 0xFFFFFFFF).toInt(), it) }
+    fun pick(x: Float) {
+        val h = (x / w).coerceIn(0f, 1f) * 360f
+        onPick(androidx.compose.ui.graphics.Color.hsv(h % 360f, 0.85f, 1f).toArgb().toLong() and 0xFFFFFFFFL)
+    }
+    Box(Modifier.fillMaxWidth().height(30.dp).clip(RoundedCornerShape(50))
+        .background(androidx.compose.ui.graphics.Brush.horizontalGradient(hues))
+        .onSizeChanged { w = it.width.toFloat().coerceAtLeast(1f) }
+        .pointerInput(Unit) { detectTapGestures { pick(it.x) } }
+        .pointerInput(Unit) { detectHorizontalDragGestures { ch, _ -> pick(ch.position.x) } }) {
+        // tanda ng napiling kulay
+        val frac = hsv[0] / 360f
+        Box(Modifier.fillMaxHeight().width(6.dp).offset(x = with(androidx.compose.ui.platform.LocalDensity.current) { (w * frac).toDp() - 3.dp })
+            .clip(RoundedCornerShape(50)).background(androidx.compose.ui.graphics.Color.White))
     }
 }

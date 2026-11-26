@@ -63,16 +63,18 @@ fun StandBy(nowTitle: String, nowSinger: String, nextTitle: String, room: String
     LaunchedEffect(Unit) { while (true) { now = Date(); delay(1000) } }
 
     // dim na liwanag habang naka-StandBy
+    // at hindi namamatay ang screen habang naka-StandBy (parang orasan sa mesa)
     DisposableEffect(Unit) {
         val w = (ctx as? Activity)?.window
         val before = w?.attributes?.screenBrightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-        w?.let { val a = it.attributes; a.screenBrightness = 0.08f; it.attributes = a }
-        onDispose { w?.let { val a = it.attributes; a.screenBrightness = before; it.attributes = a } }
+        w?.let { val a = it.attributes; a.screenBrightness = Prefs.standbyDim / 100f; it.attributes = a; it.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+        onDispose { w?.let { val a = it.attributes; a.screenBrightness = before; it.attributes = a; it.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) } }
     }
     // dahan-dahang gumagalaw para hindi masunog ang screen
     val drift = rememberInfiniteTransition(label = "drift")
     val dx by drift.animateFloat(-8f, 8f, infiniteRepeatable(tween(60000, easing = LinearEasing), RepeatMode.Reverse), label = "dx")
 
+    androidx.compose.runtime.CompositionLocalProvider(LocalGlow provides Glow(Prefs.standbyGlow.takeIf { it != 0L }?.let { Color(it) }, Prefs.standbyGlowAmt / 100f)) {
     BoxWithConstraints(
         Modifier.fillMaxSize().background(Color.Black)
             .clickable(remember { MutableInteractionSource() }, null, onClick = onWake)
@@ -118,4 +120,5 @@ fun StandBy(nowTitle: String, nowSinger: String, nextTitle: String, room: String
         }
         Text(tr("Pindutin para bumalik", "Tap to go back"), color = color.copy(alpha = 0.3f), fontSize = 12.sp, modifier = Modifier.align(Alignment.BottomCenter))
     }
+}
 }

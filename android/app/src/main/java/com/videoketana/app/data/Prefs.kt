@@ -52,6 +52,16 @@ object Prefs {
     var standbyAfter: Int
         get() = sp.getInt("standbyAfter", 30)
         set(v) = sp.edit().putInt("standbyAfter", v).apply()
+    /** Kulay ng liwanag ng StandBy (0 = kapareho ng letra), lakas ng liwanag 0..200 (%), liwanag ng screen 2..40 (%). */
+    var standbyGlow: Long
+        get() = sp.getLong("standbyGlow", 0L)
+        set(v) = sp.edit().putLong("standbyGlow", v).apply()
+    var standbyGlowAmt: Int
+        get() = sp.getInt("standbyGlowAmt", 100)
+        set(v) = sp.edit().putInt("standbyGlowAmt", v).apply()
+    var standbyDim: Int
+        get() = sp.getInt("standbyDim", 8)
+        set(v) = sp.edit().putInt("standbyDim", v).apply()
     var standbyColor: Long
         get() = sp.getLong("standbyColor", 0xFF62E3D2)
         set(v) = sp.edit().putLong("standbyColor", v).apply()

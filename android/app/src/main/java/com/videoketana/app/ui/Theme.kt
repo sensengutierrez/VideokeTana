@@ -141,6 +141,9 @@ fun DotText(
     text: String, height: Dp, color: Color = vk.displayFg, modifier: Modifier = Modifier,
     ghost: Boolean = true, glow: Boolean = true, style: String? = null
 ) {
+    val gl = LocalGlow.current
+    val gc = gl.color ?: color            // kulay ng liwanag (StandBy: pwedeng iba sa letra)
+    val ga = gl.amount                    // lakas ng liwanag, 0..2
     // ibang estilo ayon sa Settings → Estilo ng numero at orasan
     when (style ?: Prefs.displayFont) {
         "seg" -> if (text.all { it.isDigit() || it == ':' || it == ' ' || it == '-' || it == '.' }) { SegText(text, height, color, modifier, ghost, glow); return }
@@ -164,7 +167,7 @@ fun DotText(
                 val on = g[row][col] == '#'
                 if (!on && !ghost) continue
                 val center = Offset((i * 6 + col) * c + c / 2, row * c + c / 2)
-                if (on && glow) drawCircle(color.copy(alpha = 0.18f), r * 1.9f, center)
+                if (on && glow && ga > 0f) drawCircle(gc.copy(alpha = (0.18f * ga).coerceAtMost(0.6f)), r * (1.3f + 0.6f * ga), center)
                 drawCircle(if (on) color else ghostColor, r, center)
             }
         }
@@ -180,17 +183,17 @@ private fun StyledText(text: String, height: Dp, color: Color, modifier: Modifie
         Box(modifier) {
             Text(text, color = color.copy(alpha = 0.55f), fontSize = fs, fontWeight = FontWeight.Normal, maxLines = 1, softWrap = false,
                 style = TextStyle(lineHeight = fs, platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
-                    shadow = androidx.compose.ui.graphics.Shadow(color, Offset.Zero, 40f)))
+                    shadow = androidx.compose.ui.graphics.Shadow(LocalGlow.current.color ?: color, Offset.Zero, 40f * LocalGlow.current.amount.coerceAtLeast(0.05f))))
             Text(text, color = Color.White.copy(alpha = 0.92f), fontSize = fs, fontWeight = FontWeight.Light, maxLines = 1, softWrap = false,
                 style = TextStyle(lineHeight = fs, platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
-                    shadow = androidx.compose.ui.graphics.Shadow(color, Offset.Zero, 14f)))
+                    shadow = androidx.compose.ui.graphics.Shadow(LocalGlow.current.color ?: color, Offset.Zero, 14f * LocalGlow.current.amount.coerceAtLeast(0.05f))))
         }
         return
     }
     Text(text, modifier = modifier, color = color, fontSize = fs, fontWeight = weight, fontFamily = family, maxLines = 1, softWrap = false,
         style = TextStyle(letterSpacing = if (weight == FontWeight.Light) (fs.value * 0.02f).sp else (-fs.value * 0.02f).sp,
             lineHeight = fs, platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
-            shadow = androidx.compose.ui.graphics.Shadow(color.copy(alpha = 0.35f), Offset.Zero, 18f)))
+            shadow = androidx.compose.ui.graphics.Shadow((LocalGlow.current.color ?: color).copy(alpha = (0.35f * LocalGlow.current.amount).coerceAtMost(0.9f)), Offset.Zero, 18f * (0.4f + 0.6f * LocalGlow.current.amount))))
 }
 
 /** 7-segment na numero, parang lumang digital na orasan. */
@@ -201,6 +204,8 @@ private val SEGS = mapOf(
 
 @Composable
 private fun SegText(text: String, height: Dp, color: Color, modifier: Modifier, ghost: Boolean, glow: Boolean) {
+    val glowCol = LocalGlow.current.color ?: color
+    val glowAmt = LocalGlow.current.amount
     val w = height * 0.55f
     val gap = height * 0.14f
     val colonW = height * 0.22f
@@ -211,7 +216,7 @@ private fun SegText(text: String, height: Dp, color: Color, modifier: Modifier, 
         fun seg(on: Boolean, x0: Float, y0: Float, x1: Float, y1: Float) {
             val col = if (on) color else color.copy(alpha = 0.08f)
             if (!on && !ghost) return
-            if (on && glow) drawLine(color.copy(alpha = 0.2f), Offset(x0, y0), Offset(x1, y1), strokeWidth = t * 2f, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            if (on && glow && glowAmt > 0f) drawLine(glowCol.copy(alpha = (0.2f * glowAmt).coerceAtMost(0.6f)), Offset(x0, y0), Offset(x1, y1), strokeWidth = t * (1.4f + 0.6f * glowAmt), cap = androidx.compose.ui.graphics.StrokeCap.Round)
             drawLine(col, Offset(x0, y0), Offset(x1, y1), strokeWidth = t, cap = androidx.compose.ui.graphics.StrokeCap.Round)
         }
         text.forEach { ch ->
@@ -315,3 +320,8 @@ private fun PixelText(text: String, height: Dp, color: Color, modifier: Modifier
         }
     }
 }
+
+
+/** Liwanag (glow) ng numero/orasan: kulay (null = kapareho ng letra) at lakas (1 = karaniwan). Ginagamit ng StandBy. */
+data class Glow(val color: Color? = null, val amount: Float = 1f)
+val LocalGlow = androidx.compose.runtime.staticCompositionLocalOf { Glow() }
